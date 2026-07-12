@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+
+  --color-brand-dark: #1c1368;
+  --color-brand-medium: #004f9f;
+  --color-brand-light: #00a5ec;
+  --color-brand-hover: #100b46;
+
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+}
+
+/* Glassmorphism custom classes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.glass-panel-dark {
+  background: rgba(28, 19, 104, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #004f9f;
+}
+
+/* Hide default browser password reveal and caps-lock icons (Edge/Chrome/IE) */
+input::-ms-reveal {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+input::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+}
+
+/* Custom animation for glowing effect */
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 8px 3px currentColor;
+    opacity: 0.85;
+  }
+}
+
+.dot-glow {
+  animation: glow-pulse 1.8s ease-in-out infinite;
+}
+
+/* Custom animation for tab loading bar - Pendaftaran */
+@keyframes tab-loading-pendaftaran {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(150%);
+  }
+  100% {
+    transform: translateX(150%);
+  }
+}
+
+/* SweetAlert2 custom styling agar konsisten dengan dashboard */
+.swal-popup-custom {
+  font-family: var(--font-sans) !important;
+  border-radius: 1rem !important;
+}
+
+.swal-title-custom {
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.swal-text-custom {
+  font-size: 0.875rem !important;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.swal-confirm-custom {
+  font-weight: 700 !important;
+  border-radius: 0.75rem !important;
+  padding: 0.625rem 1.5rem !important;
+}
+
+.swal-cancel-custom {
+  font-weight: 700 !important;
+  border-radius: 0.75rem !important;
+  padding: 0.625rem 1.5rem !important;
+}
+
+@keyframes bell-shake {
+  0%, 92%, 100% { transform: rotate(0deg); }
+  93% { transform: rotate(-12deg); }
+  94% { transform: rotate(10deg); }
+  95% { transform: rotate(-8deg); }
+  96% { transform: rotate(6deg); }
+  97% { transform: rotate(-4deg); }
+  98% { transform: rotate(0deg); }
+}
