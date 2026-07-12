@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Send, MessageCircle, ChevronDown,
-  Loader2, Headphones, Zap, Bot,
+  Loader2, Headphones, Zap, Bot, Sparkles,
 } from "lucide-react";
 import {
   getOrCreateChatSession,
@@ -11,7 +11,7 @@ import {
   getPublicFAQ,
   getAdminStatus,
   getQuickActions,
-  useQuickAction,
+  useQuickAction as recordQuickActionUsage,
 } from "../../services/chatService";
 
 // ─── Bubble Pesan ────────────────────────────────────────────────────────────
@@ -175,6 +175,7 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
   const pollRef = useRef(null);
   const chatPanelRef = useRef(null);
   const prevMsgLen = useRef(0);
+  const tempIdCounter = useRef(0);
 
   // ── Polling status online admin ──
   useEffect(() => {
@@ -189,10 +190,7 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    if (openTrigger && openTrigger > 0) openChat();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openTrigger]);
+
 
   const initSession = useCallback(async () => {
     try {
@@ -229,6 +227,15 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
   const openChat = () => { setIsOpen(true); setUnread(0); onUnreadChange?.(0); if (!sessionId) initSession(); };
 
   useEffect(() => {
+    if (!openTrigger || openTrigger <= 0) return;
+    const timeoutId = setTimeout(() => {
+      openChat();
+    }, 0);
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openTrigger]);
+
+  useEffect(() => {
     if (!isOpen || !sessionId) return;
     pollRef.current = setInterval(pollMessages, 3000);
     return () => clearInterval(pollRef.current);
@@ -252,7 +259,8 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
     const text = (content ?? inputText).trim();
     if (!text || sending) return;
     setSending(true); setInputText(""); setShowFaq(false); setError("");
-    const temp = { id: Date.now(), sender_type: "user", content: text, created_at: new Date().toISOString() };
+    tempIdCounter.current += 1;
+    const temp = { id: `temp-${tempIdCounter.current}`, sender_type: "user", content: text, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, temp]);
     try {
       const sendRes = await sendChatMessage(text);
@@ -551,7 +559,7 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
                             setIsBotTyping(false);
 
                             // Catat ke DB di background
-                            try { await useQuickAction(qa.id); } catch { /* silent */ }
+                            try { await recordQuickActionUsage(qa.id); } catch { /* silent */ }
                           }}
                           style={{
                             textAlign: "left", fontSize: 12, fontWeight: 600,

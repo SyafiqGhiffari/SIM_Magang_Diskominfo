@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { confirmDialog, toastSuccess, toastError } from "../../utils/swal";
-import { Landmark, Sparkles, FileText } from "lucide-react";
+import { Sparkles, FileText } from "lucide-react";
 import StepPilihKategori from "./form-magang/StepPilihKategori";
 import StepDataDiri from "./form-magang/StepDataDiri";
 import StepDataPendidikan from "./form-magang/StepDataPendidikan";

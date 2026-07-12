@@ -180,25 +180,23 @@ const DocCard = ({ dk, sub, txt, docKey, title, desc, wajib, file, onChange, acc
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                className={`inline-flex items-center justify-center rounded-lg p-1.5 transition-all cursor-pointer hover:scale-110 ${
-                  dk ? "text-slate-400 hover:bg-red-500/15 hover:text-red-400" : "text-slate-400 hover:bg-red-50 hover:text-red-500"
-                }`}
+                className={`inline-flex items-center justify-center rounded-lg p-1.5 transition-all cursor-pointer hover:scale-110 ${dk ? "text-red-400 hover:bg-red-500/15" : "text-red-500 hover:bg-red-50"}`}
               >
                 <TrashIcon />
               </button>
             </div>
           </div>
         ) : (
-          <div className="py-2">
-            <div className={`mb-2 flex justify-center transition-colors ${isDragOver ? "text-[#00A5EC]" : dk ? "text-slate-500" : "text-slate-400"}`}>
-              <CloudIcon />
-            </div>
-            <p className={`text-[11px] font-bold ${dk ? "text-slate-300" : "text-slate-600"}`}>
-              Klik untuk unggah atau seret file
-            </p>
-            <p className={`mt-1 text-[10px] ${sub}`}>{acceptLabel} &middot; Maks. 10MB</p>
+        <div className="py-2">
+          <div className={`mb-2 flex justify-center transition-all duration-300 ${isDragOver ? "text-[#00A5EC] scale-125" : dk ? "text-slate-500" : "text-slate-400"}`}>
+            <CloudIcon className={isDragOver ? "" : "animate-[iconFloat_2.4s_ease-in-out_infinite]"} />
           </div>
-        )}
+          <p className={`text-[11px] font-bold ${dk ? "text-slate-300" : "text-slate-600"}`}>
+            Klik untuk unggah atau seret file
+          </p>
+          <p className={`mt-1 text-[10px] ${sub}`}>{acceptLabel} &middot; Maks. 10MB</p>
+        </div>
+      )}
       </div>
     </div>
   );

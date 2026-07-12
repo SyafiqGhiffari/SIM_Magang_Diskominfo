@@ -46,7 +46,16 @@ const maxFileSize = 10 * 1024 * 1024 // 10MB
 
 var digitOnlyRegex = regexp.MustCompile(`^[0-9]+$`)
 
-func validateUploadedFile(c *gin.Context, fieldName string, required bool) (*multipart.FileHeader, error) {
+var pdfExtensions = map[string]bool{".pdf": true}
+var imageExtensions = map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
+
+var pdfMimeTypes = map[string]bool{"application/pdf": true}
+var imageMimeTypes = map[string]bool{"image/jpeg": true, "image/png": true}
+
+const pdfLabel = "PDF"
+const imageLabel = "JPG, JPEG, atau PNG"
+
+func validateUploadedFile(c *gin.Context, fieldName string, required bool, allowedExt map[string]bool, allowedMime map[string]bool, allowedLabel string) (*multipart.FileHeader, error) {
 	file, err := c.FormFile(fieldName)
 
 	if err != nil {
@@ -61,14 +70,11 @@ func validateUploadedFile(c *gin.Context, fieldName string, required bool) (*mul
 	}
 
 	ext := strings.ToLower(filepath.Ext(file.Filename))
-	allowedExtensions := map[string]bool{
-		".pdf": true, ".jpg": true, ".jpeg": true, ".png": true,
-	}
-	if !allowedExtensions[ext] {
-		return nil, errors.New("format file " + fieldName + " harus PDF, JPG, JPEG, atau PNG")
+	if !allowedExt[ext] {
+		return nil, errors.New("format file " + fieldName + " harus " + allowedLabel)
 	}
 
-	// --- Tambahan: cek isi file lewat magic bytes ---
+	// --- Cek isi file lewat magic bytes, bukan hanya ekstensi ---
 	src, err := file.Open()
 	if err != nil {
 		return nil, errors.New("gagal membaca file " + fieldName)
@@ -79,13 +85,8 @@ func validateUploadedFile(c *gin.Context, fieldName string, required bool) (*mul
 	n, _ := src.Read(buf)
 	contentType := http.DetectContentType(buf[:n])
 
-	allowedMime := map[string]bool{
-		"application/pdf": true,
-		"image/jpeg":      true,
-		"image/png":       true,
-	}
 	if !allowedMime[contentType] {
-		return nil, errors.New("isi file " + fieldName + " tidak sesuai format yang diklaim")
+		return nil, errors.New("isi file " + fieldName + " tidak sesuai format yang diklaim (harus " + allowedLabel + ")")
 	}
 
 	return file, nil
@@ -211,37 +212,37 @@ func CreatePendaftaranMagang(c *gin.Context) {
 	proposalRequired := kategoriPendaftar == "mahasiswa"
 
 	// 1. Validasi semua file terlebih dahulu
-	cvHeader, err := validateUploadedFile(c, "file_cv", false)
+	cvHeader, err := validateUploadedFile(c, "file_cv", false, pdfExtensions, pdfMimeTypes, pdfLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	suratPengantarHeader, err := validateUploadedFile(c, "file_surat_pengantar", true)
+	suratPengantarHeader, err := validateUploadedFile(c, "file_surat_pengantar", true, pdfExtensions, pdfMimeTypes, pdfLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	transkripHeader, err := validateUploadedFile(c, "file_transkrip", false)
+	transkripHeader, err := validateUploadedFile(c, "file_transkrip", false, pdfExtensions, pdfMimeTypes, pdfLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	portofolioHeader, err := validateUploadedFile(c, "file_portofolio", false)
+	portofolioHeader, err := validateUploadedFile(c, "file_portofolio", false, pdfExtensions, pdfMimeTypes, pdfLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	pasFotoHeader, err := validateUploadedFile(c, "file_pas_foto", true)
+	pasFotoHeader, err := validateUploadedFile(c, "file_pas_foto", true, imageExtensions, imageMimeTypes, imageLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	proposalHeader, err := validateUploadedFile(c, "file_proposal_magang", proposalRequired)
+	proposalHeader, err := validateUploadedFile(c, "file_proposal_magang", proposalRequired, pdfExtensions, pdfMimeTypes, pdfLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
@@ -459,37 +460,37 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 	}
 
 	// 1. Validasi semua file revisi terlebih dahulu
-	cvHeader, err := validateUploadedFile(c, "file_cv", false)
+	cvHeader, err := validateUploadedFile(c, "file_cv", false, pdfExtensions, pdfMimeTypes, pdfLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	suratPengantarHeader, err := validateUploadedFile(c, "file_surat_pengantar", false)
+	suratPengantarHeader, err := validateUploadedFile(c, "file_surat_pengantar", false, pdfExtensions, pdfMimeTypes, pdfLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	transkripHeader, err := validateUploadedFile(c, "file_transkrip", false)
+	transkripHeader, err := validateUploadedFile(c, "file_transkrip", false, pdfExtensions, pdfMimeTypes, pdfLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	portofolioHeader, err := validateUploadedFile(c, "file_portofolio", false)
+	portofolioHeader, err := validateUploadedFile(c, "file_portofolio", false, pdfExtensions, pdfMimeTypes, pdfLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	pasFotoHeader, err := validateUploadedFile(c, "file_pas_foto", false)
+	pasFotoHeader, err := validateUploadedFile(c, "file_pas_foto", false, imageExtensions, imageMimeTypes, imageLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	proposalHeader, err := validateUploadedFile(c, "file_proposal_magang", false)
+	proposalHeader, err := validateUploadedFile(c, "file_proposal_magang", false, pdfExtensions, pdfMimeTypes, pdfLabel)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return

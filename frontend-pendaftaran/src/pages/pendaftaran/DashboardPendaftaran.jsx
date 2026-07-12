@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+﻿import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logoutPendaftaran } from "../../services/authPendaftaranService";
 import { confirmDialog, toastSuccess, toastError } from "../../utils/swal";
@@ -42,6 +42,15 @@ const bidangOptions = [
     name: "Statistik & Persandian",
     desc: "Berperan dalam mendukung pengelolaan data, penyusunan informasi statistik, serta penerapan keamanan informasi untuk mendukung pengambilan keputusan dan layanan pemerintahan."
   }
+];
+
+const REVISI_DOC_FIELD_MAP = [
+  { key: "pas_foto", field: "file_pas_foto", pattern: /pas\s*foto/i, isImage: true, label: "Pas Foto" },
+  { key: "surat_pengantar", field: "file_surat_pengantar", pattern: /surat\s*pengantar/i, isImage: false, label: "Surat Pengantar" },
+  { key: "transkrip", field: "file_transkrip", pattern: /transkrip|rapor/i, isImage: false, label: "Transkrip/Rapor" },
+  { key: "portofolio", field: "file_portofolio", pattern: /portofolio/i, isImage: false, label: "Portofolio" },
+  { key: "proposal_magang", field: "file_proposal_magang", pattern: /proposal/i, isImage: false, label: "Proposal Magang" },
+  { key: "cv", field: "file_cv", pattern: /\bcv\b|curriculum vitae/i, isImage: false, label: "CV" },
 ];
 
 const TabLoadingSkeleton = ({ dk, surface }) => (
@@ -163,7 +172,7 @@ const DashboardPendaftaran = () => {
   const [mountedAt] = useState(() => new Date());
 
   const [notifOpen, _setNotifOpen] = useState(false);
-  const [hasReadNotif, setHasReadNotif] = useState(false);
+  const [readBump, setReadBump] = useState(0);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const notifRef = useRef(null);
   const avatarRef = useRef(null);
@@ -176,27 +185,24 @@ const DashboardPendaftaran = () => {
     return `read_notif_${user.id}_${hasReg}_${statusStr}`;
   }, [user, status]);
 
+  const notifKey = getNotifKey();
+  const hasReadNotif = useMemo(() => {
+    if (!notifKey) return false;
+    return localStorage.getItem(notifKey) === "true";
+  }, [notifKey, readBump]);
+
   const setNotifOpen = useCallback((val) => {
     _setNotifOpen(prev => {
       const next = typeof val === "function" ? val(prev) : val;
       if (next) {
-        setHasReadNotif(true);
         const key = getNotifKey();
         if (key) {
           localStorage.setItem(key, "true");
+          setReadBump((b) => b + 1);
         }
       }
       return next;
     });
-  }, [getNotifKey]);
-
-  useEffect(() => {
-    const key = getNotifKey();
-    if (key) {
-      setHasReadNotif(localStorage.getItem(key) === "true");
-    } else {
-      setHasReadNotif(false);
-    }
   }, [getNotifKey]);
 
   useEffect(() => {
@@ -225,8 +231,8 @@ const DashboardPendaftaran = () => {
   const [fotoModalLoading, setFotoModalLoading] = useState(false);
   const [fotoPreview, setFotoPreview] = useState(null);
   // Chat
-  const [chatOpenTrigger, setChatOpenTrigger] = useState(0);
-  const [chatUnread, setChatUnread] = useState(0);
+  const [chatOpenTrigger] = useState(0);
+  const [, setChatUnread] = useState(0);
   const [showFotoModal, setShowFotoModal] = useState(false);
   const [cropSrc, setCropSrc] = useState(null);
   const [cropZoom, setCropZoom] = useState(100);
@@ -251,8 +257,6 @@ const DashboardPendaftaran = () => {
   const [passwordErrorVisible, setPasswordErrorVisible] = useState(true);
   const [noChangesVisible, setNoChangesVisible] = useState(true);
   const [emailSuccessVisible, setEmailSuccessVisible] = useState(true);
-  const [dokumenRevisi, setDokumenRevisi] = useState(null);
-  const [catatanRevisi, setCatatanRevisi] = useState("");
   const [errorRevisi, setErrorRevisi] = useState("");
   const [loadingRevisi, setLoadingRevisi] = useState(false);
 
@@ -699,39 +703,40 @@ const DashboardPendaftaran = () => {
     }
   }, [activeTab]);
 
-  const handleFileChangeRevisi = (e) => {
+  const handleSubmitRevisi = async (filesByField, catatanText) => {
     setErrorRevisi("");
-    const f = e.target.files[0]; if (!f) return;
-    if (f.type !== "application/pdf") { setErrorRevisi("File harus berupa PDF."); setDokumenRevisi(null); return; }
-    if (f.size > 2 * 1024 * 1024) { setErrorRevisi("Kapasitas file maksimal 2 MB."); setDokumenRevisi(null); return; }
-    setDokumenRevisi(f);
-  };
-
-  const handleSubmitRevisi = async (e) => {
-    e.preventDefault(); setErrorRevisi("");
-    if (!dokumenRevisi) { setErrorRevisi("Dokumen revisi wajib diunggah."); return; }
+    const hasAnyFile = Object.values(filesByField).some(Boolean);
+    if (!hasAnyFile) {
+      setErrorRevisi("Unggah minimal satu dokumen revisi sebelum mengirim.");
+      return;
+    }
 
     const result = await confirmDialog({
-      title: "Kirim revisi dokumen?",
-      text: "Berkas revisi akan dikirim untuk diverifikasi ulang oleh admin.",
-      confirmText: "Ya, Kirim",
-      icon: "question",
+      title: "Kirim Perbaikan Dokumen?",
+      text: "Pastikan seluruh dokumen yang Anda unggah sudah sesuai dengan catatan admin sebelum mengirim. Berkas akan diverifikasi ulang oleh admin.",
+      confirmText: "Ya, Kirim Sekarang",
+      icon: "warning",
     });
     if (!result.isConfirmed) return;
 
-    const fd = new FormData(); fd.append("dokumen", dokumenRevisi); fd.append("catatan", catatanRevisi);
+    const fd = new FormData();
+    Object.entries(filesByField).forEach(([field, file]) => {
+      if (file) fd.append(field, file);
+    });
+    fd.append("catatan", catatanText || "");
+
     setLoadingRevisi(true);
     try {
       await kirimRevisiDokumen(fd);
       await fetchStatus();
       toastSuccess("Revisi berhasil dikirim");
       handleTabChange("status");
-    }
-    catch (err) {
+    } catch (err) {
       setErrorRevisi(err.response?.data?.message || "Gagal mengirim revisi.");
       toastError(err.response?.data?.message || "Gagal mengirim revisi");
+    } finally {
+      setLoadingRevisi(false);
     }
-    finally { setLoadingRevisi(false); }
   };
 
   const isAccepted = status?.status_pendaftaran?.toLowerCase().includes("terima");
@@ -852,8 +857,8 @@ const DashboardPendaftaran = () => {
               {activeTab === "revisi" && (
                 <TabRevisiBerkas
                   dk={dk} surface={surface} txt={txt} sub={sub} isRevisi={isRevisi} status={status}
-                  dokumenRevisi={dokumenRevisi} catatanRevisi={catatanRevisi} setCatatanRevisi={setCatatanRevisi}
-                  handleFileChangeRevisi={handleFileChangeRevisi} handleSubmitRevisi={handleSubmitRevisi}
+                  docOptions={REVISI_DOC_FIELD_MAP}
+                  handleSubmitRevisi={handleSubmitRevisi}
                   errorRevisi={errorRevisi} loadingRevisi={loadingRevisi} handleTabChange={handleTabChange}
                 />
               )}

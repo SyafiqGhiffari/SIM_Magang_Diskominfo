@@ -3,14 +3,25 @@ import { useLocation } from "react-router-dom";
 
 const PageLoader = () => {
   const location = useLocation();
-  const [loading, setLoading] = useState(false);
-  const [visible, setVisible] = useState(false);
 
-  useEffect(() => {
-    // Show the loader immediately when the path changes
+  // Loader starts visible on first mount and whenever the route changes
+  const [loading, setLoading] = useState(true);
+  const [visible, setVisible] = useState(true);
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
+
+  // ==== PERUBAHAN: adjust state saat render (bukan di dalam useEffect) ====
+  // Pola resmi React untuk "menyesuaikan state ketika prop berubah":
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  if (location.pathname !== prevPathname) {
+    setPrevPathname(location.pathname);
     setLoading(true);
     setVisible(true);
-    
+  }
+  // ==== AKHIR PERUBAHAN ====
+
+  useEffect(() => {
+    if (!loading) return;
+
     // Reset scroll to top instantly
     window.scrollTo(0, 0);
 
@@ -28,7 +39,7 @@ const PageLoader = () => {
       clearTimeout(fadeOutTimer);
       clearTimeout(removeTimer);
     };
-  }, [location.pathname]);
+  }, [loading]);
 
   if (!loading) return null;
 

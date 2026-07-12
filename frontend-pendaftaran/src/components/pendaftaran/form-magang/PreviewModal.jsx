@@ -35,7 +35,28 @@ const DocIcon = () => (
   </svg>
 );
 
-const PreviewModal = ({ file, label, onClose, onGantiFile }) => {
+// ==== PERUBAHAN: palet warna berdasarkan tema, default "blue" (form pendaftaran) ====
+const THEMES = {
+  blue: {
+    headerGradient: "from-[#0B1442] via-[#141F5C] to-[#1E3A8A]",
+    toolbarActiveText: "hover:text-[#004F9F]",
+    spinnerBorder: "border-t-[#004F9F]",
+    tutupGradient: "from-[#0B1442] to-[#1E3A8A]",
+    tutupHoverGradient: "hover:from-[#101F5C] hover:to-[#004F9F]",
+  },
+  amber: {
+    headerGradient: "from-amber-700 via-amber-600 to-amber-500",
+    toolbarActiveText: "hover:text-amber-600",
+    spinnerBorder: "border-t-amber-500",
+    tutupGradient: "from-amber-600 to-amber-500",
+    tutupHoverGradient: "hover:from-amber-700 hover:to-amber-600",
+  },
+};
+// ==== AKHIR PERUBAHAN ====
+
+const PreviewModal = ({ file, label, onClose, onGantiFile, theme = "blue" }) => {
+  const t = THEMES[theme] || THEMES.blue;
+
   const isImage = file?.type?.startsWith("image/");
   const canvasRef = useRef(null);
   const [pdfDoc, setPdfDoc] = useState(null);
@@ -102,7 +123,7 @@ const PreviewModal = ({ file, label, onClose, onGantiFile }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header gradient */}
-        <div className="relative shrink-0 bg-gradient-to-r from-[#0B1442] via-[#141F5C] to-[#1E3A8A] px-6 py-5 overflow-hidden">
+        <div className={`relative shrink-0 bg-gradient-to-r ${t.headerGradient} px-6 py-5 overflow-hidden`}>
           <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10 blur-xl" />
           <div className="relative flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
@@ -126,22 +147,22 @@ const PreviewModal = ({ file, label, onClose, onGantiFile }) => {
         {/* Toolbar */}
         <div className="flex items-center justify-center gap-3 px-5 py-3 border-b border-slate-100 bg-slate-50 shrink-0">
           <div className="flex items-center gap-1 rounded-full bg-white border border-slate-200 shadow-sm px-1.5 py-1">
-            <button onClick={() => setZoom(z => Math.max(50, z - 25))} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-[#004F9F] transition-all cursor-pointer">
+            <button onClick={() => setZoom(z => Math.max(50, z - 25))} className={`rounded-full p-1.5 text-slate-500 hover:bg-slate-100 ${t.toolbarActiveText} transition-all cursor-pointer`}>
               <ZoomOutIcon />
             </button>
             <span className="text-xs font-bold text-[#0B1442] w-12 text-center tabular-nums">{zoom}%</span>
-            <button onClick={() => setZoom(z => Math.min(200, z + 25))} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-[#004F9F] transition-all cursor-pointer">
+            <button onClick={() => setZoom(z => Math.min(200, z + 25))} className={`rounded-full p-1.5 text-slate-500 hover:bg-slate-100 ${t.toolbarActiveText} transition-all cursor-pointer`}>
               <ZoomInIcon />
             </button>
           </div>
 
           {!isImage && numPages > 1 && (
             <div className="flex items-center gap-1 rounded-full bg-white border border-slate-200 shadow-sm px-1.5 py-1">
-              <button onClick={() => setPageNum(p => Math.max(1, p - 1))} disabled={pageNum === 1} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-[#004F9F] transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed">
+              <button onClick={() => setPageNum(p => Math.max(1, p - 1))} disabled={pageNum === 1} className={`rounded-full p-1.5 text-slate-500 hover:bg-slate-100 ${t.toolbarActiveText} transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed`}>
                 <ChevronLeft />
               </button>
               <span className="text-xs font-bold text-[#0B1442] whitespace-nowrap px-1">Hal {pageNum} / {numPages}</span>
-              <button onClick={() => setPageNum(p => Math.min(numPages, p + 1))} disabled={pageNum === numPages} className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-[#004F9F] transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed">
+              <button onClick={() => setPageNum(p => Math.min(numPages, p + 1))} disabled={pageNum === numPages} className={`rounded-full p-1.5 text-slate-500 hover:bg-slate-100 ${t.toolbarActiveText} transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed`}>
                 <ChevronRight />
               </button>
             </div>
@@ -159,7 +180,7 @@ const PreviewModal = ({ file, label, onClose, onGantiFile }) => {
         >
           {loading ? (
             <div className="m-auto flex flex-col items-center gap-3 text-slate-400">
-              <div className="h-8 w-8 rounded-full border-[3px] border-slate-300 border-t-[#004F9F] animate-spin" />
+              <div className={`h-8 w-8 rounded-full border-[3px] border-slate-300 ${t.spinnerBorder} animate-spin`} />
               <span className="text-xs font-bold">Memuat pratinjau...</span>
             </div>
           ) : isImage ? (
@@ -188,7 +209,7 @@ const PreviewModal = ({ file, label, onClose, onGantiFile }) => {
             </button>
             <button
               onClick={onClose}
-              className="rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-6 py-2.5 text-xs font-bold text-white shadow-md hover:shadow-xl hover:from-[#101F5C] hover:to-[#004F9F] hover:-translate-y-0.5 transition-all cursor-pointer"
+              className={`rounded-full bg-gradient-to-r ${t.tutupGradient} px-6 py-2.5 text-xs font-bold text-white shadow-md hover:shadow-xl ${t.tutupHoverGradient} hover:-translate-y-0.5 transition-all cursor-pointer`}
             >
               Tutup
             </button>
