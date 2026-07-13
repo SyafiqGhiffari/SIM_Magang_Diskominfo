@@ -190,7 +190,7 @@ const TabRevisiBerkas = ({
   handleSubmitRevisi,
   errorRevisi, loadingRevisi, handleTabChange,
 }) => {
-  const forceRevisiForTesting = true; // SET KE false UNTUK MERESTORE LOGIC ASLINYA
+  const forceRevisiForTesting = false; // set true untuk demo/testing, abaikan catatan admin dan paksa tampilkan 3 dokumen revisi contoh
 
   // Contoh 3 dokumen revisi untuk keperluan demo/testing
   const demoDocs = [

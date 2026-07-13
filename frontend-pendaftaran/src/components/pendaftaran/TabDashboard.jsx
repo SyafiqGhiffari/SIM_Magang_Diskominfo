@@ -26,7 +26,7 @@ const TabDashboard = ({
   handleTabChange,
 }) => {
 
-  const forceRevisiForTesting = true; // SET KE false UNTUK MERESTORE LOGIC ASLINYA
+  const forceRevisiForTesting = false; // set true untuk demo/testing, abaikan catatan admin dan paksa tampilkan 3 dokumen revisi contoh
 
   const getStepProgressHeight = () => {
     if (isAccepted || isRejected || isRevisi) return "100%";

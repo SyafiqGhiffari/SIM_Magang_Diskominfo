@@ -61,8 +61,8 @@ const LoginPendaftaran = () => {
     try {
       const res = await loginPendaftaran(form);
       const payload = res.data; // Backend wraps response in { success, message, data: { token, user } }
-      localStorage.setItem("token_pendaftaran", payload.token);
-      localStorage.setItem("user_pendaftaran", JSON.stringify(payload.user));
+      sessionStorage.setItem("token_pendaftaran", payload.token);
+      sessionStorage.setItem("user_pendaftaran", JSON.stringify(payload.user));
       navigate("/dashboard");
     } catch (err) {
       setError(

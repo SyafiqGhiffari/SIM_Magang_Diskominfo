@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logoutPendaftaran } from "../../services/authPendaftaranService";
-import { confirmDialog, toastSuccess, toastError } from "../../utils/swal";
+import { confirmDialog, toastSuccess, toastError, sessionExpiredDialog } from "../../utils/swal";
 import { Info, Search, AlertTriangle, PartyPopper, XCircle } from "lucide-react";
 import {
   getStatusPendaftaran,
@@ -158,7 +158,7 @@ const DashboardPendaftaran = () => {
 
   const getUserSafely = () => {
     try {
-      const raw = localStorage.getItem("user_pendaftaran");
+      const raw = sessionStorage.getItem("user_pendaftaran");
       if (raw && raw !== "undefined") return JSON.parse(raw);
     } catch (e) { console.error(e); }
     return null;
@@ -170,6 +170,21 @@ const DashboardPendaftaran = () => {
 
   const [statusFetchedAt, setStatusFetchedAt] = useState(null);
   const [mountedAt] = useState(() => new Date());
+
+  const userId = user?.id;
+
+  const belumDaftarTimestamp = useMemo(() => {
+    try {
+      const key = `belum_daftar_seen_${userId || "anon"}`;
+      const stored = localStorage.getItem(key);
+      if (stored) return new Date(stored);
+      const now = new Date();
+      localStorage.setItem(key, now.toISOString());
+      return now;
+    } catch {
+      return mountedAt;
+    }
+  }, [userId, mountedAt]);
 
   const [notifOpen, _setNotifOpen] = useState(false);
   const [readBump, setReadBump] = useState(0);
@@ -290,6 +305,48 @@ const DashboardPendaftaran = () => {
     return () => clearTimeout(timeoutId);
   }, [navigate]);
 
+  // ==== PERUBAHAN: cek ulang sesi saat tab kembali aktif setelah idle lama ====
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchStatus();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+  // ==== AKHIR PERUBAHAN ====
+
+  // ==== PERUBAHAN: auto-logout setelah idle (tidak ada interaksi) selama 1 jam ====
+  useEffect(() => {
+    const IDLE_LIMIT_MS = 60 * 60 * 1000; // 1 jam
+    let idleTimer = null;
+
+    const handleIdleTimeout = async () => {
+      await logoutPendaftaran();
+      const result = await sessionExpiredDialog();
+      if (result.isConfirmed) {
+        navigate("/login");
+      }
+    };
+
+    const resetIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(handleIdleTimeout, IDLE_LIMIT_MS);
+    };
+
+    const activityEvents = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
+    activityEvents.forEach((evt) => window.addEventListener(evt, resetIdleTimer));
+
+    resetIdleTimer();
+
+    return () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      activityEvents.forEach((evt) => window.removeEventListener(evt, resetIdleTimer));
+    };
+  }, [navigate]);
+  // ==== AKHIR PERUBAHAN ====
+
   const handleLogout = async () => {
     const result = await confirmDialog({
       title: "Keluar dari akun?",
@@ -350,7 +407,7 @@ const DashboardPendaftaran = () => {
       if (wantsProfileChange) {
         const res = await updateProfil({ nama: profileForm.nama, no_hp: profileForm.no_hp, institusi: profileForm.institusi });
         const updated = { ...user, nama: res.data?.nama || profileForm.nama, no_hp: res.data?.no_hp || profileForm.no_hp, institusi: res.data?.institusi || profileForm.institusi };
-        localStorage.setItem("user_pendaftaran", JSON.stringify(updated));
+        sessionStorage.setItem("user_pendaftaran", JSON.stringify(updated));
         setUser(updated);
         setProfileSuccess("Profil berhasil diperbarui.");
         setProfileSuccessVisible(true);
@@ -453,7 +510,7 @@ const DashboardPendaftaran = () => {
     try {
       const res = await verifikasiGantiEmail({ otp: otpInput });
       const updated = { ...user, email: res.data?.email || emailBaru };
-      localStorage.setItem("user_pendaftaran", JSON.stringify(updated));
+      sessionStorage.setItem("user_pendaftaran", JSON.stringify(updated));
       setUser(updated);
       setEmailSuccessMsg("Email berhasil diperbarui.");
       setEmailSuccessVisible(true);
@@ -564,8 +621,8 @@ const DashboardPendaftaran = () => {
   const handleCropFileSelected = (e) => {
     const f = e.target.files[0];
     if (!f) return;
-    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    if (!allowed.includes(f.type)) { alert("Format foto harus JPG, PNG, atau WEBP."); return; }
+    const allowed = ["image/jpeg", "image/jpg", "image/png"];
+    if (!allowed.includes(f.type)) { alert("Format foto harus JPEG, JPG, atau PNG."); return; }
     if (f.size > 3 * 1024 * 1024) { alert("Ukuran foto maksimal 3MB."); return; }
     setCropSrc(URL.createObjectURL(f));
     setCropZoom(100);
@@ -655,7 +712,7 @@ const DashboardPendaftaran = () => {
       const res = await uploadFotoProfil(fd);
       const fotoUrl = res.data?.foto_url || "";
       const updated = { ...user, foto_profil: fotoUrl };
-      localStorage.setItem("user_pendaftaran", JSON.stringify(updated));
+      sessionStorage.setItem("user_pendaftaran", JSON.stringify(updated));
       setUser(updated);
       toastSuccess("Foto profil berhasil diperbarui");
     } catch (err) {
@@ -678,7 +735,7 @@ const DashboardPendaftaran = () => {
     try {
       await hapusFotoProfil();
       const updated = { ...user, foto_profil: "" };
-      localStorage.setItem("user_pendaftaran", JSON.stringify(updated));
+      sessionStorage.setItem("user_pendaftaran", JSON.stringify(updated));
       setUser(updated);
       setFotoPreview(null);
       toastSuccess("Foto profil berhasil dihapus");
@@ -695,7 +752,7 @@ const DashboardPendaftaran = () => {
       getProfilSaya().then(res => {
         if (res?.data) {
           const fresh = { ...user, ...res.data };
-          localStorage.setItem("user_pendaftaran", JSON.stringify(fresh));
+          sessionStorage.setItem("user_pendaftaran", JSON.stringify(fresh));
           setUser(fresh);
           setProfileForm({ nama: res.data.nama || "", no_hp: res.data.no_hp || "", institusi: res.data.institusi || "" });
         }
@@ -762,7 +819,7 @@ const DashboardPendaftaran = () => {
   const notifications = [];
   if (!loading) {
     const timestamp = status?.updated_at || status?.created_at || statusFetchedAt || mountedAt;
-    if (!hasRegistered) notifications.push({ id: 1, type: "info", icon: <Info className="w-4 h-4" strokeWidth={2} />, dot: "bg-blue-500", title: "Belum Ada Pendaftaran", msg: "Segera lengkapi formulir permohonan.", timestamp: mountedAt });
+    if (!hasRegistered) notifications.push({ id: 1, type: "info", icon: <Info className="w-4 h-4" strokeWidth={2} />, dot: "bg-blue-500", title: "Belum Ada Pendaftaran", msg: "Segera lengkapi formulir permohonan.", timestamp: belumDaftarTimestamp });
     else if (isPending) notifications.push({ id: 2, type: "pending", icon: <Search className="w-4 h-4" strokeWidth={2} />, dot: "bg-amber-500 animate-pulse", title: "Berkas Sedang Diverifikasi", msg: "Dokumen Anda sedang diperiksa admin.", timestamp });
     else if (isRevisi) notifications.push({ id: 3, type: "warning", icon: <AlertTriangle className="w-4 h-4" strokeWidth={2} />, dot: "bg-orange-500 animate-bounce", title: "Dokumen Perlu Direvisi", msg: status?.catatan_admin || "Admin meminta perbaikan berkas.", timestamp });
     else if (isAccepted) notifications.push({ id: 4, type: "success", icon: <PartyPopper className="w-4 h-4" strokeWidth={2} />, dot: "bg-emerald-500", title: "Selamat! Anda Diterima Magang", msg: `Penempatan: ${status?.posisi_bidang || "-"}`, timestamp });

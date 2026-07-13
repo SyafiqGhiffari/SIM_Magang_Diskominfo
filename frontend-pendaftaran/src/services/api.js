@@ -1,4 +1,5 @@
 import axios from "axios";
+import { sessionExpiredDialog } from "../utils/swal";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -6,20 +7,28 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token_pendaftaran");
+  const token = sessionStorage.getItem("token_pendaftaran");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
+let isHandlingSessionExpired = false;
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token_pendaftaran");
-      localStorage.removeItem("user_pendaftaran");
-      if (window.location.pathname !== "/login") {
+      const alreadyOnLogin = window.location.pathname === "/login";
+
+      sessionStorage.removeItem("token_pendaftaran");
+      sessionStorage.removeItem("user_pendaftaran");
+
+      if (!alreadyOnLogin && !isHandlingSessionExpired) {
+        isHandlingSessionExpired = true;
+        const msg = error.response?.data?.message;
+        await sessionExpiredDialog(msg ? { text: msg } : undefined);
         window.location.href = "/login";
       }
     }

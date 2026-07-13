@@ -147,7 +147,7 @@ const TabKelolaAkun = ({
             <input
               ref={cropFileInputRef}
               type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
+              accept="image/jpeg,image/jpg,image/png"
               className="hidden"
               onChange={handleCropFileSelected}
             />
@@ -158,7 +158,7 @@ const TabKelolaAkun = ({
               Foto Profil
             </h3>
             <p className={`text-[11px] font-sans mb-4 ${muted}`}>
-              JPG, PNG, atau WEBP. Ukuran maksimal 3MB.
+              JPEG, JPG, atau PNG. Ukuran maksimal 3MB.
             </p>
 
             <div className="flex items-center gap-3">

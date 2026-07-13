@@ -16,8 +16,8 @@ export const logoutPendaftaran = async () => {
   } catch {
     // tetap lanjutkan bersihkan sesi lokal walau request gagal (misal offline)
   } finally {
-    localStorage.removeItem("token_pendaftaran");
-    localStorage.removeItem("user_pendaftaran");
+    sessionStorage.removeItem("token_pendaftaran");
+    sessionStorage.removeItem("user_pendaftaran");
   }
 };
 

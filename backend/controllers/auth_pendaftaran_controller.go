@@ -215,10 +215,10 @@ func UploadFotoProfilPendaftaran(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, "File foto_profil wajib diunggah")
 		return
 	}
-	allowedExt := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
+	allowedExt := map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if !allowedExt[ext] {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Format foto harus JPG, JPEG, PNG, atau WEBP")
+		utils.ErrorResponse(c, http.StatusBadRequest, "Format foto harus JPEG, JPG, atau PNG")
 		return
 	}
 	if file.Size > 3*1024*1024 {

@@ -59,3 +59,23 @@ export const toastError = (title = "Terjadi kesalahan") => {
     timerProgressBar: true,
   });
 };
+
+// ==== dialog khusus untuk notifikasi sesi berakhir ====
+export const sessionExpiredDialog = ({
+  title = "Sesi Berakhir",
+  text = "Sesi login Anda telah berakhir karena tidak ada aktivitas. Silakan login kembali untuk melanjutkan penggunaan aplikasi.",
+  confirmText = "Login Kembali",
+} = {}) => {
+  return baseSwal.fire({
+    title,
+    text,
+    icon: "warning",
+    iconColor: "#dc2626",
+    showCancelButton: false,
+    showConfirmButton: true,
+    confirmButtonText: confirmText,
+    confirmButtonColor: "#004f9f",
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+  });
+};
