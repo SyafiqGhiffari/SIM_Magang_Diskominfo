@@ -1,19 +1,55 @@
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { MessageSquare, LayoutDashboard, HelpCircle, LogOut, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { MessageSquare, HelpCircle } from "lucide-react";
+import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import { logoutAdmin, getProfile } from "../services/authService";
+import { confirmDialog } from "../utils/swal";
+import { clearAuthData } from "../utils/authStorage";
 
-const AdminLayout = ({ children }) => {
+const navItems = [
+  {
+    key: "dashboard",
+    to: "/admin",
+    label: "Dashboard",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-[18px] h-[18px] shrink-0">
+        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+      </svg>
+    ),
+  },
+  { key: "chat", to: "/admin/chat", label: "Pesan Peserta", icon: <MessageSquare className="w-[18px] h-[18px] shrink-0" /> },
+  { key: "faq", to: "/admin/faq", label: "FAQ & Quick Action", icon: <HelpCircle className="w-[18px] h-[18px] shrink-0" /> },
+];
+
+const tabTitles = {
+  dashboard: { title: "Dashboard", desc: "Ringkasan aktivitas sistem magang" },
+  chat: { title: "Pesan Peserta", desc: "Kelola percakapan langsung dengan pendaftar" },
+  faq: { title: "FAQ & Quick Action", desc: "Kelola jawaban otomatis chatbot" },
+  akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
+};
+
+const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [profile, setProfile] = useState(null);
+  const [isDark, setIsDark] = useState(() => localStorage.getItem("admin_theme") === "dark");
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("admin_theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("admin_theme", "light");
+    }
+  }, [isDark]);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await getProfile();
         setProfile(res.data.data);
-      } catch (err) {
+      } catch {
         navigate("/login");
       }
     };
@@ -21,105 +57,50 @@ const AdminLayout = ({ children }) => {
   }, [navigate]);
 
   const handleLogout = async () => {
+    const result = await confirmDialog({
+      title: "Keluar dari akun?",
+      text: "Anda perlu masuk kembali untuk mengakses dashboard.",
+      confirmText: "Ya, Keluar",
+      icon: "warning",
+      danger: true,
+    });
+    if (!result.isConfirmed) return;
+
     try {
       await logoutAdmin();
-      localStorage.removeItem("admin_token");
-      navigate("/login");
-    } catch (err) {
-      localStorage.removeItem("admin_token");
+    } catch {
+      // tetap lanjut hapus sesi lokal walau request gagal
+    } finally {
+      clearAuthData();
       navigate("/login");
     }
   };
 
-  const isActive = (path) => location.pathname === path;
+  const activeKey =
+    location.pathname === "/admin" ? "dashboard" :
+    location.pathname.startsWith("/admin/chat") ? "chat" :
+    location.pathname.startsWith("/admin/faq") ? "faq" :
+    location.pathname.startsWith("/admin/akun") ? "akun" : "dashboard";
+
+  const currentTab = tabTitles[activeKey] || tabTitles.dashboard;
 
   return (
-    <div style={{ display: "flex", height: "100vh", width: "100vw", background: "#f8fafc", overflow: "hidden", fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      {/* Sidebar */}
-      <div style={{ width: 260, background: "#0B1442", color: "#fff", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-        {/* Logo / Header */}
-        <div style={{ padding: "24px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: "linear-gradient(135deg, #004F9F, #00a5ec)", display: "flex", alignItems: "center", justify: "center", display: "flex", justifyContent: "center" }}>
-            <MessageSquare size={18} color="#fff" />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 15, fontWeight: 800, margin: 0, letterSpacing: "0.5px" }}>SIM MAGANG</h1>
-            <p style={{ fontSize: 10, color: "#94a3b8", margin: 0, fontWeight: 600 }}>DISKOMINFO MANAJEMEN</p>
-          </div>
-        </div>
-
-        {/* Navigation Items */}
-        <div style={{ flex: 1, padding: "20px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <Link to="/" style={{
-            display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 8,
-            color: isActive("/") ? "#fff" : "#94a3b8",
-            background: isActive("/") ? "rgba(255,255,255,0.06)" : "transparent",
-            textDecoration: "none", fontSize: 14, fontWeight: isActive("/") ? 700 : 500,
-            transition: "all 0.2s"
-          }}>
-            <LayoutDashboard size={18} />
-            <span>Dashboard</span>
-          </Link>
-
-          <Link to="/chat" style={{
-            display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 8,
-            color: isActive("/chat") ? "#fff" : "#94a3b8",
-            background: isActive("/chat") ? "rgba(255,255,255,0.06)" : "transparent",
-            textDecoration: "none", fontSize: 14, fontWeight: isActive("/chat") ? 700 : 500,
-            transition: "all 0.2s"
-          }}>
-            <MessageSquare size={18} />
-            <span>Pesan Peserta</span>
-          </Link>
-
-          <Link to="/faq" style={{
-            display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 8,
-            color: isActive("/faq") ? "#fff" : "#94a3b8",
-            background: isActive("/faq") ? "rgba(255,255,255,0.06)" : "transparent",
-            textDecoration: "none", fontSize: 14, fontWeight: isActive("/faq") ? 700 : 500,
-            transition: "all 0.2s"
-          }}>
-            <HelpCircle size={18} />
-            <span>FAQ & Quick Action</span>
-          </Link>
-        </div>
-
-        {/* Footer Sidebar */}
-        <div style={{ padding: "16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <button onClick={handleLogout} style={{
-            width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 8,
-            color: "#ef4444", background: "transparent", border: "none", cursor: "pointer",
-            fontSize: 14, fontWeight: 600, textAlign: "left", transition: "all 0.2s"
-          }}>
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-        {/* Topbar */}
-        <div style={{ height: 70, background: "#fff", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "0 32px", flexShrink: 0 }}>
-          {profile && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ textAlign: "right" }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{profile.email}</p>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "capitalize" }}>{profile.role}</p>
-              </div>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #e2e8f0" }}>
-                <User size={18} color="#64748b" />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Content */}
-        <div style={{ flex: 1, overflowY: "auto", padding: 32 }}>
-          {children}
-        </div>
-      </div>
-    </div>
+    <ManajemenShell
+      navItems={navItems}
+      activeKey={activeKey}
+      handleLogout={handleLogout}
+      roleLabel="Admin"
+      profile={profile}
+      homePath="/admin"
+      kelolaAkunPath="/admin/akun"
+      currentTab={currentTab}
+      searchValue={searchValue}
+      onSearchChange={onSearchChange}
+      isDark={isDark}
+      setIsDark={setIsDark}
+    >
+      {children}
+    </ManajemenShell>
   );
 };
 

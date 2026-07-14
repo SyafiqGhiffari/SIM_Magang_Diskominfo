@@ -139,6 +139,12 @@ func SetupRoutes(router *gin.Engine) {
 			middlewares.AuthMiddleware("manajemen"),
 			controllers.LogoutManajemen,
 		)
+		
+		manajemen.PUT("/ganti-password",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.GantiPasswordManajemen,
+		)
+
 		manajemen.GET("/profile",
 			middlewares.AuthMiddleware("manajemen"),
 			func(c *gin.Context) {
@@ -192,6 +198,12 @@ func SetupRoutes(router *gin.Engine) {
 		admin := manajemen.Group("/admin")
 		admin.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("admin"))
 		{
+			// ── KELOLA AKUN MANAJEMEN (hanya admin) ──
+			admin.POST("/akun", controllers.RegisterManajemen)
+			admin.GET("/akun", controllers.GetAllUserManajemen)
+			admin.PUT("/akun/:id/status", controllers.UpdateStatusUserManajemen)
+			admin.DELETE("/akun/:id", controllers.DeleteUserManajemen)
+
 			// Admin melihat semua data pendaftaran magang
 			admin.GET("/pendaftaran", controllers.GetAllPendaftaranMagang)
 

@@ -17,7 +17,7 @@ const SidebarPendaftaran = ({
       >
       <img src="/images/icon-diskominfo.png" alt="Diskominfo" className="h-11 w-11 object-contain shrink-0" />
       <div className="leading-snug min-w-0">
-          <p className={`text-[11px] font-bold uppercase tracking-widest ${muted}`}>Portal Resmi</p>
+          <p className={`text-[11px] font-bold uppercase tracking-widest ${muted}`}>Portal Pendaftaran</p>
           <h1 className={`text-[13px] font-black tracking-tight leading-tight truncate ${txt}`}>SIM Magang Diskominfo</h1>
       </div>
       </Link>

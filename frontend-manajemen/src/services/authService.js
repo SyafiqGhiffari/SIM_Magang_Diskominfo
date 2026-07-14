@@ -8,3 +8,6 @@ export const logoutAdmin = () =>
 
 export const getProfile = () =>
   api.get("/manajemen/profile");
+
+export const gantiPasswordAdmin = (data) =>
+  api.put("/manajemen/ganti-password", data);
