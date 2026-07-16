@@ -2,9 +2,10 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import LoginPage from "../pages/auth/LoginPage";
 import DashboardPage from "../pages/admin/DashboardPage";
-import ChatPage from "../pages/admin/ChatPage";
 import FaqPage from "../pages/admin/FaqPage";
 import KelolaAkunPage from "../pages/admin/KelolaAkunPage";
+import BidangPage from "../pages/admin/BidangPage";
+import PendaftaranPage from "../pages/admin/PendaftaranPage";
 import MentorDashboardPage from "../pages/mentor/MentorDashboardPage";
 import PesertaDashboardPage from "../pages/peserta/PesertaDashboardPage";
 import { getToken, getRole } from "../utils/authStorage";
@@ -28,10 +29,11 @@ const AppRoutes = () => {
       <Route path="/login" element={<AuthRoute><LoginPage /></AuthRoute>} />
 
       {/* Admin — hanya role admin yang boleh akses */}
-      <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><DashboardPage /></ProtectedRoute>} />
-      <Route path="/admin/chat" element={<ProtectedRoute allowedRoles={["admin"]}><ChatPage /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><DashboardPage /></ProtectedRoute>} /> 
       <Route path="/admin/faq" element={<ProtectedRoute allowedRoles={["admin"]}><FaqPage /></ProtectedRoute>} />
       <Route path="/admin/akun" element={<ProtectedRoute allowedRoles={["admin"]}><KelolaAkunPage /></ProtectedRoute>} />
+      <Route path="/admin/bidang" element={<ProtectedRoute allowedRoles={["admin"]}><BidangPage /></ProtectedRoute>} />
+      <Route path="/admin/pendaftaran" element={<ProtectedRoute allowedRoles={["admin"]}><PendaftaranPage /></ProtectedRoute>} />
 
       {/* Mentor — hanya role mentor yang boleh akses */}
       <Route path="/mentor" element={<ProtectedRoute allowedRoles={["mentor"]}><MentorDashboardPage /></ProtectedRoute>} />

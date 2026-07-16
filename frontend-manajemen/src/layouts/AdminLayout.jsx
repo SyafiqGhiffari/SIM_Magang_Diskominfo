@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { MessageSquare, HelpCircle } from "lucide-react";
+import { FileText, Users, HelpCircle, Compass } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
+import ChatFloatingWidget from "../components/manajemen/admin/chat/ChatFloatingWidget";
+import { useManajemenTheme } from "../context/useManajemenTheme";
 import { logoutAdmin, getProfile } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
 import { clearAuthData } from "../utils/authStorage";
@@ -17,13 +19,19 @@ const navItems = [
       </svg>
     ),
   },
-  { key: "chat", to: "/admin/chat", label: "Pesan Peserta", icon: <MessageSquare className="w-[18px] h-[18px] shrink-0" /> },
+  { type: "section", label: "Sistem Pendaftaran" },
+  { key: "pendaftaran", to: "/admin/pendaftaran", label: "Kelola Pendaftaran", icon: <FileText className="w-[18px] h-[18px] shrink-0" /> },
+  { type: "section", label: "Manajemen" },
+  { key: "pengguna", to: "/admin/pengguna", label: "Kelola Pengguna", icon: <Users className="w-[18px] h-[18px] shrink-0" /> },
+  { key: "bidang", to: "/admin/bidang", label: "Kelola Bidang", icon: <Compass className="w-[18px] h-[18px] shrink-0" /> },
   { key: "faq", to: "/admin/faq", label: "FAQ & Quick Action", icon: <HelpCircle className="w-[18px] h-[18px] shrink-0" /> },
 ];
 
 const tabTitles = {
   dashboard: { title: "Dashboard", desc: "Ringkasan aktivitas sistem magang" },
-  chat: { title: "Pesan Peserta", desc: "Kelola percakapan langsung dengan pendaftar" },
+  pendaftaran: { title: "Kelola Pendaftaran", desc: "Verifikasi dan kelola berkas pendaftaran magang" },
+  pengguna: { title: "Kelola Pengguna", desc: "Kelola akun admin, mentor, dan peserta magang" },
+  bidang: { title: "Kelola Bidang", desc: "Atur daftar bidang penempatan magang" },
   faq: { title: "FAQ & Quick Action", desc: "Kelola jawaban otomatis chatbot" },
   akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
 };
@@ -32,17 +40,7 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [profile, setProfile] = useState(null);
-  const [isDark, setIsDark] = useState(() => localStorage.getItem("admin_theme") === "dark");
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("admin_theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("admin_theme", "light");
-    }
-  }, [isDark]);
+  const { isDark, setIsDark } = useManajemenTheme();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -78,29 +76,34 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
 
   const activeKey =
     location.pathname === "/admin" ? "dashboard" :
-    location.pathname.startsWith("/admin/chat") ? "chat" :
+    location.pathname.startsWith("/admin/pendaftaran") ? "pendaftaran" :
+    location.pathname.startsWith("/admin/pengguna") ? "pengguna" :
+    location.pathname.startsWith("/admin/bidang") ? "bidang" :
     location.pathname.startsWith("/admin/faq") ? "faq" :
     location.pathname.startsWith("/admin/akun") ? "akun" : "dashboard";
 
   const currentTab = tabTitles[activeKey] || tabTitles.dashboard;
 
   return (
-    <ManajemenShell
-      navItems={navItems}
-      activeKey={activeKey}
-      handleLogout={handleLogout}
-      roleLabel="Admin"
-      profile={profile}
-      homePath="/admin"
-      kelolaAkunPath="/admin/akun"
-      currentTab={currentTab}
-      searchValue={searchValue}
-      onSearchChange={onSearchChange}
-      isDark={isDark}
-      setIsDark={setIsDark}
-    >
-      {children}
-    </ManajemenShell>
+    <>
+      <ManajemenShell
+        navItems={navItems}
+        activeKey={activeKey}
+        handleLogout={handleLogout}
+        roleLabel="Admin"
+        profile={profile}
+        homePath="/admin"
+        kelolaAkunPath="/admin/akun"
+        currentTab={currentTab}
+        searchValue={searchValue}
+        onSearchChange={onSearchChange}
+        isDark={isDark}
+        setIsDark={setIsDark}
+      >
+        {children}
+      </ManajemenShell>
+      <ChatFloatingWidget isDark={isDark} />
+    </>
   );
 };
 

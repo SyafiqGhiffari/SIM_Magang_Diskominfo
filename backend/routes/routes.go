@@ -204,6 +204,13 @@ func SetupRoutes(router *gin.Engine) {
 			admin.PUT("/akun/:id/status", controllers.UpdateStatusUserManajemen)
 			admin.DELETE("/akun/:id", controllers.DeleteUserManajemen)
 
+			// kelola bidang magang
+			admin.GET("/bidang", controllers.GetAllBidang)
+			admin.POST("/bidang", controllers.CreateBidang)
+			admin.PUT("/bidang/:id", controllers.UpdateBidang)
+			admin.PATCH("/bidang/:id/toggle-status", controllers.ToggleStatusBidang)
+			admin.DELETE("/bidang/:id", controllers.DeleteBidang)
+
 			// Admin melihat semua data pendaftaran magang
 			admin.GET("/pendaftaran", controllers.GetAllPendaftaranMagang)
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 
 const statusStyle = {
   menunggu: { label: "Menunggu", cls: "bg-amber-50 text-amber-600" },
@@ -23,8 +23,9 @@ const RecentApplicationsCard = ({ pendaftaranList, onVerifikasi }) => {
     <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-6 py-5">
         <h3 className="text-sm font-black text-[#0B1442]">Aplikasi Terbaru</h3>
-        <a href="/admin/pendaftaran" className="text-xs font-bold text-[#004F9F] hover:text-[#00A5EC] transition-colors">
-          Lihat Semua &rarr;
+        <a href="/admin/pendaftaran" className="group/link inline-flex items-center gap-1 text-xs font-bold text-[#004F9F] hover:text-[#00A5EC] transition-colors">
+          Lihat Semua
+          <ArrowRight className="w-3 h-3 transition-transform duration-200 group-hover/link:translate-x-1" />
         </a>
       </div>
 
@@ -47,10 +48,10 @@ const RecentApplicationsCard = ({ pendaftaranList, onVerifikasi }) => {
               pageItems.map((p) => {
                 const s = statusStyle[p.status_pendaftaran] || statusStyle.menunggu;
                 return (
-                  <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
+                  <tr key={p.id} className="group border-b border-slate-50 transition-colors hover:bg-slate-50/80">
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white text-[10px] font-black">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white text-[10px] font-black shadow-sm transition-transform duration-200 group-hover:scale-110">
                           {getInitials(p.nama_lengkap)}
                         </span>
                         <div className="min-w-0">
@@ -66,9 +67,10 @@ const RecentApplicationsCard = ({ pendaftaranList, onVerifikasi }) => {
                     <td className="px-6 py-3.5 text-right">
                       <button
                         onClick={() => onVerifikasi(p)}
-                        className="rounded-lg bg-[#0B1442] px-3.5 py-1.5 text-[11px] font-bold text-white hover:bg-[#1E3A8A] transition-colors cursor-pointer"
+                        className="group/btn inline-flex items-center gap-1 rounded-lg bg-[#0B1442] px-3.5 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all duration-200 hover:bg-[#1E3A8A] hover:shadow-md hover:-translate-y-0.5 active:scale-95 cursor-pointer"
                       >
                         Verifikasi
+                        <ArrowRight className="w-3 h-3 transition-transform duration-200 group-hover/btn:translate-x-0.5" />
                       </button>
                     </td>
                   </tr>

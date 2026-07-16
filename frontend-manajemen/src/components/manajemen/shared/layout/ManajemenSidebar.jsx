@@ -31,23 +31,34 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
       </Link>
 
       <nav className="flex-1 overflow-y-auto px-4 pt-6 space-y-1.5">
-        <p className={`text-[10px] font-black uppercase tracking-widest px-3 mb-3 ${isDark ? "text-slate-500" : "text-slate-400"}`}>Menu Utama</p>
-        {navItems.map((item) => (
-          <Link
-            key={item.key}
-            to={item.to}
-            className={`flex items-center gap-3.5 w-full px-4 py-3 rounded-xl text-sm font-bold transition-all text-left ${
-              activeKey === item.key
-                ? "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-md"
-                : isDark
-                ? "text-slate-400 hover:bg-white/5 hover:text-slate-100"
-                : "text-slate-600 hover:bg-slate-50 hover:text-[#0B1442]"
-            }`}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </Link>
-        ))}
+        {navItems.map((item, idx) => {
+          if (item.type === "section") {
+            return (
+              <p
+                key={`section-${idx}`}
+                className={`text-[10px] font-black uppercase tracking-widest px-3 mb-3 ${idx !== 0 ? "mt-6" : ""} ${isDark ? "text-slate-500" : "text-slate-400"}`}
+              >
+                {item.label}
+              </p>
+            );
+          }
+          return (
+            <Link
+              key={item.key}
+              to={item.to}
+              className={`flex items-center gap-3.5 w-full px-4 py-3 rounded-xl text-sm font-bold transition-all text-left ${
+                activeKey === item.key
+                  ? "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-md"
+                  : isDark
+                  ? "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-[#0B1442]"
+              }`}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Avatar & Profile */}

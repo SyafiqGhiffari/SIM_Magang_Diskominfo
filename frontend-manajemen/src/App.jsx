@@ -1,13 +1,16 @@
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
 import PageLoader from "./components/PageLoader";
+import { ManajemenThemeProvider } from "./context/ManajemenThemeContext";
 
 function App() {
   return (
-    <BrowserRouter>
-      <PageLoader />
-      <AppRoutes />
-    </BrowserRouter>
+    <ManajemenThemeProvider>
+      <BrowserRouter>
+        <PageLoader />
+        <AppRoutes />
+      </BrowserRouter>
+    </ManajemenThemeProvider>
   );
 }
 

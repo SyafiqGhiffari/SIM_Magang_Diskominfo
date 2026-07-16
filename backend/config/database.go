@@ -49,6 +49,7 @@ func ConnectDatabase() {
 		&models.ChatSession{},
 		&models.ChatMessage{},
 		&models.FaqEntry{},
+		&models.BidangMagang{},
 	)
 
 	if err != nil {

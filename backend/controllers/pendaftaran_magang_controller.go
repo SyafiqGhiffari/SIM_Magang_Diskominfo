@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -21,6 +22,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// Struktur satu entri status verifikasi per-dokumen (dipakai untuk parse/serialize JSON DetailVerifikasi)
+type verifikasiEntry struct {
+	Status string `json:"status"`
+	Note   string `json:"note"`
+}
 
 // Fungsi untuk mengambil user_id dari context yang disimpan oleh middleware
 func getUserIDFromContext(c *gin.Context) (uint, bool) {
@@ -178,11 +185,11 @@ func CreatePendaftaranMagang(c *gin.Context) {
 	jurusanSekolah := c.PostForm("jurusan_sekolah")
 
 	if kategoriPendaftar == "mahasiswa" {
-    if npmNim == "" || asalKampus == "" || fakultas == "" || programStudi == "" {
-        utils.ErrorResponse(c, http.StatusBadRequest, "Data pendidikan mahasiswa belum lengkap")
-        return
-    }
-	if semester != "" {
+		if npmNim == "" || asalKampus == "" || fakultas == "" || programStudi == "" {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Data pendidikan mahasiswa belum lengkap")
+			return
+		}
+		if semester != "" {
 			semesterInt, err := strconv.Atoi(semester)
 			if err != nil || semesterInt < 1 || semesterInt > 14 {
 				utils.ErrorResponse(c, http.StatusBadRequest, "Semester harus angka antara 1-14")
@@ -368,7 +375,7 @@ func GetStatusPendaftaranSaya(c *gin.Context) {
 func GetAllPendaftaranMagang(c *gin.Context) {
 	var pendaftarans []models.PendaftaranMagang
 
-	if err := config.DB.Order("created_at desc").Find(&pendaftarans).Error; err != nil {
+	if err := config.DB.Preload("UserPendaftaran").Order("created_at desc").Find(&pendaftarans).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data pendaftaran")
 		return
 	}
@@ -380,8 +387,11 @@ func GetAllPendaftaranMagang(c *gin.Context) {
 type UpdateStatusPendaftaranInput struct {
 	StatusPendaftaran string `json:"status_pendaftaran" binding:"required"`
 	CatatanAdmin      string `json:"catatan_admin"`
+	DetailVerifikasi  string `json:"detail_verifikasi"`
+	PosisiBidang      string `json:"posisi_bidang"`
+	TanggalMulai      string `json:"tanggal_mulai"`
+	Silent            bool   `json:"silent"` // true = hanya simpan progres, jangan kirim email/notifikasi
 }
-
 // Fungsi untuk admin mengubah status pendaftaran magang peserta
 func UpdateStatusPendaftaranMagang(c *gin.Context) {
 	id := c.Param("id")
@@ -392,6 +402,8 @@ func UpdateStatusPendaftaranMagang(c *gin.Context) {
 		return
 	}
 
+	log.Println("DEBUG - Input diterima:", input) // ==== HAPUS SETELAH SELESAI DEBUG ====
+
 	if input.StatusPendaftaran != "menunggu" &&
 		input.StatusPendaftaran != "revisi" &&
 		input.StatusPendaftaran != "diterima" &&
@@ -400,16 +412,30 @@ func UpdateStatusPendaftaranMagang(c *gin.Context) {
 		return
 	}
 
+	// catatan_admin wajib diisi untuk status revisi/ditolak
+	if (input.StatusPendaftaran == "revisi" || input.StatusPendaftaran == "ditolak") &&
+		strings.TrimSpace(input.CatatanAdmin) == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Catatan admin wajib diisi untuk status revisi atau ditolak")
+		return
+	}
+
 	var pendaftaran models.PendaftaranMagang
-	if err := config.DB.First(&pendaftaran, id).Error; err != nil {
+	if err := config.DB.Preload("UserPendaftaran").First(&pendaftaran, id).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "Data pendaftaran tidak ditemukan")
 		return
 	}
 
 	pendaftaran.StatusPendaftaran = input.StatusPendaftaran
 	pendaftaran.CatatanAdmin = input.CatatanAdmin
+	pendaftaran.DetailVerifikasi = input.DetailVerifikasi
 
 	if input.StatusPendaftaran == "diterima" {
+		if input.PosisiBidang != "" {
+			pendaftaran.PosisiBidang = input.PosisiBidang
+		}
+		if input.TanggalMulai != "" {
+			pendaftaran.TanggalMulai = input.TanggalMulai
+		}
 		pendaftaran.SuratPenerimaan = fmt.Sprintf("surat-penerimaan/pendaftaran-%s.pdf", id)
 	}
 
@@ -422,20 +448,22 @@ func UpdateStatusPendaftaranMagang(c *gin.Context) {
 		return
 	}
 
-	go func() {
-		subject := emailtemplates.SubjectStatusPendaftaran(pendaftaran.StatusPendaftaran)
+	if !input.Silent {
+		go func() {
+			subject := emailtemplates.SubjectStatusPendaftaran(pendaftaran.StatusPendaftaran)
 
-		body := emailtemplates.TemplateStatusPendaftaran(
-			pendaftaran.NamaLengkap,
-			pendaftaran.StatusPendaftaran,
-			pendaftaran.CatatanAdmin,
-		)
+			body := emailtemplates.TemplateStatusPendaftaran(
+				pendaftaran.NamaLengkap,
+				pendaftaran.StatusPendaftaran,
+				pendaftaran.CatatanAdmin,
+			)
 
-		err := services.SendEmail(pendaftaran.Email, subject, body)
-		if err != nil {
-			log.Println("Gagal mengirim email status pendaftaran:", err)
-		}
-	}()
+			err := services.SendEmail(pendaftaran.Email, subject, body)
+			if err != nil {
+				log.Println("Gagal mengirim email status pendaftaran:", err)
+			}
+		}()
+	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Status pendaftaran berhasil diperbarui", pendaftaran)
 }
@@ -580,18 +608,47 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 		pendaftaran.FileProposalMagang = fileProposalMagang
 	}
 
-	// Setelah peserta mengirim revisi, status kembali menunggu
-	pendaftaran.StatusPendaftaran = "menunggu"
-	pendaftaran.CatatanAdmin = ""
+	// Setelah peserta mengirim revisi, status kembali menunggu.
+	// Hanya status verifikasi untuk berkas yang BENAR-BENAR diunggah ulang yang direset —
+	// berkas lain yang sudah pernah disetujui admin sebelumnya (dan tidak disentuh peserta
+	// pada revisi kali ini) tetap mempertahankan status "approved"-nya.
+	existingDetail := map[string]verifikasiEntry{}
+	if pendaftaran.DetailVerifikasi != "" {
+			_ = json.Unmarshal([]byte(pendaftaran.DetailVerifikasi), &existingDetail)
+		}
 
-	if err := config.DB.Save(&pendaftaran).Error; err != nil {
-		cleanupUploadedFiles(newUploadedFiles...)
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan revisi dokumen")
-		return
+		reuploadedFields := map[string]bool{
+			"file_cv":              cvHeader != nil,
+			"file_surat_pengantar": suratPengantarHeader != nil,
+			"file_transkrip":       transkripHeader != nil,
+			"file_portofolio":      portofolioHeader != nil,
+			"file_pas_foto":        pasFotoHeader != nil,
+			"file_proposal_magang": proposalHeader != nil,
+		}
+		for field, wasReuploaded := range reuploadedFields {
+			if wasReuploaded {
+				delete(existingDetail, field) // hapus status lama -> otomatis jadi "belum ditinjau" lagi
+			}
+		}
+
+		updatedDetailJSON, err := json.Marshal(existingDetail)
+		if err != nil {
+			updatedDetailJSON = []byte("{}")
+		}
+
+		pendaftaran.StatusPendaftaran = "menunggu"
+		pendaftaran.CatatanAdmin = ""
+		pendaftaran.DetailVerifikasi = string(updatedDetailJSON)
+		pendaftaran.CatatanPeserta = c.PostForm("catatan")
+
+		if err := config.DB.Save(&pendaftaran).Error; err != nil {
+			cleanupUploadedFiles(newUploadedFiles...)
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan revisi dokumen")
+			return
+		}
+
+		utils.SuccessResponse(c, http.StatusOK, "Revisi dokumen berhasil dikirim dan menunggu review ulang admin", pendaftaran)
 	}
-
-	utils.SuccessResponse(c, http.StatusOK, "Revisi dokumen berhasil dikirim dan menunggu review ulang admin", pendaftaran)
-}
 
 func GetDetailPendaftaranMagang(c *gin.Context) {
 	id := c.Param("id")

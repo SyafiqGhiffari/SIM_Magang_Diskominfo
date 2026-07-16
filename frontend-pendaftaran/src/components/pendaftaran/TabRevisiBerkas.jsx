@@ -199,14 +199,35 @@ const TabRevisiBerkas = ({
     { key: "cv", field: "file_cv", isImage: false, label: "CV", catatan: "Format CV yang diunggah tidak sesuai template yang disarankan. Mohon perbaiki dan unggah ulang." },
   ];
 
+  // ==== PERUBAHAN: prioritaskan detail_verifikasi (data terstruktur per-berkas) ====
+  // Ini jauh lebih akurat dibanding menebak dari catatan_admin (teks gabungan) via regex,
+  // yang menyebabkan semua kartu menampilkan catatan yang sama persis.
+  let detailVerifikasi = null;
+  if (status?.detail_verifikasi) {
+    try {
+      detailVerifikasi = JSON.parse(status.detail_verifikasi);
+    } catch {
+      detailVerifikasi = null;
+    }
+  }
+
+  const docsFromDetail = detailVerifikasi
+    ? (docOptions || [])
+        .filter((d) => detailVerifikasi[d.field]?.status === "revision")
+        .map((d) => ({ ...d, catatan: detailVerifikasi[d.field]?.note || "" }))
+    : [];
+
+  // Fallback lama (untuk data revisi lama yang dibuat sebelum detail_verifikasi ada)
   const matchedDocs = (docOptions || []).filter((d) => d.pattern.test(status?.catatan_admin || ""));
 
   const [manualDocKey, setManualDocKey] = useState("");
-  const needsManualSelection = !forceRevisiForTesting && matchedDocs.length === 0;
+  const needsManualSelection = !forceRevisiForTesting && docsFromDetail.length === 0 && matchedDocs.length === 0;
 
   let docsToRender;
   if (forceRevisiForTesting) {
     docsToRender = demoDocs;
+  } else if (docsFromDetail.length > 0) {
+    docsToRender = docsFromDetail;
   } else if (matchedDocs.length > 0) {
     docsToRender = matchedDocs.map((d) => ({ ...d, catatan: status?.catatan_admin }));
   } else if (manualDocKey) {
@@ -215,6 +236,7 @@ const TabRevisiBerkas = ({
   } else {
     docsToRender = [];
   }
+  // ==== AKHIR PERUBAHAN ====
 
   const [openKeys, setOpenKeys] = useState({});
   const [filesByKey, setFilesByKey] = useState({});
@@ -235,12 +257,18 @@ const TabRevisiBerkas = ({
     const filesByField = {};
     docsToRender.forEach((d) => { filesByField[d.field] = filesByKey[d.key] || null; });
 
-    const combinedNotes = docsToRender
-      .filter((d) => notesByKey[d.key]?.trim())
-      .map((d) => `${d.label}: ${notesByKey[d.key].trim()}`)
-      .join("\n");
+    // ==== PERUBAHAN: kirim JSON per-berkas (keyed by field name), bukan teks gabungan ====
+    // Supaya sisi admin bisa menampilkan catatan ini terpisah untuk masing-masing dokumen
+    // di dalam ReviewModal, bukan satu blok teks tercampur seperti sebelumnya.
+    const notesByField = {};
+    docsToRender.forEach((d) => {
+      const note = notesByKey[d.key]?.trim();
+      if (note) notesByField[d.field] = note;
+    });
+    const catatanJson = JSON.stringify(notesByField);
+    // ==== AKHIR PERUBAHAN ====
 
-    handleSubmitRevisi(filesByField, combinedNotes);
+    handleSubmitRevisi(filesByField, catatanJson);
   };
 
   return (

@@ -132,3 +132,28 @@ input::-webkit-credentials-auto-fill-button {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Animasi backdrop modal verifikasi */
+@keyframes backdropFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Animasi blob dekoratif di header modal */
+@keyframes floatBlob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-8px, 10px) scale(1.08); }
+}
+
+/* Efek kilau pada tombol utama saat hover */
+@keyframes shine {
+  0%   { transform: translateX(-100%) skewX(-15deg); }
+  100% { transform: translateX(200%) skewX(-15deg); }
+}
+
+/* Animasi pop untuk badge/dot yang muncul tiba-tiba */
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.15); }
+  100% { transform: scale(1); }
+}

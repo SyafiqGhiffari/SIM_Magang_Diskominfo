@@ -5,7 +5,8 @@ import "time"
 type PendaftaranMagang struct {
 	ID uint `gorm:"primaryKey" json:"id"`
 
-	UserPendaftaranID uint `gorm:"not null" json:"user_pendaftaran_id"`
+	UserPendaftaranID uint            `gorm:"not null" json:"user_pendaftaran_id"`
+	UserPendaftaran   UserPendaftaran `gorm:"foreignKey:UserPendaftaranID" json:"user_pendaftaran,omitempty"`
 
 	KategoriPendaftar string `gorm:"type:enum('mahasiswa','siswa');not null" json:"kategori_pendaftar"`
 
@@ -46,6 +47,8 @@ type PendaftaranMagang struct {
 
 	StatusPendaftaran string `gorm:"type:enum('menunggu','revisi','diterima','ditolak');default:'menunggu'" json:"status_pendaftaran"`
 	CatatanAdmin      string `gorm:"type:text" json:"catatan_admin"`
+	DetailVerifikasi  string `gorm:"type:text" json:"detail_verifikasi"`
+	CatatanPeserta    string `gorm:"type:text" json:"catatan_peserta"`
 
 	SuratPenerimaan string `gorm:"type:varchar(255)" json:"surat_penerimaan"`
 
