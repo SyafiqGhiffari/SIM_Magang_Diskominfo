@@ -13,7 +13,8 @@ import {
   hapusFotoProfil,
   gantiPassword,
   requestGantiEmail,
-  verifikasiGantiEmail
+  verifikasiGantiEmail,
+  getBidangAktif,
 } from "../../services/pendaftaranService";
 
 import SidebarPendaftaran from "../../components/pendaftaran/SidebarPendaftaran";
@@ -24,25 +25,6 @@ import TabStatusVerifikasi from "../../components/pendaftaran/TabStatusVerifikas
 import TabRevisiBerkas from "../../components/pendaftaran/TabRevisiBerkas";
 import TabKelolaAkun from "../../components/pendaftaran/TabKelolaAkun";
 import ChatWidget from "../../components/pendaftaran/ChatWidget";
-
-const bidangOptions = [
-  {
-    name: "Sekretariat",
-    desc: "Berperan dalam mendukung kegiatan administrasi, pengelolaan dokumen, koordinasi internal, serta berbagai aktivitas operasional untuk menunjang kelancaran pelaksanaan tugas di lingkungan dinas."
-  },
-  {
-    name: "Pengelolaan Informasi & Komunikasi Publik",
-    desc: "Berperan dalam pengelolaan informasi dan komunikasi publik melalui berbagai media, serta mendukung penyampaian informasi yang akurat, informatif, dan mudah diakses oleh masyarakat."
-  },
-  {
-    name: "Aplikasi & Informatika",
-    desc: "Berperan dalam mendukung pengelolaan teknologi informasi, pengembangan dan pemeliharaan sistem digital, serta optimalisasi layanan berbasis teknologi di lingkungan dinas."
-  },
-  {
-    name: "Statistik & Persandian",
-    desc: "Berperan dalam mendukung pengelolaan data, penyusunan informasi statistik, serta penerapan keamanan informasi untuk mendukung pengambilan keputusan dan layanan pemerintahan."
-  }
-];
 
 const REVISI_DOC_FIELD_MAP = [
   { key: "pas_foto", field: "file_pas_foto", pattern: /pas\s*foto/i, isImage: true, label: "Pas Foto" },
@@ -167,6 +149,19 @@ const DashboardPendaftaran = () => {
   const [user, setUser] = useState(getUserSafely());
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [bidangOptions, setBidangOptions] = useState([]);
+  const [bidangLoading, setBidangLoading] = useState(true);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      getBidangAktif()
+        .then((res) => setBidangOptions(res.data || []))
+        .catch(() => setBidangOptions([]))
+        .finally(() => setBidangLoading(false));
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   const [statusFetchedAt, setStatusFetchedAt] = useState(null);
   const [mountedAt] = useState(() => new Date());
@@ -895,6 +890,7 @@ const DashboardPendaftaran = () => {
                 <TabFormMagang
                   dk={dk} surface={surface} txt={txt} sub={sub} inputCls={inputCls}
                   bidangOptions={bidangOptions}
+                  bidangLoading={bidangLoading}
                   hasRegistered={hasRegistered} isRevisi={isRevisi}
                   handleTabChange={handleTabChange}
                   kirimPendaftaranMagang={kirimPendaftaranMagang}

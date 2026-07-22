@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../layouts/AdminLayout";
 import PendaftaranStats from "../../components/manajemen/admin/pendaftaran/PendaftaranStats";
 import SortDropdown from "../../components/manajemen/admin/pendaftaran/SortDropdown";
@@ -7,17 +8,18 @@ import PendaftaranTable from "../../components/manajemen/admin/pendaftaran/Penda
 import Pagination from "../../components/manajemen/admin/pendaftaran/Pagination";
 import DetailModal from "../../components/manajemen/admin/pendaftaran/DetailModal";
 import ReviewModal from "../../components/manajemen/admin/pendaftaran/ReviewModal";
-import { getAllPendaftaran, getAllBidang } from "../../services/adminService";
+import { getAllPendaftaran, getAllBidang, createAkunPeserta } from "../../services/adminService";
 import { exportPendaftaranToExcel } from "../../utils/exportExcel";
 import { exportPendaftaranToCsv } from "../../utils/exportCsv";
 import { exportPendaftaranToPdf } from "../../utils/exportPdf";
 import ExportDropdown from "../../components/manajemen/admin/pendaftaran/ExportDropdown";
-import { toastError, toastSuccess } from "../../utils/swal";
+import { toastError, toastSuccess, confirmDialog } from "../../utils/swal";
 import { useManajemenTheme } from "../../context/useManajemenTheme";
 import { ClipboardList, Filter as FilterIcon, Search, X } from "lucide-react";
 
 const PendaftaranPage = () => {
   const { isDark } = useManajemenTheme();
+  const navigate = useNavigate();
 
   const [list, setList] = useState([]);
   const [bidangOptions, setBidangOptions] = useState([]);
@@ -47,6 +49,35 @@ const PendaftaranPage = () => {
     setStatusList((prev) =>
       prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]
     );
+  };
+
+  const handleBuatAkun = async (p) => {
+    const result = await confirmDialog({
+      title: `Buat akun untuk ${p.nama_lengkap}?`,
+      text: `Sistem akan membuat akun login otomatis dan mengirimkan kredensial ke email ${p.email}.`,
+      confirmText: "Ya, Buat Akun",
+      icon: "question",
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await createAkunPeserta(p.id);
+      toastSuccess("Akun peserta berhasil dibuat dan kredensial telah dikirim ke email");
+      fetchData();
+
+      const lanjutkan = await confirmDialog({
+        title: "Tentukan mentor pembimbing sekarang?",
+        text: `Peserta "${p.nama_lengkap}" belum memiliki mentor pembimbing. Anda bisa mengaturnya sekarang atau nanti lewat menu Kelola Peserta.`,
+        confirmText: "Ya, Atur Sekarang",
+        cancelText: "Nanti Saja",
+        icon: "question",
+      });
+      if (lanjutkan.isConfirmed) {
+        navigate("/admin/peserta");
+      }
+    } catch (err) {
+      toastError(err.response?.data?.message || "Gagal membuat akun peserta.");
+    }
   };
 
   const fetchData = async () => {
@@ -287,6 +318,7 @@ const PendaftaranPage = () => {
                 data={pageItems}
                 onReview={setSelectedReview}
                 onVerifikasi={setSelectedVerifikasi}
+                onBuatAkun={handleBuatAkun}
                 columnSort={columnSort}
                 setColumnSort={setColumnSort}
               />

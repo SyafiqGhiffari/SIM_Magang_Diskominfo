@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FileText, Users, HelpCircle, Compass } from "lucide-react";
+import { FileText, Users, HelpCircle, Compass, UserCog } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import ChatFloatingWidget from "../components/manajemen/admin/chat/ChatFloatingWidget";
 import { useManajemenTheme } from "../context/useManajemenTheme";
@@ -24,6 +24,8 @@ const navItems = [
   { type: "section", label: "Manajemen" },
   { key: "pengguna", to: "/admin/pengguna", label: "Kelola Pengguna", icon: <Users className="w-[18px] h-[18px] shrink-0" /> },
   { key: "bidang", to: "/admin/bidang", label: "Kelola Bidang", icon: <Compass className="w-[18px] h-[18px] shrink-0" /> },
+  { key: "mentor", to: "/admin/mentor", label: "Kelola Mentor", icon: <UserCog className="w-[18px] h-[18px] shrink-0" /> },
+  { key: "peserta", to: "/admin/peserta", label: "Kelola Peserta", icon: <Users className="w-[18px] h-[18px] shrink-0" /> },
   { key: "faq", to: "/admin/faq", label: "FAQ & Quick Action", icon: <HelpCircle className="w-[18px] h-[18px] shrink-0" /> },
 ];
 
@@ -32,6 +34,8 @@ const tabTitles = {
   pendaftaran: { title: "Kelola Pendaftaran", desc: "Verifikasi dan kelola berkas pendaftaran magang" },
   pengguna: { title: "Kelola Pengguna", desc: "Kelola akun admin, mentor, dan peserta magang" },
   bidang: { title: "Kelola Bidang", desc: "Atur daftar bidang penempatan magang" },
+  mentor: { title: "Kelola Mentor", desc: "Kelola akun mentor dan penugasan bidangnya" },
+  peserta: { title: "Kelola Peserta", desc: "Kelola akun peserta magang yang telah diterima" },
   faq: { title: "FAQ & Quick Action", desc: "Kelola jawaban otomatis chatbot" },
   akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
 };
@@ -79,6 +83,8 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
     location.pathname.startsWith("/admin/pendaftaran") ? "pendaftaran" :
     location.pathname.startsWith("/admin/pengguna") ? "pengguna" :
     location.pathname.startsWith("/admin/bidang") ? "bidang" :
+    location.pathname.startsWith("/admin/mentor") ? "mentor" :
+    location.pathname.startsWith("/admin/peserta") ? "peserta" :
     location.pathname.startsWith("/admin/faq") ? "faq" :
     location.pathname.startsWith("/admin/akun") ? "akun" : "dashboard";
 

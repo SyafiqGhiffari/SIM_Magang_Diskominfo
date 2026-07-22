@@ -3,10 +3,20 @@ package models
 import "time"
 
 type UserManajemen struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
+	ID       uint   `gorm:"primaryKey" json:"id"`
 	Nama     string `gorm:"type:varchar(100);not null" json:"nama"`
 	Email    string `gorm:"type:varchar(100);unique;not null" json:"email"`
 	Password string `gorm:"type:varchar(255);not null" json:"-"`
+
+	NoHp               string        `gorm:"type:varchar(20)" json:"no_hp"`
+	Jabatan            string        `gorm:"type:varchar(100)" json:"jabatan"`
+	KapasitasBimbingan int           `gorm:"default:0" json:"kapasitas_bimbingan"`
+	FotoProfil         string        `gorm:"type:varchar(255)" json:"foto_profil"`
+
+	// Khusus role=mentor: bidang tempat mentor ini ditugaskan. Satu bidang bisa
+	// memiliki banyak mentor (relasi one-to-many dari Bidang ke Mentor).
+	BidangID *uint         `json:"bidang_id"`
+	Bidang   *BidangMagang `gorm:"foreignKey:BidangID" json:"bidang,omitempty"`
 
 	Role string `gorm:"type:enum('admin','mentor','peserta');not null" json:"role"`
 

@@ -62,3 +62,9 @@ export const verifikasiGantiEmail = async (data) => {
   const response = await api.post("/pendaftaran/verifikasi-ganti-email", data);
   return response.data;
 };
+
+// ── BIDANG MAGANG (untuk dropdown form pendaftaran) ─────────────────────
+export const getBidangAktif = async () => {
+  const response = await api.get("/bidang");
+  return response.data;
+};

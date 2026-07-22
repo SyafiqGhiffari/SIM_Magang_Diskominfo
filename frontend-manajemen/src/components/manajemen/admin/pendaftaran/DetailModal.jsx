@@ -58,20 +58,37 @@ const BidangSelect = ({ value, onChange, options }) => {
     return () => document.removeEventListener("mousedown", handleOutside);
   }, []);
 
-  const activeLabel = options.find((o) => o.value === value)?.label || "Pilih Bidang";
+  const activeOption = options.find((o) => o.value === value);
+  const activeLabel = activeOption?.label || "Pilih Bidang";
+  const activeIsUsulan = activeOption?.isUsulan || false;
+  const activeIsPilihanPeserta = activeOption?.isPilihanPeserta || false;
 
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((p) => !p)}
-        className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold outline-none transition-all duration-200 cursor-pointer ${
+        className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-sm font-semibold outline-none transition-all duration-200 cursor-pointer ${
           open
             ? "border-[#004F9F] bg-white ring-4 ring-[#00A5EC]/15 shadow-sm"
+            : activeIsUsulan
+            ? "border-amber-300 bg-amber-50/50 text-slate-700 hover:border-amber-400"
             : "border-slate-200 bg-slate-50/70 text-slate-700 hover:border-slate-300"
         }`}
       >
-        <span className={value ? "text-slate-700" : "text-slate-400"}>{activeLabel}</span>
+        <span className="flex items-center gap-2 min-w-0">
+          <span className={`truncate ${value ? "text-slate-700" : "text-slate-400"}`}>{activeLabel}</span>
+          {activeIsUsulan && (
+            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-700 animate-pulse">
+              Usulan Peserta
+            </span>
+          )}
+          {!activeIsUsulan && activeIsPilihanPeserta && (
+            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-blue-700">
+              Pilihan Peserta
+            </span>
+          )}
+        </span>
         <ChevronDown className={`w-4 h-4 shrink-0 text-slate-400 transition-transform duration-300 ${open ? "rotate-180 text-[#004F9F]" : ""}`} />
       </button>
 
@@ -86,13 +103,25 @@ const BidangSelect = ({ value, onChange, options }) => {
               key={opt.value}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={`flex w-full items-center justify-between px-4 py-2.5 text-xs font-semibold text-left transition-colors duration-150 cursor-pointer ${
+              className={`flex w-full items-center justify-between gap-2 px-4 py-2.5 text-xs font-semibold text-left transition-colors duration-150 cursor-pointer ${
                 value === opt.value ? "bg-blue-50 text-[#004F9F]" : "text-slate-600 hover:bg-slate-50"
               }`}
               style={{ transitionDelay: open ? `${i * 25}ms` : "0ms" }}
             >
-              {opt.label}
-              {value === opt.value && <Check className="w-3.5 h-3.5" strokeWidth={2.5} />}
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="truncate">{opt.label}</span>
+                {opt.isUsulan && (
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-700 animate-pulse">
+                    Usulan Peserta
+                  </span>
+                )}
+                {!opt.isUsulan && opt.isPilihanPeserta && (
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-blue-700">
+                    Pilihan Peserta
+                  </span>
+                )}
+              </span>
+              {value === opt.value && <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} />}
             </button>
           ))}
         </div>
@@ -120,10 +149,24 @@ const DetailModal = ({ pendaftaran, onClose, onUpdated }) => {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       getAllBidang()
-        .then((res) => setBidangOptions(res.data.data || []))
+        .then((res) => {
+          const options = res.data.data || [];
+          setBidangOptions(options);
+
+          // "Snap" ke nama resmi persis seperti tersimpan di database, kalau ada yang
+          // cocok secara ternormalisasi. Ini mencegah dropdown tampak "kosong" saat
+          // ada perbedaan spasi/kapitalisasi kecil antara data pendaftaran lama dan
+          // nama resmi bidang saat ini (BidangSelect membandingkan secara ketat/exact).
+          const normalize = (str) => (str || "").trim().toLowerCase();
+          const match = options.find((b) => normalize(b.nama) === normalize(pendaftaran.posisi_bidang));
+          if (match) {
+            setSelectedBidang((prev) => (prev === pendaftaran.posisi_bidang ? match.nama : prev));
+          }
+        })
         .catch(() => setBidangOptions([]));
     }, 0);
     return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -135,11 +178,26 @@ const DetailModal = ({ pendaftaran, onClose, onUpdated }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Normalisasi teks (trim + lowercase) supaya perbedaan spasi/huruf besar-kecil
+  // tidak dianggap sebagai bidang yang berbeda saat membandingkan dengan daftar resmi.
+  const normalize = (str) => (str || "").trim().toLowerCase();
+
+  const isPengajuanSudahResmi = bidangOptions.some(
+    (b) => normalize(b.nama) === normalize(pendaftaran.posisi_bidang)
+  );
+
   const bidangSelectOptions = [
-    ...(!bidangOptions.some((b) => b.nama === pendaftaran.posisi_bidang) && pendaftaran.posisi_bidang
-      ? [{ value: pendaftaran.posisi_bidang, label: `${pendaftaran.posisi_bidang} (Usulan Peserta)` }]
+    ...(!isPengajuanSudahResmi && pendaftaran.posisi_bidang
+      ? [{ value: pendaftaran.posisi_bidang, label: pendaftaran.posisi_bidang, isUsulan: true, isPilihanPeserta: true }]
       : []),
-    ...bidangOptions.map((b) => ({ value: b.nama, label: b.nama })),
+    ...bidangOptions.map((b) => ({
+      value: b.nama,
+      label: b.nama,
+      isUsulan: false,
+      // Tandai opsi resmi yang sama dengan pilihan asli peserta saat mendaftar,
+      // supaya admin tetap tahu pilihan aslinya meski nanti diubah ke bidang lain.
+      isPilihanPeserta: normalize(b.nama) === normalize(pendaftaran.posisi_bidang),
+    })),
   ];
 
   const handleTerima = async () => {
@@ -271,10 +329,17 @@ const DetailModal = ({ pendaftaran, onClose, onUpdated }) => {
                 )}
               </p>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-700">
-              <Briefcase className="w-3 h-3" />
-              {pendaftaran.posisi_bidang || "Belum diisi"}
-            </span>
+            <div className="shrink-0 flex flex-col items-end gap-1.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-700">
+                <Briefcase className="w-3 h-3" />
+                {pendaftaran.posisi_bidang || "Belum diisi"}
+              </span>
+              {pendaftaran.posisi_bidang && !isPengajuanSudahResmi && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-700 animate-pulse">
+                  Usulan Peserta
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Tabs — pill mengambang dengan indikator geser */}

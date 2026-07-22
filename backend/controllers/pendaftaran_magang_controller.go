@@ -427,7 +427,16 @@ func UpdateStatusPendaftaranMagang(c *gin.Context) {
 
 	pendaftaran.StatusPendaftaran = input.StatusPendaftaran
 	pendaftaran.CatatanAdmin = input.CatatanAdmin
-	pendaftaran.DetailVerifikasi = input.DetailVerifikasi
+
+	// Hanya timpa DetailVerifikasi kalau memang dikirim (tidak kosong). Endpoint ini
+	// dipakai dua modal berbeda: ReviewModal (mengirim detail_verifikasi berisi checklist
+	// per-berkas) dan DetailModal (keputusan akhir terima/tolak, TIDAK mengirim field ini
+	// sama sekali). Tanpa pengecekan ini, DetailModal secara tidak sengaja menghapus
+	// checklist yang sudah disetujui di ReviewModal, karena field kosong dari JSON
+	// otomatis jadi string kosong dan menimpa data yang sudah tersimpan.
+	if input.DetailVerifikasi != "" {
+		pendaftaran.DetailVerifikasi = input.DetailVerifikasi
+	}
 
 	if input.StatusPendaftaran == "diterima" {
 		if input.PosisiBidang != "" {

@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, Menu } from "lucide-react";
 
-const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setIsDark }) => {
+const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setIsDark, onMenuClick }) => {
   const [clock, setClock] = useState(new Date());
   const [notifOpen, setNotifOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [internalSearch, setInternalSearch] = useState(searchValue ?? "");
   const notifRef = useRef(null);
+  const mobileSearchInputRef = useRef(null);
+  const mobileSearchRef = useRef(null);
 
   const handleSearchChange = (val) => {
     setInternalSearch(val);
@@ -26,17 +29,40 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
     return () => document.removeEventListener("mousedown", fn);
   }, []);
 
+  useEffect(() => {
+    const fn = (e) => {
+      if (mobileSearchRef.current && !mobileSearchRef.current.contains(e.target)) setMobileSearchOpen(false);
+    };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, []);
+
+  useEffect(() => {
+    if (mobileSearchOpen) {
+      const t = setTimeout(() => mobileSearchInputRef.current?.focus(), 100);
+      return () => clearTimeout(t);
+    }
+  }, [mobileSearchOpen]);
+
   const fmtTime = (d) => d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const fmtDate = (d) => d.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 
   return (
-    <header className={`sticky top-0 z-30 flex h-17 items-center justify-between gap-4 border-b px-6 shadow-sm backdrop-blur-sm shrink-0 transition-colors duration-300 ${isDark ? "bg-[#161b22]/95 border-white/10" : "bg-white/95 border-slate-200/80"}`}>
-      <div className="leading-snug min-w-0 shrink-0">
+    <header className={`relative sticky top-0 z-30 flex h-17 items-center justify-between gap-2 md:gap-4 border-b px-3 md:px-6 shadow-sm backdrop-blur-sm shrink-0 transition-colors duration-300 ${isDark ? "bg-[#161b22]/95 border-white/10" : "bg-white/95 border-slate-200/80"}`}>
+      <button
+        onClick={onMenuClick}
+        className={`md:hidden flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 cursor-pointer active:scale-90 ${isDark ? "text-slate-300 hover:bg-white/10" : "text-slate-600 hover:bg-slate-100"}`}
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      <div className="leading-snug min-w-0 shrink-0 hidden sm:block">
         <h2 className={`text-sm font-black tracking-tight truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{currentTab?.title}</h2>
         <p className={`text-[10px] font-sans truncate ${isDark ? "text-slate-500" : "text-slate-400"}`}>{currentTab?.desc}</p>
       </div>
 
-      <div className="flex-1 max-w-md">
+      {/* Search desktop — tetap seperti semula, disembunyikan di mobile */}
+      <div className="flex-1 max-w-md hidden md:block">
         <div className={`group relative rounded-xl transition-all duration-300 ${isSearchFocused ? "scale-[1.02]" : ""}`}>
           <span className={`absolute inset-y-0 left-0 flex items-center pl-3.5 transition-all duration-300 ${isSearchFocused ? "text-[#00A5EC] scale-110" : isDark ? "text-slate-500" : "text-slate-400"}`}>
             <Search className="w-4 h-4" />
@@ -75,7 +101,54 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Spacer supaya elemen kanan tetap terdorong ke ujung saat search desktop disembunyikan */}
+      <div className="flex-1 md:hidden" />
+
+      <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+        {/* Tombol search — hanya ikon, mobile saja, dropdown mengambang di bawahnya */}
+        <div className="relative md:hidden" ref={mobileSearchRef}>
+          <button
+            onClick={() => setMobileSearchOpen((p) => !p)}
+            className={`flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 ${
+              mobileSearchOpen ? (isDark ? "bg-white/10 text-[#00A5EC]" : "bg-blue-50 text-[#004F9F]") : isDark ? "hover:bg-white/10 text-slate-300" : "hover:bg-slate-100 text-slate-600"
+            }`}
+          >
+            <Search className="w-4.5 h-4.5" />
+          </button>
+
+          {mobileSearchOpen && (
+            <div
+              className={`absolute right-0 top-12 z-50 w-72 max-w-[calc(100vw-2rem)] origin-top-right rounded-2xl border shadow-2xl overflow-hidden animate-[fadeslide_0.2s_ease-out] ${
+                isDark ? "bg-[#1c2128] border-white/10 shadow-black/40" : "bg-white border-slate-200 shadow-slate-200/70"
+              }`}
+            >
+              <div className="p-3">
+                <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all duration-200 ${
+                  isDark ? "border-[#00A5EC]/40 bg-white/5" : "border-[#004F9F]/40 bg-blue-50/40"
+                }`}>
+                  <Search className={`w-4 h-4 shrink-0 ${isDark ? "text-slate-400" : "text-slate-400"}`} />
+                  <input
+                    ref={mobileSearchInputRef}
+                    type="text"
+                    placeholder="Cari sesuatu..."
+                    value={internalSearch}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className={`flex-1 min-w-0 bg-transparent text-xs font-medium outline-none ${isDark ? "text-slate-100 placeholder:text-slate-500" : "text-slate-700 placeholder:text-slate-400"}`}
+                  />
+                  {internalSearch && (
+                    <button
+                      onClick={() => handleSearchChange("")}
+                      className={`shrink-0 transition-colors cursor-pointer ${isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-400 hover:text-slate-600"}`}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Notifikasi */}
         <div className="relative" ref={notifRef}>
           <button onClick={() => setNotifOpen(p => !p)}
@@ -107,15 +180,15 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
           )}
         </div>
 
-        <div className={`h-6 w-px mx-1 ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+        <div className={`h-6 w-px mx-0.5 md:mx-1 ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
 
-        {/* Jam & Tanggal */}
-        <div className={`hidden md:flex flex-col items-end leading-tight px-3 py-1.5 rounded-xl ${isDark ? "bg-white/5" : "bg-slate-50"}`}>
-          <span className={`text-[11px] font-black tabular-nums ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{fmtTime(clock)}</span>
-          <span className={`text-[9px] font-bold ${isDark ? "text-slate-500" : "text-slate-400"}`}>{fmtDate(clock)}</span>
+        {/* Jam & Tanggal — sekarang selalu tampil, versi ringkas di mobile */}
+        <div className={`flex flex-col items-end leading-tight px-2 md:px-3 py-1.5 rounded-xl ${isDark ? "bg-white/5" : "bg-slate-50"}`}>
+          <span className={`text-[10px] md:text-[11px] font-black tabular-nums ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{fmtTime(clock)}</span>
+          <span className={`hidden sm:block text-[9px] font-bold ${isDark ? "text-slate-500" : "text-slate-400"}`}>{fmtDate(clock)}</span>
         </div>
 
-        <div className={`h-6 w-px mx-1 ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+        <div className={`h-6 w-px mx-0.5 md:mx-1 ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
 
         {/* Toggle tema */}
         <button onClick={() => setIsDark(p => !p)} title={isDark ? "Mode Terang" : "Mode Gelap"}

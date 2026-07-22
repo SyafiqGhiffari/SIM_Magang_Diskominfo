@@ -59,3 +59,21 @@ export const toastError = (title = "Terjadi kesalahan") => {
     timerProgressBar: true,
   });
 };
+
+export const blockedActionDialog = ({ title = "Tidak dapat dilanjutkan", text = "" }) => {
+  return baseSwal.fire({
+    title,
+    text,
+    icon: "warning",
+    iconColor: "#d97706",
+    showCancelButton: false,
+    confirmButtonText: "Mengerti",
+    confirmButtonColor: "#0B1442",
+    customClass: {
+      popup: "swal-popup-custom swal-blocked-popup",
+      title: "swal-title-custom",
+      htmlContainer: "swal-text-custom",
+      confirmButton: "swal-confirm-custom swal-blocked-confirm",
+    },
+  });
+};

@@ -1,7 +1,12 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
@@ -11,12 +16,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
-
 type RegisterManajemenInput struct {
-	Nama     string `json:"nama" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-	Role     string `json:"role" binding:"required"`
+	Nama               string `json:"nama" binding:"required"`
+	Email              string `json:"email" binding:"required,email"`
+	Password           string `json:"password" binding:"required,min=6"`
+	Role               string `json:"role" binding:"required"`
+	NoHp               string `json:"no_hp"`
+	Jabatan            string `json:"jabatan"`
+	KapasitasBimbingan int    `json:"kapasitas_bimbingan"`
+	BidangID           *uint  `json:"bidang_id"` // opsional, hanya relevan untuk role=mentor
 }
 
 type LoginManajemenInput struct {
@@ -50,11 +58,20 @@ func RegisterManajemen(c *gin.Context) {
 	}
 
 	user := models.UserManajemen{
-		Nama:       input.Nama,
-		Email:      input.Email,
-		Password:   string(hashedPassword),
-		Role:       input.Role,
-		StatusAkun: "aktif",
+		Nama:               input.Nama,
+		Email:              input.Email,
+		Password:           string(hashedPassword),
+		Role:               input.Role,
+		NoHp:               input.NoHp,
+		Jabatan:            input.Jabatan,
+		KapasitasBimbingan: input.KapasitasBimbingan,
+		StatusAkun:         "aktif",
+	}
+
+	// Relasi mentor->bidang sekarang disimpan langsung di UserManajemen.BidangID
+	// (bukan lagi di BidangMagang.MentorID), supaya satu bidang bisa punya banyak mentor.
+	if input.Role == "mentor" {
+		user.BidangID = input.BidangID
 	}
 
 	if err := config.DB.Create(&user).Error; err != nil {
@@ -191,21 +208,50 @@ func GetAllUserManajemen(c *gin.Context) {
 		return
 	}
 
+	// Ambil semua bidang untuk dipetakan berdasarkan ID (relasi sekarang: mentor -> bidang_id)
+	var bidangList []models.BidangMagang
+	config.DB.Find(&bidangList)
+	bidangByID := map[uint]models.BidangMagang{}
+	for _, b := range bidangList {
+		bidangByID[b.ID] = b
+	}
+
 	type UserResp struct {
-		ID         uint   `json:"id"`
-		Nama       string `json:"nama"`
-		Email      string `json:"email"`
-		Role       string `json:"role"`
-		StatusAkun string `json:"status_akun"`
-		IsOnline   bool   `json:"is_online"`
+		ID                 uint   `json:"id"`
+		Nama               string `json:"nama"`
+		Email              string `json:"email"`
+		Role               string `json:"role"`
+		StatusAkun         string `json:"status_akun"`
+		IsOnline           bool   `json:"is_online"`
+		NoHp               string `json:"no_hp"`
+		Jabatan            string `json:"jabatan"`
+		KapasitasBimbingan int    `json:"kapasitas_bimbingan"`
+		FotoProfil         string `json:"foto_profil"`
+		BidangID           *uint  `json:"bidang_id"`
+		BidangNama         string `json:"bidang_nama"`
+		JumlahBimbingan    int64  `json:"jumlah_bimbingan"`
 	}
 
 	var result []UserResp
 	for _, u := range users {
-		result = append(result, UserResp{
+		resp := UserResp{
 			ID: u.ID, Nama: u.Nama, Email: u.Email,
 			Role: u.Role, StatusAkun: u.StatusAkun, IsOnline: u.IsOnline,
-		})
+			NoHp: u.NoHp, Jabatan: u.Jabatan, KapasitasBimbingan: u.KapasitasBimbingan,
+			FotoProfil: u.FotoProfil,
+		}
+		if u.BidangID != nil {
+			if b, ok := bidangByID[*u.BidangID]; ok {
+				resp.BidangID = &b.ID
+				resp.BidangNama = b.Nama
+			}
+		}
+		if u.Role == "mentor" {
+			var jumlahBimbingan int64
+			config.DB.Model(&models.PendaftaranMagang{}).Where("mentor_id = ?", u.ID).Count(&jumlahBimbingan)
+			resp.JumlahBimbingan = jumlahBimbingan
+		}
+		result = append(result, resp)
 	}
 	if result == nil {
 		result = []UserResp{}
@@ -271,10 +317,155 @@ func DeleteUserManajemen(c *gin.Context) {
 		return
 	}
 
+	if user.Role == "mentor" {
+		jumlahPeserta, _ := CekMentorMasihDipakai(user.ID)
+		if jumlahPeserta > 0 {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Mentor tidak dapat dihapus karena masih membimbing satu atau lebih peserta. Pindahkan bimbingan peserta terlebih dahulu.")
+			return
+		}
+	}
+
+	if user.Role == "peserta" {
+		bisa, alasan := CekPesertaBisaDihapus(user.ID)
+		if !bisa {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Akun peserta tidak dapat dihapus karena "+strings.Join(alasan, " dan ")+". Nonaktifkan akun terlebih dahulu dan pastikan masa magang telah selesai.")
+			return
+		}
+	}
+
+	// Untuk akun peserta: lepas relasi ke pendaftaran (bukan menghapus riwayat pendaftarannya).
+	// Ini memungkinkan admin membuat akun baru lagi nanti untuk peserta yang sama jika diperlukan.
+	if user.Role == "peserta" {
+		config.DB.Model(&models.PendaftaranMagang{}).Where("akun_peserta_id = ?", user.ID).Update("akun_peserta_id", nil)
+	}
+
 	if err := config.DB.Delete(&user).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menghapus akun")
 		return
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Akun berhasil dihapus", nil)
+}
+
+type UpdateUserManajemenInput struct {
+	Nama               string `json:"nama" binding:"required"`
+	Email              string `json:"email" binding:"required,email"`
+	NoHp               string `json:"no_hp"`
+	Jabatan            string `json:"jabatan"`
+	KapasitasBimbingan int    `json:"kapasitas_bimbingan"`
+}
+
+// UpdateUserManajemen — admin mengedit data dasar akun (bukan password/role)
+func UpdateUserManajemen(c *gin.Context) {
+	id := c.Param("id")
+
+	var user models.UserManajemen
+	if err := config.DB.First(&user, id).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Akun tidak ditemukan")
+		return
+	}
+
+	var input UpdateUserManajemenInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Nama dan email wajib diisi dengan benar")
+		return
+	}
+
+	var existing models.UserManajemen
+	if err := config.DB.Where("email = ? AND id != ?", input.Email, user.ID).First(&existing).Error; err == nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Email sudah dipakai akun lain")
+		return
+	}
+
+	user.Nama = input.Nama
+	user.Email = input.Email
+	user.NoHp = input.NoHp
+	user.Jabatan = input.Jabatan
+	user.KapasitasBimbingan = input.KapasitasBimbingan
+
+	if err := config.DB.Save(&user).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui akun")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Akun berhasil diperbarui", user)
+}
+
+// UploadFotoUserManajemen — admin mengunggah/mengganti foto profil untuk akun (mis. mentor)
+func UploadFotoUserManajemen(c *gin.Context) {
+	id := c.Param("id")
+
+	var user models.UserManajemen
+	if err := config.DB.First(&user, id).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Akun tidak ditemukan")
+		return
+	}
+
+	file, err := c.FormFile("foto_profil")
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "File foto tidak ditemukan")
+		return
+	}
+
+	const maxFotoSize = 5 << 20 // 5MB
+	if file.Size > maxFotoSize {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Ukuran foto maksimal 5MB")
+		return
+	}
+
+	ext := filepath.Ext(file.Filename)
+	fileName := fmt.Sprintf("foto-user-%d-%d%s", user.ID, time.Now().UnixNano(), ext)
+	savePath := filepath.Join("uploads", "foto-manajemen", fileName)
+
+	if err := os.MkdirAll(filepath.Join("uploads", "foto-manajemen"), os.ModePerm); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyiapkan folder upload")
+		return
+	}
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan file foto")
+		return
+	}
+
+	user.FotoProfil = savePath
+	if err := config.DB.Save(&user).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui foto akun")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Foto berhasil diunggah", gin.H{"foto_profil": user.FotoProfil})
+}
+
+// CekUserBisaDihapus — dipanggil frontend sebelum dialog konfirmasi hapus mentor
+func CekUserBisaDihapus(c *gin.Context) {
+	id := c.Param("id")
+
+	var user models.UserManajemen
+	if err := config.DB.First(&user, id).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Akun tidak ditemukan")
+		return
+	}
+
+	bisaDihapus := true
+	var alasan []string
+
+	if user.Role == "mentor" {
+		jumlahPeserta, namaPeserta := CekMentorMasihDipakai(user.ID)
+		if jumlahPeserta > 0 {
+			bisaDihapus = false
+			alasan = append(alasan, fmt.Sprintf("masih membimbing %d peserta (%s)", jumlahPeserta, strings.Join(namaPeserta, ", ")))
+		}
+	}
+
+	if user.Role == "peserta" {
+		bisa, pesertaAlasan := CekPesertaBisaDihapus(user.ID)
+		if !bisa {
+			bisaDihapus = false
+			alasan = append(alasan, pesertaAlasan...)
+		}
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Pengecekan berhasil", gin.H{
+		"bisa_dihapus": bisaDihapus,
+		"alasan":       alasan,
+	})
 }

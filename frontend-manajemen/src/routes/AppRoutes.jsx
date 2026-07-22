@@ -5,6 +5,8 @@ import DashboardPage from "../pages/admin/DashboardPage";
 import FaqPage from "../pages/admin/FaqPage";
 import KelolaAkunPage from "../pages/admin/KelolaAkunPage";
 import BidangPage from "../pages/admin/BidangPage";
+import MentorPage from "../pages/admin/MentorPage";
+import PesertaPage from "../pages/admin/PesertaPage";
 import PendaftaranPage from "../pages/admin/PendaftaranPage";
 import MentorDashboardPage from "../pages/mentor/MentorDashboardPage";
 import PesertaDashboardPage from "../pages/peserta/PesertaDashboardPage";
@@ -33,6 +35,8 @@ const AppRoutes = () => {
       <Route path="/admin/faq" element={<ProtectedRoute allowedRoles={["admin"]}><FaqPage /></ProtectedRoute>} />
       <Route path="/admin/akun" element={<ProtectedRoute allowedRoles={["admin"]}><KelolaAkunPage /></ProtectedRoute>} />
       <Route path="/admin/bidang" element={<ProtectedRoute allowedRoles={["admin"]}><BidangPage /></ProtectedRoute>} />
+      <Route path="/admin/mentor" element={<ProtectedRoute allowedRoles={["admin"]}><MentorPage /></ProtectedRoute>} />
+      <Route path="/admin/peserta" element={<ProtectedRoute allowedRoles={["admin"]}><PesertaPage /></ProtectedRoute>} />
       <Route path="/admin/pendaftaran" element={<ProtectedRoute allowedRoles={["admin"]}><PendaftaranPage /></ProtectedRoute>} />
 
       {/* Mentor — hanya role mentor yang boleh akses */}

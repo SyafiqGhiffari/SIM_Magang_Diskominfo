@@ -21,6 +21,36 @@ const bidangIcons = {
   ),
 };
 
+// Beberapa ikon fallback generik — dipilih berkonsistensi berdasarkan nama bidang
+// (hash sederhana), supaya bidang baru yang dibuat admin tetap tampil dengan
+// ikon berbeda-beda satu sama lain, bukan seragam semua.
+const fallbackIconPaths = [
+  "M20.25 14.15v4.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125v-4.25M8.25 8.25v-1.5a3.375 3.375 0 1 1 6.75 0v1.5m-8.625 0h10.5a1.125 1.125 0 0 1 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125H5.625a1.125 1.125 0 0 1-1.125-1.125v-9.75c0-.621.504-1.125 1.125-1.125Z",
+  "M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+  "M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437 5.877-5.877",
+  "M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+  "M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z",
+  "M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75V18a2.25 2.25 0 0 1 2.25-2.25h9.75m-13.5 0v-9m0 0h13.5m-13.5 0a1.125 1.125 0 0 1 1.125-1.125h1.5c.621 0 1.125.504 1.125 1.125v9m-1.125 0h1.5",
+];
+
+const DefaultBidangIcon = ({ nama }) => {
+  let hash = 0;
+  const str = nama || "";
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0; // Paksa jadi integer 32-bit di setiap langkah — mencegah hash membesar
+    // tanpa batas dan kehilangan presisi untuk nama bidang yang panjang, yang
+    // sebelumnya menyebabkan banyak nama berbeda jatuh ke ikon fallback yang sama.
+  }
+  const path = fallbackIconPaths[Math.abs(hash) % fallbackIconPaths.length];
+
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-6 h-6">
+      <path strokeLinecap="round" strokeLinejoin="round" d={path} />
+    </svg>
+  );
+};
+
 const CalendarIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-4 h-4">
     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
@@ -69,7 +99,7 @@ const CheckBadge = () => (
   </span>
 );
 
-const StepDataMagang = ({ dk, surface, txt, sub, inputCls, bidangOptions, kategori, form, setForm, onNext, onBack }) => {
+const StepDataMagang = ({ dk, surface, txt, sub, inputCls, bidangOptions, bidangLoading, kategori, form, setForm, onNext, onBack }) => {
   const isValid = form.posisi_bidang && form.tanggal_mulai && form.tanggal_selesai;
   const isMahasiswa = kategori === "mahasiswa";
 
@@ -137,52 +167,86 @@ const StepDataMagang = ({ dk, surface, txt, sub, inputCls, bidangOptions, katego
       {/* Bidang Penempatan */}
       <div className="relative mt-6">
         <SectionLabel sub={sub}>Bidang Penempatan</SectionLabel>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {bidangOptions.map(opt => {
-            const active = form.posisi_bidang === opt.name;
-            return (
-              <div
-                key={opt.name}
-                onClick={() => setForm(p => ({ ...p, posisi_bidang: p.posisi_bidang === opt.name ? "" : opt.name }))}
-                className={`group relative overflow-hidden p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
-                  active
-                    ? "border-[#004F9F] shadow-lg shadow-[#004F9F]/15 -translate-y-0.5"
-                    : dk
-                    ? "border-white/10 bg-white/[0.02] hover:border-white/20 hover:-translate-y-0.5"
-                    : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5"
-                }`}
-              >
-                {active && (
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#004F9F]/10 via-[#00A5EC]/5 to-transparent" />
-                )}
 
-                <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all duration-300 ${
-                  active ? "bg-gradient-to-b from-[#004F9F] to-[#00A5EC]" : "bg-transparent"
-                }`} />
+        {bidangLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className={`h-32 rounded-2xl animate-pulse ${dk ? "bg-white/5" : "bg-slate-100"}`} />
+            ))}
+          </div>
+        ) : bidangOptions.length === 0 ? (
+          <div className={`rounded-2xl border p-6 text-center ${dk ? "border-white/10 bg-white/[0.02]" : "border-slate-200 bg-slate-50/50"}`}>
+            <p className={`text-xs font-semibold ${sub}`}>Belum ada bidang penempatan yang tersedia saat ini. Silakan hubungi admin.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {bidangOptions.map(opt => {
+              const active = form.posisi_bidang === opt.nama;
+              // Tentukan status kuota: hijau (masih banyak) / kuning (hampir habis) / merah (penuh)
+              const getKuotaStatus = (kuota, terisi) => {
+                if (!kuota || kuota === 0) {
+                  return { label: "Kuota tidak dibatasi", color: dk ? "text-emerald-400" : "text-emerald-600", dot: "bg-emerald-500" };
+                }
+                const pct = (terisi / kuota) * 100;
+                if (pct >= 100) {
+                  return { label: "Kuota penuh", color: dk ? "text-red-400" : "text-red-600", dot: "bg-red-500" };
+                }
+                if (pct >= 70) {
+                  return { label: `Sisa ${kuota - terisi} kuota — hampir penuh`, color: dk ? "text-amber-400" : "text-amber-600", dot: "bg-amber-500" };
+                }
+                return { label: `Sisa ${kuota - terisi} kuota tersedia`, color: dk ? "text-emerald-400" : "text-emerald-600", dot: "bg-emerald-500" };
+              };
 
-                {active && (
-                  <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#00A5EC]/10 blur-2xl" />
-                )}
-
-                {active && <CheckBadge />}
-
-                <div className="relative">
-                  <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 ${
+              const kuotaStatus = getKuotaStatus(opt.kuota, opt.terisi || 0);
+              const deskripsiTampil = opt.deskripsi?.trim() || kuotaStatus.label;
+              return (
+                <div
+                  key={opt.id ?? opt.nama}
+                  onClick={() => setForm(p => ({ ...p, posisi_bidang: p.posisi_bidang === opt.nama ? "" : opt.nama }))}
+                  className={`group relative overflow-hidden p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                     active
-                      ? "bg-gradient-to-br from-[#004F9F] to-[#0B1442] text-white shadow-lg shadow-[#004F9F]/30"
-                      : dk ? "bg-white/10 text-slate-300" : "bg-slate-100 text-slate-500"
-                  }`}>
-                    {bidangIcons[opt.name]}
+                      ? "border-[#004F9F] shadow-lg shadow-[#004F9F]/15 -translate-y-0.5"
+                      : dk
+                      ? "border-white/10 bg-white/[0.02] hover:border-white/20 hover:-translate-y-0.5"
+                      : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5"
+                  }`}
+                >
+                  {active && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#004F9F]/10 via-[#00A5EC]/5 to-transparent" />
+                  )}
+
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all duration-300 ${
+                    active ? "bg-gradient-to-b from-[#004F9F] to-[#00A5EC]" : "bg-transparent"
+                  }`} />
+
+                  {active && (
+                    <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#00A5EC]/10 blur-2xl" />
+                  )}
+
+                  {active && <CheckBadge />}
+
+                  <div className="relative">
+                    <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 ${
+                      active
+                        ? "bg-gradient-to-br from-[#004F9F] to-[#0B1442] text-white shadow-lg shadow-[#004F9F]/30"
+                        : dk ? "bg-white/10 text-slate-300" : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {bidangIcons[opt.nama] || <DefaultBidangIcon nama={opt.nama} />}
+                    </div>
+                    <h4 className={`font-extrabold text-sm mt-3.5 transition-colors ${active ? (dk ? "text-[#00A5EC]" : "text-[#004F9F]") : txt}`}>
+                      {opt.nama}
+                    </h4>
+                    <p className={`text-[11px] mt-1.5 leading-relaxed ${sub}`}>{deskripsiTampil}</p>
+                    <p className={`text-[10px] mt-1.5 flex items-center gap-1.5 font-bold ${kuotaStatus.color}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${kuotaStatus.dot} ${kuotaStatus.dot === "bg-red-500" ? "" : "animate-pulse"}`} />
+                      {kuotaStatus.label}
+                    </p>
                   </div>
-                  <h4 className={`font-extrabold text-sm mt-3.5 transition-colors ${active ? (dk ? "text-[#00A5EC]" : "text-[#004F9F]") : txt}`}>
-                    {opt.name}
-                  </h4>
-                  <p className={`text-[11px] mt-1.5 leading-relaxed ${sub}`}>{opt.desc}</p>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className={`relative flex gap-4 pt-6 mt-6 border-t ${dk ? "border-white/10" : "border-slate-100"}`}>

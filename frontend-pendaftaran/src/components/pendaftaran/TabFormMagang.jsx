@@ -54,7 +54,7 @@ const StepIndicator = ({ dk, step, stepLabels }) => {
                 }`}
               >
                 {label}
-              </span>
+              </span> 
             </div>
 
             {!isLast && (
@@ -100,7 +100,7 @@ const StepLoadingSkeleton = ({ dk, surface }) => (
 );
 
 const TabFormMagang = ({
-  dk, surface, txt, sub, inputCls, bidangOptions,
+  dk, surface, txt, sub, inputCls, bidangOptions, bidangLoading,
   hasRegistered, isRevisi, handleTabChange,
   kirimPendaftaranMagang, fetchStatus,
 }) => {
@@ -248,7 +248,7 @@ const TabFormMagang = ({
             <StepDataPendidikan dk={dk} surface={surface} txt={txt} sub={sub} inputCls={inputCls} kategori={kategori} form={form} setForm={setForm} onNext={() => goToStep(3)} onBack={() => goToStep(1)} />
           )}
           {step === 3 && (
-            <StepDataMagang dk={dk} surface={surface} txt={txt} sub={sub} inputCls={inputCls} bidangOptions={bidangOptions} kategori={kategori} form={form} setForm={setForm} onNext={() => goToStep(4)} onBack={() => goToStep(2)} />
+            <StepDataMagang dk={dk} surface={surface} txt={txt} sub={sub} inputCls={inputCls} bidangOptions={bidangOptions} bidangLoading={bidangLoading} kategori={kategori} form={form} setForm={setForm} onNext={() => goToStep(4)} onBack={() => goToStep(2)} />
           )}
           {step === 4 && (
             <StepDokumen dk={dk} surface={surface} txt={txt} sub={sub} kategori={kategori} files={files} onFileChange={handleFileChange} onSubmit={handleSubmit} onBack={() => goToStep(3)} error={error} loading={loading} />

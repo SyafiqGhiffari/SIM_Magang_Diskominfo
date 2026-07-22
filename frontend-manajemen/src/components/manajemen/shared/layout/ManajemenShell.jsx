@@ -56,7 +56,7 @@ const SkeletonLoader = ({ isDark }) => (
 let lastKnownPathname = null;
 // ==== AKHIR PERUBAHAN ====
 
-  const ManajemenShell = ({
+const ManajemenShell = ({
     children,
     navItems,
     activeKey,
@@ -72,6 +72,7 @@ let lastKnownPathname = null;
     setIsDark,
   }) => {
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ==== PERUBAHAN: deteksi perpindahan tab via lazy initializer, dicek sekali saat
   // instance ini pertama kali dibuat (yaitu setiap kali halaman berganti) ====
@@ -100,6 +101,8 @@ let lastKnownPathname = null;
         homePath={homePath}
         kelolaAkunPath={kelolaAkunPath}
         isDark={isDark}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <ManajemenTopbar
@@ -108,8 +111,9 @@ let lastKnownPathname = null;
           onSearchChange={onSearchChange}
           isDark={isDark}
           setIsDark={setIsDark}
+          onMenuClick={() => setSidebarOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {tabLoading ? <SkeletonLoader isDark={isDark} /> : children}
         </main>
       </div>

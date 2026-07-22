@@ -16,7 +16,7 @@ const avatarPalette = [
   "linear-gradient(135deg, #dc2626, #ef4444)",
 ];
 
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-");
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }) : "-");
 
 const Avatar = ({ p }) => {
   const fotoUrl = getFileUrl(p.file_pas_foto);
@@ -91,7 +91,7 @@ const SortableHeader = ({ column, columnSort, setColumnSort }) => {
   );
 };
 
-const PendaftaranTable = ({ data, onReview, onVerifikasi, columnSort = { key: null, direction: null }, setColumnSort = () => {} }) => {
+const PendaftaranTable = ({ data, onReview, onVerifikasi, onBuatAkun, columnSort = { key: null, direction: null }, setColumnSort = () => {} }) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-[13px]">
@@ -123,7 +123,8 @@ const PendaftaranTable = ({ data, onReview, onVerifikasi, columnSort = { key: nu
           ) : (
             data.map((p) => {
               const bidangColor = getBidangColor(p.posisi_bidang);
-              const verifikasiDisabled = !isAllDocsApproved(p);
+              const isFinalStatus = p.status_pendaftaran === "diterima" || p.status_pendaftaran === "ditolak";
+              const verifikasiDisabled = !isAllDocsApproved(p) || isFinalStatus;
               return (
                 <tr key={p.id} className="group border-b border-slate-50 transition-colors duration-150 hover:bg-slate-50/70">
                   <td className="px-6 py-4">
@@ -136,26 +137,38 @@ const PendaftaranTable = ({ data, onReview, onVerifikasi, columnSort = { key: nu
                     </div>
                   </td>
                   <td className="px-6 py-4 text-slate-500 max-w-[180px]">
-                    <div className="flex items-center gap-1.5">
-                      <Landmark className="w-3.5 h-3.5 shrink-0 text-slate-300" />
+                    <span className="group/inst inline-flex items-center gap-1.5 rounded-full border border-[#004F9F]/15 bg-gradient-to-r from-[#0B1442]/5 via-[#004F9F]/10 to-[#00A5EC]/10 px-2.5 py-1 text-[11px] font-bold text-[#004F9F] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#004F9F]/30 max-w-full">
+                      <Landmark className="w-3 h-3 shrink-0 transition-transform duration-300 group-hover/inst:scale-110" />
                       <span className="truncate">{getInstitusi(p)}</span>
-                    </div>
+                    </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold ${bidangColor.bg} ${bidangColor.text}`}>
-                      <Briefcase className="w-3 h-3" />
+                    <span className={`group/bdg inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${bidangColor.bg} ${bidangColor.text}`}>
+                      <Briefcase className="w-3 h-3 shrink-0 transition-transform duration-300 group-hover/bdg:rotate-12 group-hover/bdg:scale-110" />
                       {p.posisi_bidang || "-"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-slate-500">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 shrink-0 text-slate-300" />
+                    <span className="group/date inline-flex items-center gap-1.5 rounded-full border border-[#004F9F]/15 bg-gradient-to-r from-[#0B1442]/5 via-[#004F9F]/10 to-[#00A5EC]/10 px-2.5 py-1 text-[11px] font-bold text-[#004F9F] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#004F9F]/30">
+                      <Calendar className="w-3 h-3 shrink-0 transition-transform duration-300 group-hover/date:scale-110" />
                       {fmtDate(p.created_at)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="transition-transform duration-200 hover:-translate-y-0.5 inline-block ">
+                      <StatusBadge className="text-[11px]" status={p.status_pendaftaran} />
                     </div>
                   </td>
-                  <td className="px-6 py-4"><StatusBadge status={p.status_pendaftaran} /></td>
                   <td className="px-6 py-4 text-right">
-                    <ActionsDropdown onReview={() => onReview(p)} onVerifikasi={() => onVerifikasi(p)} verifikasiDisabled={verifikasiDisabled} />
+                    <ActionsDropdown
+                      onReview={() => onReview(p)}
+                      onVerifikasi={() => onVerifikasi(p)}
+                      verifikasiDisabled={verifikasiDisabled}
+                      isFinalStatus={isFinalStatus}
+                      showBuatAkun={p.status_pendaftaran === "diterima"}
+                      sudahPunyaAkun={Boolean(p.akun_peserta_id)}
+                      onBuatAkun={() => onBuatAkun(p)}
+                    />
                   </td>
                 </tr>
               );

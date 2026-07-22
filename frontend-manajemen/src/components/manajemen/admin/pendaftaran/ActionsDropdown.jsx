@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MoreVertical, Eye, ShieldCheck, Lock } from "lucide-react";
+import { MoreVertical, Eye, ShieldCheck, Lock, KeyRound } from "lucide-react";
 
-const ActionsDropdown = ({ onReview, onVerifikasi, verifikasiDisabled }) => {
+const ActionsDropdown = ({ onReview, onVerifikasi, verifikasiDisabled, isFinalStatus, onBuatAkun, showBuatAkun, sudahPunyaAkun }) => {
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -12,7 +12,7 @@ const ActionsDropdown = ({ onReview, onVerifikasi, verifikasiDisabled }) => {
   const calculatePosition = () => {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
-    const menuWidth = 224;
+    const menuWidth = 208;
     setPosition({
       top: rect.bottom + window.scrollY + 8,
       left: rect.right + window.scrollX - menuWidth,
@@ -45,7 +45,7 @@ const ActionsDropdown = ({ onReview, onVerifikasi, verifikasiDisabled }) => {
         handleCloseAnimated();
       }
     };
-    const handleScroll = () => handleCloseAnimated();
+    const handleScroll = () => calculatePosition();
 
     document.addEventListener("mousedown", handleOutside);
     window.addEventListener("scroll", handleScroll, true);
@@ -89,7 +89,7 @@ const ActionsDropdown = ({ onReview, onVerifikasi, verifikasiDisabled }) => {
               zIndex: 9999,
               transformOrigin: "top right",
             }}
-            className={`w-56 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden transition-all duration-200 ${
+            className={`w-52 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden transition-all duration-200 ${
               visible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-2"
             }`}
           >
@@ -116,7 +116,7 @@ const ActionsDropdown = ({ onReview, onVerifikasi, verifikasiDisabled }) => {
             <button
               onClick={() => !verifikasiDisabled && handleAction(onVerifikasi)}
               disabled={verifikasiDisabled}
-              title={verifikasiDisabled ? "Setujui semua berkas di menu Tinjau terlebih dahulu" : ""}
+              title={isFinalStatus ? "Keputusan pendaftaran ini sudah final" : verifikasiDisabled ? "Setujui semua berkas di menu Tinjau terlebih dahulu" : ""}
               className={`group/item flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-200 ${
                 verifikasiDisabled
                   ? "bg-slate-50 cursor-not-allowed"
@@ -138,10 +138,41 @@ const ActionsDropdown = ({ onReview, onVerifikasi, verifikasiDisabled }) => {
               <div className="min-w-0">
                 <p className={`text-xs font-bold ${verifikasiDisabled ? "text-slate-400" : "text-emerald-700"}`}>Verifikasi</p>
                 <p className="text-[10px] text-slate-400 whitespace-nowrap">
-                  {verifikasiDisabled ? "Selesaikan tinjauan berkas dulu" : "Proses status pendaftaran"}
+                  {isFinalStatus ? "Keputusan sudah final" : verifikasiDisabled ? "Selesaikan tinjauan berkas dulu" : "Proses status pendaftaran"}
                 </p>
               </div>
             </button>
+
+            {showBuatAkun && (
+              <>
+                <div className="border-t border-slate-100" />
+                <button
+                  onClick={() => !sudahPunyaAkun && handleAction(onBuatAkun)}
+                  disabled={sudahPunyaAkun}
+                  title={sudahPunyaAkun ? "Peserta ini sudah memiliki akun" : ""}
+                  className={`group/item flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-200 ${
+                    sudahPunyaAkun ? "bg-slate-50 cursor-not-allowed" : "bg-blue-50/40 hover:bg-blue-50/70 cursor-pointer"
+                  }`}
+                  style={{
+                    opacity: visible ? 1 : 0,
+                    transform: visible ? "translateX(0)" : "translateX(10px)",
+                    transition: "opacity 200ms ease 80ms, transform 200ms ease 80ms, background-color 200ms ease",
+                  }}
+                >
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+                    sudahPunyaAkun ? "bg-slate-200 text-slate-400" : "bg-blue-100 text-[#004F9F] group-hover/item:scale-110 group-hover/item:-rotate-6"
+                  }`}>
+                    <KeyRound className="w-3.5 h-3.5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-bold ${sudahPunyaAkun ? "text-slate-400" : "text-[#0B1442]"}`}>Buat Akun Peserta</p>
+                    <p className="text-[10px] text-slate-400 whitespace-nowrap">
+                      {sudahPunyaAkun ? "Sudah memiliki akun" : "Kirim kredensial via email"}
+                    </p>
+                  </div>
+                </button>
+              </>
+            )}
           </div>,
           document.body
         )}

@@ -52,6 +52,14 @@ type PendaftaranMagang struct {
 
 	SuratPenerimaan string `gorm:"type:varchar(255)" json:"surat_penerimaan"`
 
+	AkunPesertaID *uint          `json:"akun_peserta_id"`
+	AkunPeserta   *UserManajemen `gorm:"foreignKey:AkunPesertaID" json:"akun_peserta,omitempty"`
+
+	// Mentor yang ditugaskan admin untuk membimbing peserta ini secara spesifik.
+	// Harus berasal dari mentor yang bidangnya sama dengan PosisiBidang peserta.
+	MentorID *uint          `json:"mentor_id"`
+	Mentor   *UserManajemen `gorm:"foreignKey:MentorID" json:"mentor,omitempty"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

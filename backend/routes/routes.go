@@ -16,6 +16,8 @@ func SetupRoutes(router *gin.Engine) {
 	// Endpoint publik: cek apakah ada admin yang sedang online (untuk ChatWidget)
 	api.GET("/chat/admin-status", controllers.GetAdminOnlineStatus)
 
+	api.GET("/bidang", controllers.GetPublicBidang)
+
 	// Auth Web Pendaftaran
 	pendaftaran := api.Group("/pendaftaran")
 	{
@@ -199,9 +201,14 @@ func SetupRoutes(router *gin.Engine) {
 		admin.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("admin"))
 		{
 			// ── KELOLA AKUN MANAJEMEN (hanya admin) ──
-			admin.POST("/akun", controllers.RegisterManajemen)
 			admin.GET("/akun", controllers.GetAllUserManajemen)
+			admin.POST("/akun", controllers.RegisterManajemen)
+			admin.PUT("/akun/:id", controllers.UpdateUserManajemen)
 			admin.PUT("/akun/:id/status", controllers.UpdateStatusUserManajemen)
+			admin.PUT("/akun/:id/bidang", controllers.AssignBidangMentor)
+			admin.GET("/mentor/:id/peserta", controllers.GetPesertaBimbinganMentor)
+			admin.POST("/akun/:id/foto", controllers.UploadFotoUserManajemen)
+			admin.GET("/akun/:id/cek-hapus", controllers.CekUserBisaDihapus)
 			admin.DELETE("/akun/:id", controllers.DeleteUserManajemen)
 
 			// kelola bidang magang
@@ -209,7 +216,15 @@ func SetupRoutes(router *gin.Engine) {
 			admin.POST("/bidang", controllers.CreateBidang)
 			admin.PUT("/bidang/:id", controllers.UpdateBidang)
 			admin.PATCH("/bidang/:id/toggle-status", controllers.ToggleStatusBidang)
+			admin.GET("/bidang/:id/cek-hapus", controllers.CekBidangBisaDihapus)
 			admin.DELETE("/bidang/:id", controllers.DeleteBidang)
+
+			// kelola akun peserta
+			admin.POST("/pendaftaran/:id/buat-akun-peserta", controllers.CreateAkunPeserta)
+			admin.GET("/akun-peserta", controllers.GetAllAkunPeserta)
+			admin.GET("/akun-peserta/:id", controllers.GetDetailAkunPeserta)
+			admin.PUT("/akun-peserta/:id/mentor", controllers.AssignMentorPeserta)
+			admin.POST("/akun-peserta/:id/reset-password", controllers.ResetPasswordAkunPeserta)
 
 			// Admin melihat semua data pendaftaran magang
 			admin.GET("/pendaftaran", controllers.GetAllPendaftaranMagang)
