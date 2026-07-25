@@ -74,6 +74,7 @@ const PesertaPage = () => {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
+  const [tableSearch, setTableSearch] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [sortBy, setSortBy] = useState("nama_az");
   const [columnSort, setColumnSort] = useState({ key: null, direction: null });
@@ -194,11 +195,17 @@ const PesertaPage = () => {
         ? true
         : appliedPeriodeList.includes(getPeriodeStatus(m.tanggal_mulai, m.tanggal_selesai).key)
     )
-    .filter((m) =>
-      m.nama.toLowerCase().includes(search.toLowerCase()) ||
-      (m.email_login || "").toLowerCase().includes(search.toLowerCase()) ||
-      (m.bidang || "").toLowerCase().includes(search.toLowerCase())
-    );
+    .filter((m) => {
+      const match = (q) => {
+        const s = q.toLowerCase();
+        return (
+          m.nama.toLowerCase().includes(s) ||
+          (m.email_login || "").toLowerCase().includes(s) ||
+          (m.bidang || "").toLowerCase().includes(s)
+        );
+      };
+      return match(search) && match(tableSearch);
+    });
 
   const sorted = [...filtered].sort((a, b) => {
     if (columnSort.key) {
@@ -385,9 +392,9 @@ const PesertaPage = () => {
                 </div>
                 <div className={`relative w-full sm:w-64 shrink-0 transition-transform duration-200 ${isSearchFocused ? "sm:scale-[1.03]" : ""}`}>
                   <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-all duration-200 ${isSearchFocused ? "text-[#004F9F] scale-110" : "text-slate-400"}`} />
-                  <input
-                    type="text" value={search}
-                    onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                 <input
+                    type="text" value={tableSearch}
+                    onChange={(e) => { setTableSearch(e.target.value); setPage(0); }}
                     onFocus={() => setIsSearchFocused(true)} onBlur={() => setIsSearchFocused(false)}
                     placeholder="Cari nama, email, bidang..."
                     className={`w-full rounded-xl border pl-9 pr-9 py-2.5 text-xs font-medium text-slate-700 outline-none transition-all duration-200 ${

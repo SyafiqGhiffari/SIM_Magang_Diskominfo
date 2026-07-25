@@ -163,6 +163,26 @@ func SetupRoutes(router *gin.Engine) {
 			},
 		)
 
+		manajemen.GET("/me",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.GetProfilManajemen,
+		)
+
+		manajemen.PUT("/me",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.UpdateProfilManajemen,
+		)
+
+		manajemen.POST("/upload-foto",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.UploadFotoProfilManajemen,
+		)
+
+		manajemen.DELETE("/hapus-foto",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.HapusFotoProfilManajemen,
+		)
+
 		manajemen.GET("/admin/dashboard",
 			middlewares.AuthMiddleware("manajemen"),
 			middlewares.RoleMiddleware("admin"),
@@ -218,6 +238,37 @@ func SetupRoutes(router *gin.Engine) {
 			admin.PATCH("/bidang/:id/toggle-status", controllers.ToggleStatusBidang)
 			admin.GET("/bidang/:id/cek-hapus", controllers.CekBidangBisaDihapus)
 			admin.DELETE("/bidang/:id", controllers.DeleteBidang)
+
+			// pengaturan jam kerja & hari libur (untuk presensi peserta)
+			admin.GET("/jam-kerja", controllers.GetAllJamKerja)
+			admin.PUT("/jam-kerja/:id", controllers.UpdateJamKerja)
+
+			admin.GET("/hari-libur", controllers.GetAllHariLibur)
+			admin.POST("/hari-libur", controllers.CreateHariLibur)
+			admin.PUT("/hari-libur/:id", controllers.UpdateHariLibur)
+			admin.DELETE("/hari-libur/:id", controllers.DeleteHariLibur)
+			admin.POST("/hari-libur/sync-nasional", controllers.SyncHariLiburNasional)
+
+			// ── KELOLA SERTIFIKAT ──
+			admin.GET("/sertifikat", controllers.GetAllSertifikat)
+			admin.POST("/sertifikat", controllers.CreateSertifikat)
+			admin.PUT("/sertifikat/:id", controllers.UpdateSertifikat)
+			admin.DELETE("/sertifikat/:id", controllers.DeleteSertifikat)
+
+			// pengaturan (template) sertifikat
+			admin.GET("/pengaturan-sertifikat", controllers.GetPengaturanSertifikat)
+			admin.PUT("/pengaturan-sertifikat", controllers.UpdatePengaturanSertifikat)
+			admin.POST("/pengaturan-sertifikat/upload/:jenis", controllers.UploadFilePengaturanSertifikat)
+			admin.DELETE("/pengaturan-sertifikat/upload/:jenis", controllers.DeleteFilePengaturanSertifikat)
+
+			// template sertifikat (banyak template)
+			admin.GET("/template-sertifikat", controllers.GetAllTemplateSertifikat)
+			admin.GET("/template-sertifikat/:id", controllers.GetTemplateSertifikat)
+			admin.POST("/template-sertifikat", controllers.CreateTemplateSertifikat)
+			admin.PUT("/template-sertifikat/:id", controllers.UpdateTemplateSertifikat)
+			admin.DELETE("/template-sertifikat/:id", controllers.DeleteTemplateSertifikat)
+			admin.POST("/template-sertifikat/:id/upload/:jenis", controllers.UploadFileTemplateSertifikat)
+			admin.DELETE("/template-sertifikat/:id/upload/:jenis", controllers.DeleteFileTemplateSertifikat)
 
 			// kelola akun peserta
 			admin.POST("/pendaftaran/:id/buat-akun-peserta", controllers.CreateAkunPeserta)

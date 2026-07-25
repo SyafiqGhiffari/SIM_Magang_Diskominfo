@@ -8,6 +8,9 @@ import BidangPage from "../pages/admin/BidangPage";
 import MentorPage from "../pages/admin/MentorPage";
 import PesertaPage from "../pages/admin/PesertaPage";
 import PendaftaranPage from "../pages/admin/PendaftaranPage";
+import JamKerjaLiburPage from "../pages/admin/JamKerjaLiburPage";
+import KelolaSertifikatPage from "../pages/admin/KelolaSertifikatPage";
+import TemplateSertifikatPage from "../pages/admin/TemplateSertifikatPage";
 import MentorDashboardPage from "../pages/mentor/MentorDashboardPage";
 import PesertaDashboardPage from "../pages/peserta/PesertaDashboardPage";
 import { getToken, getRole } from "../utils/authStorage";
@@ -38,6 +41,9 @@ const AppRoutes = () => {
       <Route path="/admin/mentor" element={<ProtectedRoute allowedRoles={["admin"]}><MentorPage /></ProtectedRoute>} />
       <Route path="/admin/peserta" element={<ProtectedRoute allowedRoles={["admin"]}><PesertaPage /></ProtectedRoute>} />
       <Route path="/admin/pendaftaran" element={<ProtectedRoute allowedRoles={["admin"]}><PendaftaranPage /></ProtectedRoute>} />
+      <Route path="/admin/jam-kerja" element={<ProtectedRoute allowedRoles={["admin"]}><JamKerjaLiburPage /></ProtectedRoute>} />
+      <Route path="/admin/sertifikat" element={<ProtectedRoute allowedRoles={["admin"]}><KelolaSertifikatPage /></ProtectedRoute>} />
+      <Route path="/admin/sertifikat/template" element={<ProtectedRoute allowedRoles={["admin"]}><TemplateSertifikatPage /></ProtectedRoute>} />
 
       {/* Mentor — hanya role mentor yang boleh akses */}
       <Route path="/mentor" element={<ProtectedRoute allowedRoles={["mentor"]}><MentorDashboardPage /></ProtectedRoute>} />

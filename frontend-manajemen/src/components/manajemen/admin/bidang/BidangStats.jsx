@@ -1,9 +1,9 @@
-import { Compass, CheckCircle2, XCircle, Users2 } from "lucide-react";
+import { CheckCircle2, XCircle, Users2, Building2 } from "lucide-react";
 
 const BidangStats = ({ total, aktif, nonaktif, totalTerisi }) => {
   const cards = [
     {
-      icon: Compass,
+      icon: Building2,
       label: "Total Bidang",
       value: total,
       caption: "Bidang penempatan terdaftar",

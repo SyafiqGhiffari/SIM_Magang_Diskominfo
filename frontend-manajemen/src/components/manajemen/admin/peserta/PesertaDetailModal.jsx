@@ -1,12 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
   X, User, Mail, Phone, MapPin, Cake, Building2, GraduationCap,
   Calendar, FileText, Download, Loader2, Info, Sparkles, ImageIcon,
   FileCheck2, FileBadge2, Award, FileSignature, Eye, ExternalLink,
+  ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Printer,
 } from "lucide-react";
 import { getDetailAkunPeserta } from "../../../../services/adminService";
 import { getFileUrl } from "../../../../utils/fileUrl";
 import { toastError } from "../../../../utils/swal";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+const fetchAsBlobUrl = async (url) => {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+};
 
 const getInitials = (nama) => (nama || "?").split(" ").slice(0, 2).map((s) => s[0]).join("").toUpperCase();
 
@@ -63,63 +74,216 @@ const docFields = [
   { key: "file_proposal_magang", label: "Proposal Magang" },
 ];
 
-// Modal preview dokumen — tampil di atas modal detail peserta
+// Modal preview dokumen — tampil di atas modal detail peserta, bergaya viewer ReviewModal
 const DocumentPreviewModal = ({ doc, onClose }) => {
-  useEffect(() => {
-    const fn = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", fn);
-    return () => document.removeEventListener("keydown", fn);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const isImg = isImageFile(doc.url);
   const isPdf = isPdfFile(doc.url);
+
+  const [zoom, setZoom] = useState(100);
+  const [fileActionLoading, setFileActionLoading] = useState(null);
+  const canvasRef = useRef(null);
+  const [pdfDoc, setPdfDoc] = useState(null);
+  const [numPages, setNumPages] = useState(1);
+  const [pageNum, setPageNum] = useState(1);
+  const [docLoading, setDocLoading] = useState(true);
+  const [docError, setDocError] = useState(false);
+
+  useEffect(() => {
+      const fn = (e) => { if (e.key === "Escape") onClose(); };
+      document.addEventListener("keydown", fn);
+      return () => document.removeEventListener("keydown", fn);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+    if (isImg) {
+      const t = setTimeout(() => setDocLoading(false), 0);
+      return () => clearTimeout(t);
+    }
+    if (!isPdf) {
+      const t = setTimeout(() => setDocLoading(false), 0);
+      return () => clearTimeout(t);
+    }
+
+    let cancelled = false;
+    const initTimeoutId = setTimeout(() => {
+      setDocLoading(true);
+      setDocError(false);
+
+      fetch(doc.url)
+        .then((res) => res.arrayBuffer())
+        .then((buf) => pdfjsLib.getDocument({ data: buf }).promise)
+        .then((pdf) => {
+          if (cancelled) return;
+          setPdfDoc(pdf);
+          setNumPages(pdf.numPages);
+          setPageNum(1);
+          setDocLoading(false);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setDocError(true);
+            setDocLoading(false);
+          }
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(initTimeoutId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc.url]);
+
+  useEffect(() => {
+    if (!pdfDoc || isImg) return;
+    let cancelled = false;
+    pdfDoc.getPage(pageNum).then((page) => {
+      if (cancelled) return;
+      const viewport = page.getViewport({ scale: zoom / 100 });
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      page.render({ canvasContext: ctx, viewport });
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfDoc, pageNum, zoom]);
+
+  const handlePrint = async () => {
+    setFileActionLoading("print");
+    try {
+      const blobUrl = await fetchAsBlobUrl(doc.url);
+      const w = window.open(blobUrl, "_blank");
+      if (w) {
+        w.addEventListener("load", () => {
+          w.print();
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        });
+      }
+    } catch {
+      toastError("Gagal membuka dokumen untuk dicetak.");
+    } finally {
+      setFileActionLoading(null);
+    }
+  };
+
+  const handleDownload = async () => {
+    setFileActionLoading("download");
+    try {
+      const blobUrl = await fetchAsBlobUrl(doc.url);
+      const ext = isImg ? "jpg" : "pdf";
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `${doc.label.replace(/\s+/g, "_")}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    } catch {
+      toastError("Gagal mengunduh dokumen.");
+    } finally {
+      setFileActionLoading(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 backdrop-blur-md p-4" onClick={onClose}>
       <div
-        className="w-full max-w-3xl max-h-[90vh] rounded-3xl bg-white shadow-2xl overflow-hidden flex flex-col animate-[modalFadeUp_0.25s_ease-out]"
+        className="flex flex-col w-full max-w-4xl h-[88vh] rounded-3xl bg-white shadow-2xl overflow-hidden animate-[modalFadeUp_0.25s_ease-out]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1442] to-[#004F9F] text-white">
+        {/* Toolbar atas — sama seperti panel viewer ReviewModal */}
+        <div className="flex items-center justify-between gap-2 px-6 py-4 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1442] to-[#004F9F] text-white shadow-sm">
               <doc.Icon className="w-4 h-4" />
             </span>
-            <h4 className="text-sm font-black text-[#0B1442] truncate">{doc.label}</h4>
+            <span className="text-sm font-extrabold text-[#0B1442] truncate">{doc.label}</span>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <a
-              href={doc.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-[#004F9F]/40 hover:text-[#004F9F] transition-all duration-200"
-              title="Buka di tab baru"
+
+          {(isPdf || isImg) && (
+            <div className="flex items-center gap-1 rounded-full bg-slate-50 border border-slate-200 shadow-sm px-1.5 py-1 shrink-0">
+              <button onClick={() => setZoom((z) => Math.max(50, z - 25))} className="rounded-full p-1.5 text-slate-500 hover:bg-white hover:text-[#004F9F] hover:scale-110 transition-all duration-200 cursor-pointer">
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-bold text-[#0B1442] w-11 text-center tabular-nums">{zoom}%</span>
+              <button onClick={() => setZoom((z) => Math.min(200, z + 25))} className="rounded-full p-1.5 text-slate-500 hover:bg-white hover:text-[#004F9F] hover:scale-110 transition-all duration-200 cursor-pointer">
+                <ZoomIn className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={handlePrint}
+              disabled={fileActionLoading !== null}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-all duration-200 hover:bg-slate-100 hover:text-[#004F9F] hover:scale-110 disabled:opacity-30 disabled:hover:scale-100 cursor-pointer disabled:cursor-not-allowed"
+              title="Print dokumen"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-            <a
-              href={doc.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-[#004F9F]/40 hover:text-[#004F9F] transition-all duration-200"
-              title="Download"
+              {fileActionLoading === "print" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={handleDownload}
+              disabled={fileActionLoading !== null}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-all duration-200 hover:bg-slate-100 hover:text-[#004F9F] hover:scale-110 disabled:opacity-30 disabled:hover:scale-100 cursor-pointer disabled:cursor-not-allowed"
+              title="Unduh dokumen"
             >
-              <Download className="w-3.5 h-3.5" />
-            </a>
-            <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:rotate-90 transition-all duration-300 cursor-pointer">
-              <X className="w-4 h-4" />
+              {fileActionLoading === "download" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            </button>
+            <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:rotate-90 transition-all duration-300 cursor-pointer">
+              <X className="w-4.5 h-4.5" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-slate-100/60 flex items-center justify-center p-4">
-          {isImg ? (
-            <img src={doc.url} alt={doc.label} className="max-w-full max-h-[70vh] rounded-xl shadow-lg object-contain" />
+        {/* Navigasi halaman PDF (kalau lebih dari 1 halaman) */}
+        {isPdf && !docLoading && !docError && numPages > 1 && (
+          <div className="flex items-center justify-center gap-1.5 px-6 py-2.5 border-b border-slate-100 bg-slate-50 shrink-0">
+            <div className="flex items-center gap-1 rounded-full bg-white border border-slate-200 shadow-sm px-1.5 py-1">
+              <button onClick={() => setPageNum((p) => Math.max(1, p - 1))} disabled={pageNum === 1} className="rounded-full p-1 text-slate-500 hover:bg-slate-100 hover:text-[#004F9F] transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed">
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10.5px] font-bold text-[#0B1442] whitespace-nowrap px-1">Hal {pageNum}/{numPages}</span>
+              <button onClick={() => setPageNum((p) => Math.min(numPages, p + 1))} disabled={pageNum === numPages} className="rounded-full p-1 text-slate-500 hover:bg-slate-100 hover:text-[#004F9F] transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed">
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Konten viewer — pola dot background sama seperti ReviewModal */}
+        <div
+          className="flex-1 p-8 overflow-auto flex"
+          style={{
+            backgroundColor: "#eef1f6",
+            backgroundImage: "radial-gradient(circle, #d8dee8 1px, transparent 1px)",
+            backgroundSize: "18px 18px",
+          }}
+        >
+          {docLoading ? (
+            <div className="m-auto flex flex-col items-center gap-3 text-slate-400">
+              <div className="h-9 w-9 rounded-full border-[3px] border-slate-300 border-t-[#004F9F] animate-spin" />
+              <span className="text-xs font-bold">Memuat pratinjau...</span>
+            </div>
+          ) : docError ? (
+            <div className="m-auto flex flex-col items-center gap-2 text-slate-400">
+              <FileText className="w-10 h-10" />
+              <span className="text-xs font-bold">Gagal memuat dokumen</span>
+            </div>
+          ) : isImg ? (
+            <img
+              src={doc.url}
+              alt={doc.label}
+              style={{ width: `${zoom}%`, height: "auto" }}
+              className="m-auto max-w-none rounded-2xl shadow-2xl ring-1 ring-black/5 transition-[width] duration-200 animate-[fadeslide_0.3s_ease-out]"
+            />
           ) : isPdf ? (
-            <iframe src={doc.url} title={doc.label} className="w-full h-[70vh] rounded-xl border border-slate-200 bg-white" />
+            <canvas ref={canvasRef} className="m-auto rounded-2xl shadow-2xl ring-1 ring-black/5 bg-white animate-[fadeslide_0.3s_ease-out]" />
           ) : (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <div className="m-auto flex flex-col items-center gap-3 py-16 text-center">
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-200 text-slate-400">
                 <doc.Icon className="w-6 h-6" />
               </span>

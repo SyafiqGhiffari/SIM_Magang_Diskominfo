@@ -24,7 +24,7 @@ type RegisterManajemenInput struct {
 	NoHp               string `json:"no_hp"`
 	Jabatan            string `json:"jabatan"`
 	KapasitasBimbingan int    `json:"kapasitas_bimbingan"`
-	BidangID           *uint  `json:"bidang_id"` // opsional, hanya relevan untuk role=mentor
+	BidangID           *uint  `json:"bidang_id"`
 }
 
 type LoginManajemenInput struct {
@@ -467,5 +467,192 @@ func CekUserBisaDihapus(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Pengecekan berhasil", gin.H{
 		"bisa_dihapus": bisaDihapus,
 		"alasan":       alasan,
+	})
+}
+
+// ────────────────────────────────────────────────────────────────
+// AKUN SENDIRI (manajemen): profil lengkap & kelola foto profil sendiri
+// ────────────────────────────────────────────────────────────────
+
+// GetProfilManajemen — user manajemen yang sedang login melihat profil lengkapnya
+func GetProfilManajemen(c *gin.Context) {
+	userID := uint(c.GetFloat64("user_id"))
+
+	var user models.UserManajemen
+	if err := config.DB.First(&user, userID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "User tidak ditemukan")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Profil berhasil diambil", gin.H{
+		"id":          user.ID,
+		"nama":        user.Nama,
+		"email":       user.Email,
+		"role":        user.Role,
+		"no_hp":       user.NoHp,
+		"jabatan":     user.Jabatan,
+		"foto_profil": user.FotoProfil,
+		"status_akun": user.StatusAkun,
+		"is_online":   user.IsOnline,
+		"created_at":  user.CreatedAt,
+	})
+}
+
+// UploadFotoProfilManajemen — user manajemen mengganti foto profilnya sendiri
+func UploadFotoProfilManajemen(c *gin.Context) {
+	userID := uint(c.GetFloat64("user_id"))
+
+	var user models.UserManajemen
+	if err := config.DB.First(&user, userID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "User tidak ditemukan")
+		return
+	}
+
+	file, err := c.FormFile("foto_profil")
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "File foto_profil wajib diunggah")
+		return
+	}
+
+	allowedExt := map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if !allowedExt[ext] {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Format foto harus JPEG, JPG, atau PNG")
+		return
+	}
+
+	const maxFotoSize = 3 << 20 // 3MB
+	if file.Size > maxFotoSize {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Ukuran foto maksimal 3MB")
+		return
+	}
+
+	uploadDir := filepath.Join("uploads", "foto-manajemen")
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyiapkan folder upload")
+		return
+	}
+
+	fileName := fmt.Sprintf("foto-user-%d-%d%s", user.ID, time.Now().UnixNano(), ext)
+	savePath := filepath.Join(uploadDir, fileName)
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan file foto")
+		return
+	}
+
+	// Hapus foto lama jika ada agar tidak menumpuk
+	if user.FotoProfil != "" {
+		_ = os.Remove(user.FotoProfil)
+	}
+
+	cleanPath := strings.ReplaceAll(savePath, "\\", "/")
+	user.FotoProfil = cleanPath
+	if err := config.DB.Save(&user).Error; err != nil {
+		_ = os.Remove(savePath)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui foto profil")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Foto profil berhasil diperbarui", gin.H{
+		"foto_profil": cleanPath,
+		"foto_url":    "/" + cleanPath,
+	})
+}
+
+// HapusFotoProfilManajemen — user manajemen menghapus foto profilnya sendiri
+func HapusFotoProfilManajemen(c *gin.Context) {
+	userID := uint(c.GetFloat64("user_id"))
+
+	var user models.UserManajemen
+	if err := config.DB.First(&user, userID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "User tidak ditemukan")
+		return
+	}
+
+	if user.FotoProfil == "" {
+		utils.SuccessResponse(c, http.StatusOK, "Tidak ada foto profil untuk dihapus", gin.H{"foto_profil": ""})
+		return
+	}
+
+	_ = os.Remove(user.FotoProfil)
+
+	user.FotoProfil = ""
+	if err := config.DB.Save(&user).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menghapus foto profil")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Foto profil berhasil dihapus", gin.H{"foto_profil": ""})
+}
+
+// UpdateProfilManajemen — user manajemen memperbarui informasi akunnya sendiri
+func UpdateProfilManajemen(c *gin.Context) {
+	userID := uint(c.GetFloat64("user_id"))
+
+	var user models.UserManajemen
+	if err := config.DB.First(&user, userID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "User tidak ditemukan")
+		return
+	}
+
+	var input struct {
+		Nama    string `json:"nama"`
+		Email   string `json:"email"`
+		NoHp    string `json:"no_hp"`
+		Jabatan string `json:"jabatan"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Data tidak valid")
+		return
+	}
+
+	// Bersihkan input
+	input.Nama = strings.TrimSpace(input.Nama)
+	input.Email = strings.TrimSpace(strings.ToLower(input.Email))
+	input.NoHp = strings.TrimSpace(input.NoHp)
+	input.Jabatan = strings.TrimSpace(input.Jabatan)
+
+	// Validasi field wajib
+	if input.Nama == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Nama lengkap wajib diisi")
+		return
+	}
+	if input.Email == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Email wajib diisi")
+		return
+	}
+
+	// Pastikan email belum dipakai akun lain
+	var count int64
+	config.DB.Model(&models.UserManajemen{}).
+		Where("email = ? AND id <> ?", input.Email, user.ID).
+		Count(&count)
+	if count > 0 {
+		utils.ErrorResponse(c, http.StatusConflict, "Email sudah digunakan oleh akun lain")
+		return
+	}
+
+	// Update field (NoHp & Jabatan boleh kosong = hapus)
+	user.Nama = input.Nama
+	user.Email = input.Email
+	user.NoHp = input.NoHp
+	user.Jabatan = input.Jabatan
+
+	if err := config.DB.Save(&user).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui profil")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Informasi akun berhasil diperbarui", gin.H{
+		"id":          user.ID,
+		"nama":        user.Nama,
+		"email":       user.Email,
+		"role":        user.Role,
+		"no_hp":       user.NoHp,
+		"jabatan":     user.Jabatan,
+		"foto_profil": user.FotoProfil,
+		"status_akun": user.StatusAkun,
+		"is_online":   user.IsOnline,
+		"created_at":  user.CreatedAt,
 	})
 }

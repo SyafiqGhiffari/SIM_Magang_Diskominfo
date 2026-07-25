@@ -13,7 +13,7 @@ import { exportBidangToPdf } from "../../utils/exportBidangPdf";
 import ExportDropdown from "../../components/manajemen/admin/pendaftaran/ExportDropdown";
 import { confirmDialog, toastSuccess, toastError, blockedActionDialog } from "../../utils/swal";
 import { useManajemenTheme } from "../../context/useManajemenTheme";
-import { Compass, Plus, Users2, Filter as FilterIcon, Search, ChevronUp, ChevronDown, Inbox, Infinity as InfinityIcon } from "lucide-react";
+import { Building2, Plus, Users2, Filter as FilterIcon, Search, ChevronUp, ChevronDown, Inbox, Infinity as InfinityIcon } from "lucide-react";
 import BidangActionsDropdown from "../../components/manajemen/admin/bidang/BidangActionsDropdown";
 import BidangDescTooltip from "../../components/manajemen/admin/bidang/BidangDescTooltip";
 
@@ -58,6 +58,7 @@ const BidangPage = () => {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
+  const [tableSearch, setTableSearch] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [sortBy, setSortBy] = useState("nama_az");
   const [columnSort, setColumnSort] = useState({ key: null, direction: null });
@@ -205,7 +206,13 @@ const BidangPage = () => {
       return false;
     });
   })
-  .filter((b) => b.nama.toLowerCase().includes(search.toLowerCase()) || (b.deskripsi || "").toLowerCase().includes(search.toLowerCase()));
+    .filter((b) => {
+    const match = (q) => {
+      const s = q.toLowerCase();
+      return b.nama.toLowerCase().includes(s) || (b.deskripsi || "").toLowerCase().includes(s);
+    };
+    return match(search) && match(tableSearch);
+  });
 
   const sorted = [...filtered].sort((a, b) => {
     if (columnSort.key) {
@@ -274,7 +281,7 @@ const BidangPage = () => {
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 px-4 sm:px-6 pt-6 pb-5">
               <div className="flex items-start gap-3 min-w-0">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
-                  <Compass className="w-5 h-5" />
+                  <Building2 className="w-5 h-5" />
                 </span>
                 <div className="min-w-0">
                   <h3 className="text-base font-black text-[#0B1442]">Daftar Bidang</h3>
@@ -310,8 +317,8 @@ const BidangPage = () => {
                   <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-all duration-200 ${isSearchFocused ? "text-[#004F9F] scale-110" : "text-slate-400"}`} />
                   <input
                     type="text"
-                    value={search}
-                    onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                    value={tableSearch}
+                    onChange={(e) => { setTableSearch(e.target.value); setPage(0); }}
                     onFocus={() => setIsSearchFocused(true)}
                     onBlur={() => setIsSearchFocused(false)}
                     placeholder="Cari nama bidang..."
@@ -443,7 +450,7 @@ const BidangPage = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
 
                 <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 border border-white/15 backdrop-blur-md shadow-md transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/15">
-                  <Compass className="w-5 h-5 text-white transition-transform duration-500 group-hover:rotate-[360deg]" />
+                  <Building2 className="w-5 h-5 text-white transition-transform duration-500 group-hover:rotate-[360deg]" />
                 </span>
 
                 <div className="relative flex-1 min-w-0">

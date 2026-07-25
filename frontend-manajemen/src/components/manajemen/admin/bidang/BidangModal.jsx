@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Compass, FileText, Users2, Loader2, Info, UserCog, Save, Infinity as InfinityIcon, Sparkles } from "lucide-react";
+import { X, Building2, FileText, Users2, Loader2, Info, UserCog, Save, Infinity as InfinityIcon, Sparkles } from "lucide-react";
 
 const BidangModal = ({ initialData, onClose, onSubmit }) => {
   const isEdit = Boolean(initialData);
@@ -44,12 +44,12 @@ const BidangModal = ({ initialData, onClose, onSubmit }) => {
         <div className="relative overflow-hidden bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-6 py-5 shrink-0">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#00A5EC]/20 blur-3xl pointer-events-none" />
           <div className="absolute left-1/3 -bottom-16 h-32 w-32 rounded-full bg-white/5 blur-2xl pointer-events-none" />
-          <Compass className="absolute right-18 top-1/2 -translate-y-1/2 w-24 h-24 opacity-[0.06] text-sky-300 pointer-events-none rotate-6" strokeWidth={1} />
+          <Building2 className="absolute right-18 top-1/2 -translate-y-1/2 w-24 h-24 opacity-[0.06] text-sky-300 pointer-events-none rotate-6" strokeWidth={1} />
 
           <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-3.5">
               <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md shadow-lg">
-                <Compass className="w-5 h-5 text-white" />
+                <Building2 className="w-5 h-5 text-white" />
                 <span className="absolute -inset-1 rounded-2xl border-2 border-[#00A5EC]/30 animate-pulse" />
               </span>
               <div>

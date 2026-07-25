@@ -25,6 +25,7 @@ const PendaftaranPage = () => {
   const [bidangOptions, setBidangOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [tableSearch, setTableSearch] = useState("");
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(10);
   const [selectedVerifikasi, setSelectedVerifikasi] = useState(null);
@@ -131,13 +132,16 @@ const PendaftaranPage = () => {
       return true;
     })
     .filter((p) => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return (
-        p.nama_lengkap?.toLowerCase().includes(q) ||
-        p.email?.toLowerCase().includes(q) ||
-        p.posisi_bidang?.toLowerCase().includes(q)
-      );
+      const match = (query) => {
+        if (!query.trim()) return true;
+        const q = query.toLowerCase();
+        return (
+          p.nama_lengkap?.toLowerCase().includes(q) ||
+          p.email?.toLowerCase().includes(q) ||
+          p.posisi_bidang?.toLowerCase().includes(q)
+        );
+      };
+      return match(search) && match(tableSearch);
     });
 
   const getSortValue = (p, key) => {
@@ -286,8 +290,8 @@ const PendaftaranPage = () => {
                   <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-all duration-200 ${isSearchFocused ? "text-[#004F9F] scale-110" : "text-slate-400"}`} />
                   <input
                     type="text"
-                    value={search}
-                    onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                    value={tableSearch}
+                    onChange={(e) => { setTableSearch(e.target.value); setPage(0); }}
                     onFocus={() => setIsSearchFocused(true)}
                     onBlur={() => setIsSearchFocused(false)}
                     placeholder="Cari nama, email, bidang..."
@@ -297,10 +301,10 @@ const PendaftaranPage = () => {
                         : "border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-white"
                     }`}
                   />
-                  {search && (
+                  {tableSearch && (
                     <button
                       type="button"
-                      onClick={() => { setSearch(""); setPage(0); }}
+                      onClick={() => { setTableSearch(""); setPage(0); }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer animate-[fadeslide_0.15s_ease-out]"
                     >
                       <X className="w-3.5 h-3.5" />

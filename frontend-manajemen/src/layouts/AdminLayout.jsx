@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FileText, Users, HelpCircle, Compass, UserCog } from "lucide-react";
+import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import ChatFloatingWidget from "../components/manajemen/admin/chat/ChatFloatingWidget";
 import { useManajemenTheme } from "../context/useManajemenTheme";
@@ -21,23 +21,43 @@ const navItems = [
   },
   { type: "section", label: "Sistem Pendaftaran" },
   { key: "pendaftaran", to: "/admin/pendaftaran", label: "Kelola Pendaftaran", icon: <FileText className="w-[18px] h-[18px] shrink-0" /> },
-  { type: "section", label: "Manajemen" },
-  { key: "pengguna", to: "/admin/pengguna", label: "Kelola Pengguna", icon: <Users className="w-[18px] h-[18px] shrink-0" /> },
-  { key: "bidang", to: "/admin/bidang", label: "Kelola Bidang", icon: <Compass className="w-[18px] h-[18px] shrink-0" /> },
-  { key: "mentor", to: "/admin/mentor", label: "Kelola Mentor", icon: <UserCog className="w-[18px] h-[18px] shrink-0" /> },
-  { key: "peserta", to: "/admin/peserta", label: "Kelola Peserta", icon: <Users className="w-[18px] h-[18px] shrink-0" /> },
   { key: "faq", to: "/admin/faq", label: "FAQ & Quick Action", icon: <HelpCircle className="w-[18px] h-[18px] shrink-0" /> },
+  { type: "section", label: "Sistem Manajemen" },
+  {
+    type: "dropdown",
+    key: "pengguna",
+    label: "Kelola Pengguna",
+    icon: <Users className="w-[18px] h-[18px] shrink-0" />,
+    children: [
+      { key: "mentor", to: "/admin/mentor", label: "Kelola Mentor", icon: <UserCog className="w-4 h-4 shrink-0" /> },
+      { key: "peserta", to: "/admin/peserta", label: "Kelola Peserta", icon: <GraduationCap className="w-4 h-4 shrink-0" /> },
+    ],
+  },
+    { key: "bidang", to: "/admin/bidang", label: "Kelola Bidang", icon: <Building2 className="w-[18px] h-[18px] shrink-0" /> },
+    { key: "jam-kerja", to: "/admin/jam-kerja", label: "Jam Kerja & Libur", icon: <CalendarClock className="w-[18px] h-[18px] shrink-0" /> },
+    {
+      type: "dropdown",
+      key: "sertifikat",
+      label: "Kelola Sertifikat",
+      icon: <Award className="w-[18px] h-[18px] shrink-0" />,
+      children: [
+        { key: "sertifikat-daftar", to: "/admin/sertifikat", label: "Daftar Sertifikat", icon: <ScrollText className="w-4 h-4 shrink-0" /> },
+        { key: "sertifikat-template", to: "/admin/sertifikat/template", label: "Template Sertifikat", icon: <Palette className="w-4 h-4 shrink-0" /> },
+      ],
+    },
 ];
 
 const tabTitles = {
   dashboard: { title: "Dashboard", desc: "Ringkasan aktivitas sistem magang" },
   pendaftaran: { title: "Kelola Pendaftaran", desc: "Verifikasi dan kelola berkas pendaftaran magang" },
-  pengguna: { title: "Kelola Pengguna", desc: "Kelola akun admin, mentor, dan peserta magang" },
   bidang: { title: "Kelola Bidang", desc: "Atur daftar bidang penempatan magang" },
   mentor: { title: "Kelola Mentor", desc: "Kelola akun mentor dan penugasan bidangnya" },
   peserta: { title: "Kelola Peserta", desc: "Kelola akun peserta magang yang telah diterima" },
   faq: { title: "FAQ & Quick Action", desc: "Kelola jawaban otomatis chatbot" },
   akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
+  "jam-kerja": { title: "Jam Kerja & Hari Libur", desc: "Atur jam kerja harian dan hari libur untuk presensi peserta" },
+  "sertifikat-daftar": { title: "Kelola Sertifikat", desc: "Terbitkan dan kelola sertifikat magang peserta" },
+  "sertifikat-template": { title: "Template Sertifikat", desc: "Kelola desain template sertifikat magang" },
 };
 
 const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
@@ -81,11 +101,13 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
   const activeKey =
     location.pathname === "/admin" ? "dashboard" :
     location.pathname.startsWith("/admin/pendaftaran") ? "pendaftaran" :
-    location.pathname.startsWith("/admin/pengguna") ? "pengguna" :
     location.pathname.startsWith("/admin/bidang") ? "bidang" :
     location.pathname.startsWith("/admin/mentor") ? "mentor" :
     location.pathname.startsWith("/admin/peserta") ? "peserta" :
     location.pathname.startsWith("/admin/faq") ? "faq" :
+    location.pathname.startsWith("/admin/jam-kerja") ? "jam-kerja" :
+    location.pathname.startsWith("/admin/sertifikat/template") ? "sertifikat-template" :
+    location.pathname.startsWith("/admin/sertifikat") ? "sertifikat-daftar" :
     location.pathname.startsWith("/admin/akun") ? "akun" : "dashboard";
 
   const currentTab = tabTitles[activeKey] || tabTitles.dashboard;

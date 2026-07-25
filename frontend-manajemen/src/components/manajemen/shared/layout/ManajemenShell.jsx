@@ -73,6 +73,11 @@ const ManajemenShell = ({
   }) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem("admin_sidebar_collapsed") === "true");
+
+  useEffect(() => {
+    localStorage.setItem("admin_sidebar_collapsed", sidebarCollapsed);
+  }, [sidebarCollapsed]);
 
   // ==== PERUBAHAN: deteksi perpindahan tab via lazy initializer, dicek sekali saat
   // instance ini pertama kali dibuat (yaitu setiap kali halaman berganti) ====
@@ -103,6 +108,8 @@ const ManajemenShell = ({
         isDark={isDark}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((p) => !p)}
       />
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <ManajemenTopbar

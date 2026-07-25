@@ -50,6 +50,11 @@ func ConnectDatabase() {
 		&models.ChatMessage{},
 		&models.FaqEntry{},
 		&models.BidangMagang{},
+		&models.JamKerja{},
+		&models.HariLibur{},
+		&models.Sertifikat{},
+		&models.PengaturanSertifikat{},
+		&models.TemplateSertifikat{},
 	)
 
 	if err != nil {
