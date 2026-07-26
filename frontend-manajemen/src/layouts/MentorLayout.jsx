@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { CalendarCheck, ClipboardList, MailCheck } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import { logoutAdmin, getProfile } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
@@ -16,12 +17,23 @@ const navItems = [
       </svg>
     ),
   },
-  // TODO: tambah menu mentor lain di sini (mis. Bimbingan Peserta, Penilaian, dst.)
+    {
+    type: "dropdown",
+    key: "presensi",
+    label: "Kelola Presensi",
+    icon: <CalendarCheck className="w-[18px] h-[18px] shrink-0" />,
+    children: [
+      { key: "presensi-bimbingan", to: "/mentor/presensi", label: "Presensi Bimbingan", icon: <ClipboardList className="w-4 h-4 shrink-0" /> },
+      { key: "verifikasi-izin", to: "/mentor/pengajuan-izin", label: "Verifikasi Izin", icon: <MailCheck className="w-4 h-4 shrink-0" /> },
+    ],
+  },
 ];
 
 const tabTitles = {
   dashboard: { title: "Dashboard", desc: "Ringkasan aktivitas bimbingan magang" },
   akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
+  "presensi-bimbingan": { title: "Presensi Bimbingan", desc: "Pantau dan koreksi presensi peserta bimbingan Anda" },
+  "verifikasi-izin": { title: "Verifikasi Izin & Sakit", desc: "Setujui atau tolak pengajuan izin peserta bimbingan" },
 };
 
 const MentorLayout = ({ children, searchValue = "", onSearchChange }) => {
@@ -73,7 +85,9 @@ const MentorLayout = ({ children, searchValue = "", onSearchChange }) => {
 
   const activeKey =
     location.pathname === "/mentor" ? "dashboard" :
-    location.pathname.startsWith("/mentor/akun") ? "akun" : "dashboard";
+    location.pathname.startsWith("/mentor/akun") ? "akun" :
+    location.pathname.startsWith("/mentor/pengajuan-izin") ? "verifikasi-izin" :
+    location.pathname.startsWith("/mentor/presensi") ? "presensi-bimbingan" : "dashboard";
 
   const currentTab = tabTitles[activeKey] || tabTitles.dashboard;
 

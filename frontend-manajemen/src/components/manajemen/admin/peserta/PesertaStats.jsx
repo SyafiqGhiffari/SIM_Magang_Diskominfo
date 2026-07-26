@@ -1,6 +1,6 @@
-import { Users, CheckCircle2, XCircle, GraduationCap, UserCog } from "lucide-react";
+import { Users, CheckCircle2, XCircle, GraduationCap, UserCog, Award } from "lucide-react";
 
-const PesertaStats = ({ total, aktif, nonaktif, sedangMagang, belumAdaMentor }) => {
+const PesertaStats = ({ total, aktif, nonaktif, sedangMagang, alumni, belumAdaMentor }) => {
   const cards = [
     {
       icon: Users,
@@ -34,13 +34,23 @@ const PesertaStats = ({ total, aktif, nonaktif, sedangMagang, belumAdaMentor }) 
     },
     {
       icon: GraduationCap,
-      label: "Sedang Magang",
+      label: "Aktif Magang",
       value: sedangMagang,
-      caption: "Periode magang berjalan",
+      caption: "Wajib presensi harian",
       gradient: "from-[#004F9F] to-[#0B1442]",
       lightGradient: "from-blue-300 to-white",
       iconBg: "bg-blue-50",
       iconColor: "text-blue-600",
+    },
+    {
+      icon: Award,
+      label: "Alumni Magang",
+      value: alumni,
+      caption: "Read-only, akses sertifikat",
+      gradient: "from-slate-500 to-slate-700",
+      lightGradient: "from-slate-200 to-white",
+      iconBg: "bg-slate-100",
+      iconColor: "text-slate-500",
     },
     {
       icon: UserCog,
@@ -55,7 +65,7 @@ const PesertaStats = ({ total, aktif, nonaktif, sedangMagang, belumAdaMentor }) 
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
       {cards.map((c, i) => (
         <div
           key={i}

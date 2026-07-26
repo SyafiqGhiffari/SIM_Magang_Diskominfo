@@ -37,6 +37,22 @@ export const clearAuthData = () => {
   });
 };
 
+// Perbarui sebagian data user tersimpan (dipakai untuk menyinkronkan
+// status_magang terbaru dari server tanpa harus login ulang).
+export const updateAuthUser = (patch) => {
+  const storage = localStorage.getItem("admin_user") ? localStorage : sessionStorage;
+  const current = getUser() || {};
+  storage.setItem("admin_user", JSON.stringify({ ...current, ...patch }));
+};
+
+// ── Status siklus magang (read-only mode untuk alumni) ──
+export const getStatusMagang = () => getUser()?.status_magang || "aktif";
+
+export const isMagangSelesai = () => {
+  const user = getUser();
+  return user?.role === "peserta" && user?.status_magang === "selesai";
+};
+
 // ==== PERUBAHAN: "Ingat Saya" juga mengingat alamat email untuk diisi otomatis ====
 const REMEMBERED_EMAIL_KEY = "admin_remembered_email";
 

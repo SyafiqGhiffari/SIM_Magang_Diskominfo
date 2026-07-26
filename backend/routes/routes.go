@@ -205,6 +205,36 @@ func SetupRoutes(router *gin.Engine) {
 			},
 		)
 
+		// Route khusus Mentor
+		mentor := manajemen.Group("/mentor")
+		mentor.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("mentor"))
+		{
+			mentor.GET("/presensi", controllers.GetPresensiMentor)
+			mentor.GET("/presensi/statistik", controllers.GetStatistikPresensiMentor)
+			mentor.PUT("/presensi/:id", controllers.UpdatePresensiMentor)
+			mentor.GET("/pengajuan-izin", controllers.GetPengajuanIzinMentor)
+			mentor.PUT("/pengajuan-izin/:id", controllers.ProsesPengajuanIzinMentor)
+		}
+
+		// ── Route khusus Peserta (presensi & pengajuan izin) ──
+		peserta := manajemen.Group("/peserta")
+		peserta.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("peserta"))
+		{
+			// READ-ONLY: tetap terbuka walau masa magang sudah selesai
+			peserta.GET("/presensi/hari-ini", controllers.GetStatusPresensiHariIni)
+			peserta.GET("/presensi/riwayat", controllers.GetRiwayatPresensiSaya)
+			peserta.GET("/pengajuan-izin", controllers.GetPengajuanIzinSaya)
+
+			// AKSI TULIS: hanya untuk peserta yang masih aktif magang
+			aktif := peserta.Group("", middlewares.MagangAktifMiddleware())
+			{
+				aktif.POST("/presensi/masuk", controllers.PresensiMasuk)
+				aktif.POST("/presensi/pulang", controllers.PresensiPulang)
+				aktif.POST("/pengajuan-izin", controllers.BuatPengajuanIzin)
+				aktif.DELETE("/pengajuan-izin/:id", controllers.BatalkanPengajuanIzin)
+			}
+		}
+
 		manajemen.GET("/peserta/dashboard",
 			middlewares.AuthMiddleware("manajemen"),
 			middlewares.RoleMiddleware("peserta"),
@@ -248,6 +278,15 @@ func SetupRoutes(router *gin.Engine) {
 			admin.PUT("/hari-libur/:id", controllers.UpdateHariLibur)
 			admin.DELETE("/hari-libur/:id", controllers.DeleteHariLibur)
 			admin.POST("/hari-libur/sync-nasional", controllers.SyncHariLiburNasional)
+
+			// ── DATA PRESENSI (read-only untuk admin) ──
+			admin.GET("/presensi", controllers.GetAllPresensi)
+			admin.GET("/presensi/statistik", controllers.GetStatistikPresensi)
+			admin.GET("/presensi/opsi-filter", controllers.GetOpsiFilterPresensi)
+			admin.GET("/presensi/rekap", controllers.GetRekapPresensi)
+			admin.GET("/presensi/rekap/matriks", controllers.GetMatriksPresensi)
+			admin.GET("/presensi/rekap/:peserta_id", controllers.GetRekapPeserta)
+			admin.GET("/presensi/:id", controllers.GetPresensi)
 
 			// ── KELOLA SERTIFIKAT ──
 			admin.GET("/sertifikat", controllers.GetAllSertifikat)

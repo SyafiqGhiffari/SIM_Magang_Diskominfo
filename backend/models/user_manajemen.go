@@ -20,7 +20,13 @@ type UserManajemen struct {
 
 	Role string `gorm:"type:enum('admin','mentor','peserta');not null" json:"role"`
 
+	// StatusAkun: hak login. HANYA diubah manual oleh admin (blokir akun).
 	StatusAkun string `gorm:"type:enum('aktif','nonaktif');default:'aktif'" json:"status_akun"`
+
+	// StatusMagang: siklus magang peserta, diubah otomatis oleh scheduler.
+	// 'selesai' => mode read-only: tetap bisa login & melihat sertifikat,
+	// raport, dan riwayat presensi, tetapi tidak bisa presensi/ajukan izin.
+	StatusMagang string `gorm:"type:enum('aktif','selesai');default:'aktif'" json:"status_magang"`
 
 	// IsOnline: true jika admin sedang aktif login di web manajemen
 	IsOnline bool `gorm:"default:false" json:"is_online"`

@@ -55,6 +55,9 @@ func ConnectDatabase() {
 		&models.Sertifikat{},
 		&models.PengaturanSertifikat{},
 		&models.TemplateSertifikat{},
+		&models.Presensi{},
+		&models.PenutupanPresensi{},
+		&models.PengajuanIzin{},
 	)
 
 	if err != nil {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette } from "lucide-react";
+import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette, CalendarCheck, ClipboardList, BarChart3 } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import ChatFloatingWidget from "../components/manajemen/admin/chat/ChatFloatingWidget";
 import { useManajemenTheme } from "../context/useManajemenTheme";
@@ -34,17 +34,27 @@ const navItems = [
     ],
   },
     { key: "bidang", to: "/admin/bidang", label: "Kelola Bidang", icon: <Building2 className="w-[18px] h-[18px] shrink-0" /> },
-    { key: "jam-kerja", to: "/admin/jam-kerja", label: "Jam Kerja & Libur", icon: <CalendarClock className="w-[18px] h-[18px] shrink-0" /> },
-    {
-      type: "dropdown",
-      key: "sertifikat",
-      label: "Kelola Sertifikat",
-      icon: <Award className="w-[18px] h-[18px] shrink-0" />,
-      children: [
-        { key: "sertifikat-daftar", to: "/admin/sertifikat", label: "Daftar Sertifikat", icon: <ScrollText className="w-4 h-4 shrink-0" /> },
-        { key: "sertifikat-template", to: "/admin/sertifikat/template", label: "Template Sertifikat", icon: <Palette className="w-4 h-4 shrink-0" /> },
-      ],
-    },
+  {
+    type: "dropdown",
+    key: "presensi",
+    label: "Kelola Presensi",
+    icon: <CalendarCheck className="w-[18px] h-[18px] shrink-0" />,
+    children: [
+      { key: "presensi-data", to: "/admin/presensi", label: "Data Presensi", icon: <ClipboardList className="w-4 h-4 shrink-0" /> },
+      { key: "presensi-rekap", to: "/admin/presensi/rekap", label: "Rekap & Laporan", icon: <BarChart3 className="w-4 h-4 shrink-0" /> },
+      { key: "jam-kerja", to: "/admin/jam-kerja", label: "Jam Kerja & Libur", icon: <CalendarClock className="w-4 h-4 shrink-0" /> },
+    ],
+  },
+  {
+    type: "dropdown",
+    key: "sertifikat",
+    label: "Kelola Sertifikat",
+    icon: <Award className="w-[18px] h-[18px] shrink-0" />,
+    children: [
+      { key: "sertifikat-daftar", to: "/admin/sertifikat", label: "Daftar Sertifikat", icon: <ScrollText className="w-4 h-4 shrink-0" /> },
+      { key: "sertifikat-template", to: "/admin/sertifikat/template", label: "Template Sertifikat", icon: <Palette className="w-4 h-4 shrink-0" /> },
+    ],
+  },
 ];
 
 const tabTitles = {
@@ -56,6 +66,8 @@ const tabTitles = {
   faq: { title: "FAQ & Quick Action", desc: "Kelola jawaban otomatis chatbot" },
   akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
   "jam-kerja": { title: "Jam Kerja & Hari Libur", desc: "Atur jam kerja harian dan hari libur untuk presensi peserta" },
+  "presensi-data": { title: "Data Presensi", desc: "Pantau kehadiran harian peserta magang" },
+  "presensi-rekap": { title: "Rekap & Laporan Presensi", desc: "Rekap kehadiran peserta per bulan dan ekspor laporan" },
   "sertifikat-daftar": { title: "Kelola Sertifikat", desc: "Terbitkan dan kelola sertifikat magang peserta" },
   "sertifikat-template": { title: "Template Sertifikat", desc: "Kelola desain template sertifikat magang" },
 };
@@ -106,6 +118,8 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
     location.pathname.startsWith("/admin/peserta") ? "peserta" :
     location.pathname.startsWith("/admin/faq") ? "faq" :
     location.pathname.startsWith("/admin/jam-kerja") ? "jam-kerja" :
+    location.pathname.startsWith("/admin/presensi/rekap") ? "presensi-rekap" :
+    location.pathname.startsWith("/admin/presensi") ? "presensi-data" :
     location.pathname.startsWith("/admin/sertifikat/template") ? "sertifikat-template" :
     location.pathname.startsWith("/admin/sertifikat") ? "sertifikat-daftar" :
     location.pathname.startsWith("/admin/akun") ? "akun" : "dashboard";

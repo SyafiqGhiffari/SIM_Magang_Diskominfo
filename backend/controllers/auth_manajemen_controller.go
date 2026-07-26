@@ -125,11 +125,12 @@ func LoginManajemen(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Login manajemen berhasil", gin.H{
 		"token": token,
 		"user": gin.H{
-			"id":          user.ID,
-			"nama":        user.Nama,
-			"email":       user.Email,
-			"role":        user.Role,
-			"status_akun": user.StatusAkun,
+			"id":            user.ID,
+			"nama":          user.Nama,
+			"email":         user.Email,
+			"role":          user.Role,
+			"status_akun":   user.StatusAkun,
+			"status_magang": user.StatusMagang,
 		},
 	})
 }

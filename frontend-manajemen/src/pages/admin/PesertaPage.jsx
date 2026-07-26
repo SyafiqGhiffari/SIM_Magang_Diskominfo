@@ -26,7 +26,7 @@ const columns = [
   { key: "mentor_nama", label: "Mentor" },
   { key: "institusi", label: "Institusi" },
   { key: "tanggal_mulai", label: "Periode Magang" },
-  { key: "status_akun", label: "Status" },
+  { key: "status_akun", label: "Status Akun" },
 ];
 
 const SortableHeader = ({ column, columnSort, setColumnSort }) => {
@@ -222,25 +222,25 @@ const PesertaPage = () => {
 
   const pageItems = sorted.slice(page * perPage, page * perPage + perPage);
 
+  // status_akun = hak login (diubah manual admin)
   const totalAktif = list.filter((m) => m.status_akun === "aktif").length;
   const totalNonaktif = list.filter((m) => m.status_akun === "nonaktif").length;
-  const today = new Date();
-  const sedangMagang = list.filter((m) => {
-    if (!m.tanggal_mulai || !m.tanggal_selesai) return false;
-    const mulai = new Date(m.tanggal_mulai);
-    const selesai = new Date(m.tanggal_selesai);
-    return today >= mulai && today <= selesai;
-  }).length;
+
+  // status_magang = siklus magang (diubah otomatis scheduler)
+  const totalAlumni = list.filter((m) => m.status_magang === "selesai").length;
+  const totalAktifMagang = list.filter((m) => m.status_magang !== "selesai").length;
 
   const pesertaSelesai = list.filter((m) => getPeriodeStatus(m.tanggal_mulai, m.tanggal_selesai).key === "selesai");
 
-  const pesertaSelesaiBelumNonaktif = pesertaSelesai.filter((m) => m.status_akun === "aktif");
+  // Peserta yang periodenya sudah lewat tetapi belum ditandai alumni oleh
+  // scheduler (mis. tanggal_selesai baru saja diubah admin).
+  const pesertaSelesaiBelumNonaktif = pesertaSelesai.filter((m) => m.status_magang !== "selesai");
 
-  // ⬅ langsung terapkan filter "selesai + aktif" dan buka modal (opsional bisa juga langsung tampil di tabel)
+  // tampilkan peserta yang sudah selesai magang pada tabel
   const handleLihatSelesaiBelumNonaktif = () => {
-    setStatusList(["aktif"]);
+    setStatusList([]);
     setPeriodeList(["selesai"]);
-    setAppliedStatusList(["aktif"]);
+    setAppliedStatusList([]);
     setAppliedPeriodeList(["selesai"]);
     setPage(0);
   };
@@ -254,7 +254,8 @@ const PesertaPage = () => {
       Nama: m.nama, "Email Login": m.email_login, "Email Notifikasi": m.email_notifikasi || "-",
       Bidang: m.bidang || "-", Mentor: m.mentor_nama || "Belum Ditugaskan", Institusi: m.institusi || "-",
       "Periode Magang": m.tanggal_mulai ? `${fmtDate(m.tanggal_mulai)} - ${fmtDate(m.tanggal_selesai)}` : "-",
-      Status: m.status_akun === "aktif" ? "Aktif" : "Nonaktif",
+      "Status Akun": m.status_akun === "aktif" ? "Aktif" : "Nonaktif",
+      "Status Magang": m.status_magang === "selesai" ? "Alumni (read-only)" : "Aktif magang",
     }));
     if (format === "excel") {
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -291,7 +292,8 @@ const PesertaPage = () => {
               total={list.length}
               aktif={totalAktif}
               nonaktif={totalNonaktif}
-              sedangMagang={sedangMagang}
+              sedangMagang={totalAktifMagang}
+              alumni={totalAlumni}
               belumAdaMentor={list.filter((p) => p.bidang && !p.mentor_nama).length}
             />
 
@@ -532,9 +534,26 @@ const PesertaPage = () => {
                                 className="relative inline-flex h-5.5 w-5.5 transform items-center justify-center rounded-full bg-white shadow-lg transition-all duration-300 ease-out group-active:scale-90"
                                 style={{ transform: m.status_akun === "aktif" ? "translateX(54px)" : "translateX(3px)" }}
                               >
-                                <span className={`h-2 w-2 rounded-full transition-colors duration-300 ${m.status_akun === "aktif" ? "bg-emerald-500" : "bg-slate-300"}`} />
+                              <span className={`h-2 w-2 rounded-full transition-colors duration-300 ${m.status_akun === "aktif" ? "bg-emerald-500" : "bg-slate-300"}`} />
                               </span>
                             </button>
+
+                            {/* Penanda siklus magang — otomatis dari scheduler, bukan hak login */}
+                            <p
+                              className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[9.5px] font-black uppercase tracking-wider whitespace-nowrap ${
+                                m.status_magang === "selesai"
+                                  ? "bg-slate-100 text-slate-500 ring-1 ring-slate-200"
+                                  : "bg-blue-50 text-[#004F9F] ring-1 ring-blue-200"
+                              }`}
+                              title={
+                                m.status_magang === "selesai"
+                                  ? "Masa magang selesai — akun read-only, sertifikat & raport tetap dapat diakses"
+                                  : "Masih aktif magang — wajib presensi"
+                              }
+                            >
+                              <span className={`h-1.5 w-1.5 rounded-full ${m.status_magang === "selesai" ? "bg-slate-400" : "bg-[#00A5EC] animate-pulse"}`} />
+                              {m.status_magang === "selesai" ? "Alumni" : "Aktif magang"}
+                            </p>
                           </td>
                           <td className="px-6 py-4 text-right">
                             <PesertaActionsDropdown
@@ -630,15 +649,15 @@ const PesertaPage = () => {
                             Selesai {fmtDate(m.tanggal_selesai)}
                           </p>
                         </div>
-                        {m.status_akun === "aktif" ? (
-                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-[9px] font-bold text-red-600">
-                            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                            Belum nonaktif
+                        {m.status_magang === "selesai" ? (
+                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-bold text-emerald-600" title="Akun read-only: sertifikat & raport tetap dapat diakses">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            Alumni
                           </span>
                         ) : (
-                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-bold text-emerald-600">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            Nonaktif
+                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[9px] font-bold text-amber-600" title="Menunggu sinkronisasi otomatis (maksimal 1 jam)">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            Menunggu sinkron
                           </span>
                         )}
                       </div>

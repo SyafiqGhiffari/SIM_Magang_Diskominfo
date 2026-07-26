@@ -7,6 +7,7 @@ import (
 	"sim-magang-backend/config"
 	"sim-magang-backend/middlewares"
 	"sim-magang-backend/routes"
+	"sim-magang-backend/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -19,6 +20,14 @@ func main() {
 	}
 
 	config.ConnectDatabase()
+
+	// Penjadwal presensi: menutup hari yang sudah lewat & membuat status alfa
+	// otomatis bagi peserta yang tidak presensi.
+	services.MulaiPenjadwalPresensi(config.DB)
+
+	// Penjadwal status magang: menandai peserta yang sudah selesai magang
+	// menjadi read-only, tanpa memblokir loginnya.
+	services.JalankanSchedulerStatusMagang()
 
 	router := gin.Default()
 

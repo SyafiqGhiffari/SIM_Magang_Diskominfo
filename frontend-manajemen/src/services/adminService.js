@@ -68,3 +68,12 @@ export const uploadFileTemplateSertifikat = (id, jenis, formData) => api.post(`/
   headers: { "Content-Type": "multipart/form-data" },
 });
 export const deleteFileTemplateSertifikat = (id, jenis) => api.delete(`/manajemen/admin/template-sertifikat/${id}/upload/${jenis}`);
+
+// ==================== PRESENSI (admin: read-only) ====================
+export const getAllPresensi = (params) => api.get("/manajemen/admin/presensi", { params });
+export const getPresensi = (id) => api.get(`/manajemen/admin/presensi/${id}`);
+export const getStatistikPresensi = (params) => api.get("/manajemen/admin/presensi/statistik", { params });
+export const getOpsiFilterPresensi = () => api.get("/manajemen/admin/presensi/opsi-filter");
+export const getRekapPresensi = (params) => api.get("/manajemen/admin/presensi/rekap", { params });
+export const getMatriksPresensi = (params) => api.get("/manajemen/admin/presensi/rekap/matriks", { params });
+export const getRekapPeserta = (pesertaId, params) => api.get(`/manajemen/admin/presensi/rekap/${pesertaId}`, { params });

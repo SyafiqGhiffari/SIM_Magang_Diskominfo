@@ -21,7 +21,8 @@ import (
 // data pendaftaran magang terkait dan sertifikatnya (jika sudah dibuat).
 func GetAllSertifikat(c *gin.Context) {
 	var users []models.UserManajemen
-	if err := config.DB.Where("role = ? AND status_akun = ?", "peserta", "aktif").Order("created_at desc").Find(&users).Error; err != nil {
+	// Sertifikat harus tetap dapat dikelola & diunduh walau peserta sudah selesai magang (alumni) atau akunnya dinonaktifkan admin.
+	if err := config.DB.Where("role = ?", "peserta").Order("created_at desc").Find(&users).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data peserta")
 		return
 	}
