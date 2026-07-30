@@ -157,19 +157,19 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                       }
                     }}
                     title={collapsed ? item.label : undefined}
-                    className={`flex items-center gap-3.5 w-full px-4 py-3 rounded-xl text-sm font-bold transition-all text-left cursor-pointer ${
-                      collapsed ? "md:justify-center md:px-0" : ""
-                    } ${
-                      isChildActive
-                        ? isDark ? "bg-white/5 text-slate-100" : "bg-slate-50 text-[#0B1442]"
-                        : isDark
-                        ? "text-slate-400 hover:bg-white/5 hover:text-slate-100"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-[#0B1442]"
-                    }`}
-                  >
-                    {item.icon}
-                    <span className={`flex-1 min-w-0 ${collapsed ? "md:hidden" : ""}`}>{item.label}</span>
-                    <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""} ${collapsed ? "md:hidden" : ""}`} />
+                    className={`flex items-center gap-3 w-full px-3 py-3 rounded-xl text-[13px] font-bold transition-all text-left cursor-pointer ${
+                        collapsed ? "md:justify-center md:px-0" : ""
+                      } ${
+                        isChildActive
+                          ? isDark ? "bg-white/5 text-slate-100" : "bg-slate-50 text-[#0B1442]"
+                          : isDark
+                          ? "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-[#0B1442]"
+                      }`}
+                    >
+                      {item.icon}
+                      <span className={`flex-1 min-w-0 truncate whitespace-nowrap ${collapsed ? "md:hidden" : ""}`}>{item.label}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""} ${collapsed ? "md:hidden" : ""}`} />
                   </button>
 
                   {/* Submenu accordion — muncul saat parent "Kelola Pengguna" diklik pada sidebar mode normal (tidak diciutkan) */}
@@ -186,7 +186,7 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                               key={child.key}
                               to={child.to}
                               onClick={onClose}
-                              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold transition-all duration-200 ${
+                              className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-[12.5px] font-bold whitespace-nowrap transition-all duration-200 ${
                                 activeKey === child.key
                                   ? "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-md"
                                   : isDark
@@ -200,7 +200,7 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                               }}
                             >
                               {child.icon}
-                              {child.label}
+                              <span className="min-w-0 truncate">{child.label}</span>
                             </Link>
                           ))}
                         </div>
@@ -250,18 +250,18 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                 to={item.to}
                 onClick={onClose}
                 title={collapsed ? item.label : undefined}
-                className={`flex items-center gap-3.5 min-w-0 flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-all text-left ${
-                  collapsed ? "md:justify-center md:px-0" : ""
-                } ${
-                  activeKey === item.key
-                    ? "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-md"
-                    : isDark
-                    ? "text-slate-400 hover:bg-white/5 hover:text-slate-100"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-[#0B1442]"
-                }`}
-              >
-                {item.icon}
-                <span className={collapsed ? "md:hidden" : ""}>{item.label}</span>
+                className={`flex items-center gap-3 min-w-0 flex-1 px-3 py-3 rounded-xl text-[13px] font-bold transition-all text-left ${
+                    collapsed ? "md:justify-center md:px-0" : ""
+                  } ${
+                    activeKey === item.key
+                      ? "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-md"
+                      : isDark
+                      ? "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-[#0B1442]"
+                  }`}
+                >
+                  {item.icon}
+                  <span className={`min-w-0 truncate whitespace-nowrap ${collapsed ? "md:hidden" : ""}`}>{item.label}</span>
               </Link>
             );
           })}

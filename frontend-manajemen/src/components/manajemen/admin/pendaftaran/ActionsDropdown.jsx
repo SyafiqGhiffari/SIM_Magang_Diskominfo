@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MoreVertical, Eye, ShieldCheck, Lock, KeyRound } from "lucide-react";
+import { MoreVertical, Eye, ShieldCheck, Lock, KeyRound, FileSignature } from "lucide-react";
 
-const ActionsDropdown = ({ onReview, onVerifikasi, verifikasiDisabled, isFinalStatus, onBuatAkun, showBuatAkun, sudahPunyaAkun }) => {
+const ActionsDropdown = ({ onReview, onVerifikasi, verifikasiDisabled, isFinalStatus, onBuatAkun, showBuatAkun, sudahPunyaAkun, onSurat, showSurat, suratSudahAda }) => {
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -171,11 +171,38 @@ const ActionsDropdown = ({ onReview, onVerifikasi, verifikasiDisabled, isFinalSt
                     </p>
                   </div>
                 </button>
-              </>
-            )}
-          </div>,
-          document.body
-        )}
+            </>
+          )}
+
+          {showSurat && (
+            <>
+              <div className="border-t border-slate-100" />
+              <button
+                onClick={() => handleAction(onSurat)}
+                className="group/item flex w-full items-center gap-3 px-4 py-3 text-left bg-violet-50/40 hover:bg-violet-50/70 cursor-pointer transition-colors duration-200"
+                style={{
+                  opacity: visible ? 1 : 0,
+                  transform: visible ? "translateX(0)" : "translateX(10px)",
+                  transition: "opacity 200ms ease 120ms, transform 200ms ease 120ms, background-color 200ms ease",
+                }}
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 transition-all duration-200 group-hover/item:scale-110 group-hover/item:-rotate-6">
+                  <FileSignature className="w-3.5 h-3.5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-violet-700">
+                    {suratSudahAda ? "Lihat / Ubah Surat" : "Terbitkan Surat"}
+                  </p>
+                  <p className="text-[10px] text-slate-400 whitespace-nowrap">
+                    {suratSudahAda ? "Surat sudah diterbitkan" : "Surat penerimaan magang"}
+                  </p>
+                </div>
+              </button>
+            </>
+          )}
+        </div>,
+        document.body
+      )}
     </>
   );
 };

@@ -183,6 +183,18 @@ func SetupRoutes(router *gin.Engine) {
 			controllers.HapusFotoProfilManajemen,
 		)
 
+		// ── NOTIFIKASI IN-APP (semua role manajemen, difilter per role di controller) ──
+		notif := manajemen.Group("/notifikasi")
+		notif.Use(middlewares.AuthMiddleware("manajemen"))
+		{
+			notif.GET("", controllers.GetNotifikasiSaya)
+			notif.GET("/unread-count", controllers.GetUnreadNotifikasiCount)
+			notif.PUT("/:id/baca", controllers.BacaNotifikasi)
+			notif.PUT("/semua/baca", controllers.BacaSemuaNotifikasi)
+			notif.DELETE("/semua/hapus", controllers.HapusSemuaNotifikasi)
+			notif.DELETE("/:id", controllers.HapusNotifikasi)
+		}
+
 		manajemen.GET("/admin/dashboard",
 			middlewares.AuthMiddleware("manajemen"),
 			middlewares.RoleMiddleware("admin"),
@@ -309,6 +321,19 @@ func SetupRoutes(router *gin.Engine) {
 			admin.POST("/template-sertifikat/:id/upload/:jenis", controllers.UploadFileTemplateSertifikat)
 			admin.DELETE("/template-sertifikat/:id/upload/:jenis", controllers.DeleteFileTemplateSertifikat)
 
+			// ── TEMPLATE SURAT PENERIMAAN (banyak template + tata letak) ──
+			admin.GET("/template-surat", controllers.GetAllTemplateSurat)
+			admin.GET("/template-surat/bawaan", controllers.GetTataLetakBawaanSurat)
+			admin.GET("/template-surat/:id", controllers.GetTemplateSurat)
+			admin.POST("/template-surat", controllers.CreateTemplateSurat)
+			admin.PUT("/template-surat/:id", controllers.UpdateTemplateSurat)
+			admin.DELETE("/template-surat/:id", controllers.DeleteTemplateSurat)
+			admin.POST("/template-surat/:id/duplikat", controllers.DuplikatTemplateSurat)
+			admin.GET("/template-surat/:id/pratinjau", controllers.PratinjauTemplateSurat)
+			admin.GET("/template-surat/:id/peta", controllers.PetaTemplateSurat)
+			admin.POST("/template-surat/:id/upload/:jenis", controllers.UploadFileTemplateSurat)
+			admin.DELETE("/template-surat/:id/upload/:jenis", controllers.DeleteFileTemplateSurat)
+
 			// kelola akun peserta
 			admin.POST("/pendaftaran/:id/buat-akun-peserta", controllers.CreateAkunPeserta)
 			admin.GET("/akun-peserta", controllers.GetAllAkunPeserta)
@@ -324,6 +349,23 @@ func SetupRoutes(router *gin.Engine) {
 
 			// Admin menerima atau menolak pendaftaran magang
 			admin.PUT("/pendaftaran/:id/status", controllers.UpdateStatusPendaftaranMagang)
+
+			// ── SURAT PENERIMAAN MAGANG ──
+			admin.GET("/surat-penerimaan", controllers.GetAllSuratPenerimaan)
+			admin.GET("/surat-penerimaan/:id", controllers.GetSuratPenerimaan)
+			admin.GET("/surat-penerimaan/:id/unduh", controllers.DownloadSuratPenerimaan)
+			admin.POST("/surat-penerimaan", controllers.CreateSuratPenerimaan)
+			admin.POST("/surat-penerimaan/:id/kirim-email", controllers.KirimUlangEmailSuratPenerimaan)
+			// Pratinjau draf: hanya menghasilkan PDF sementara, tidak menyimpan apa pun
+			admin.POST("/surat-penerimaan/pratinjau", controllers.PratinjauSuratPenerimaan)
+			admin.PUT("/surat-penerimaan/:id", controllers.UpdateSuratPenerimaan)
+			admin.DELETE("/surat-penerimaan/:id", controllers.DeleteSuratPenerimaan)
+
+			// pengaturan surat penerimaan (kop, redaksi, penandatangan)
+			admin.GET("/pengaturan-surat", controllers.GetPengaturanSuratPenerimaan)
+			admin.PUT("/pengaturan-surat", controllers.UpdatePengaturanSuratPenerimaan)
+			admin.POST("/pengaturan-surat/upload/:jenis", controllers.UploadFilePengaturanSurat)
+			admin.DELETE("/pengaturan-surat/upload/:jenis", controllers.DeleteFilePengaturanSurat)
 
 			// ── CHAT ADMIN ──
 			// Semua sesi chat yang masuk

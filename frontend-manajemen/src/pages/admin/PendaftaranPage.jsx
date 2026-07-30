@@ -9,6 +9,8 @@ import Pagination from "../../components/manajemen/admin/pendaftaran/Pagination"
 import DetailModal from "../../components/manajemen/admin/pendaftaran/DetailModal";
 import ReviewModal from "../../components/manajemen/admin/pendaftaran/ReviewModal";
 import { getAllPendaftaran, getAllBidang, createAkunPeserta } from "../../services/adminService";
+import { getAllSuratPenerimaan } from "../../services/suratPenerimaanService";
+import SuratPenerimaanModal from "../../components/manajemen/admin/surat/SuratPenerimaanModal";
 import { exportPendaftaranToExcel } from "../../utils/exportExcel";
 import { exportPendaftaranToCsv } from "../../utils/exportCsv";
 import { exportPendaftaranToPdf } from "../../utils/exportPdf";
@@ -34,6 +36,10 @@ const PendaftaranPage = () => {
   const [sortBy, setSortBy] = useState("terbaru");
   const [columnSort, setColumnSort] = useState({ key: null, direction: null });
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  // Peta pendaftaran_id → data surat penerimaan, untuk menandai baris mana yang
+  // suratnya sudah terbit.
+  const [suratMap, setSuratMap] = useState({});
+  const [selectedSurat, setSelectedSurat] = useState(null);
 
   const [statusList, setStatusList] = useState(["menunggu"]);
   const [bidang, setBidang] = useState("");
@@ -83,8 +89,22 @@ const PendaftaranPage = () => {
 
   const fetchData = async () => {
     try {
-      const [pRes, bRes] = await Promise.all([getAllPendaftaran(), getAllBidang().catch(() => null)]);
+      const [pRes, bRes, sRes] = await Promise.all([
+        getAllPendaftaran(),
+        getAllBidang().catch(() => null),
+        getAllSuratPenerimaan().catch(() => null),
+      ]);
       setList(pRes.data.data || []);
+
+      // Bentuk peta surat; nama field dibaca fleksibel agar tetap jalan
+      // baik saat backend mengirim daftar surat maupun daftar pendaftar+surat.
+      const peta = {};
+      (sRes?.data?.data || []).forEach((item) => {
+        const srt = item.surat || (item.nomor_surat ? item : null);
+        const pid = item.pendaftaran_id ?? item.pendaftaran_magang_id ?? srt?.pendaftaran_magang_id;
+        if (pid && srt) peta[pid] = srt;
+      });
+      setSuratMap(peta);
 
       const bidangFromDB = bRes ? (bRes.data.data || []).map((b) => b.nama) : [];
       const bidangFromData = [...new Set((pRes.data.data || []).map((p) => p.posisi_bidang).filter(Boolean))];
@@ -323,6 +343,8 @@ const PendaftaranPage = () => {
                 onReview={setSelectedReview}
                 onVerifikasi={setSelectedVerifikasi}
                 onBuatAkun={handleBuatAkun}
+                onSurat={setSelectedSurat}
+                suratMap={suratMap}
                 columnSort={columnSort}
                 setColumnSort={setColumnSort}
               />
@@ -352,6 +374,15 @@ const PendaftaranPage = () => {
           pendaftaran={selectedReview}
           onClose={() => setSelectedReview(null)}
           onUpdated={fetchData}
+        />
+      )}
+
+      {selectedSurat && (
+        <SuratPenerimaanModal
+          pendaftaran={selectedSurat}
+          surat={suratMap[selectedSurat.id] || null}
+          onClose={() => setSelectedSurat(null)}
+          onSaved={fetchData}
         />
       )}
 

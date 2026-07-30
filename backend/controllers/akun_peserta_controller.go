@@ -127,6 +127,18 @@ func CreateAkunPeserta(c *gin.Context) {
 		}
 	}()
 
+	// Notifikasi in-app: peserta baru belum punya mentor pembimbing
+	if pendaftaran.MentorID == nil {
+		go services.KirimNotifikasiAdmin(
+			"mentor_belum_ditugaskan",
+			"Mentor belum ditugaskan",
+			fmt.Sprintf("Akun %s sudah dibuat, tetapi mentor pembimbing belum ditentukan.", pendaftaran.NamaLengkap),
+			"pendaftaran_magangs", &pendaftaran.ID,
+			"/admin/peserta",
+			"tinggi", true,
+		)
+	}
+
 	utils.SuccessResponse(c, http.StatusCreated, "Akun peserta berhasil dibuat dan kredensial telah dikirim ke email", gin.H{
 		"id":          user.ID,
 		"nama":        user.Nama,

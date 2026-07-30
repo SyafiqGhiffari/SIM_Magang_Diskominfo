@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette, CalendarCheck, ClipboardList, BarChart3 } from "lucide-react";
+import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette, CalendarCheck, ClipboardList, BarChart3, FileSignature, MailCheck, LayoutTemplate } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import ChatFloatingWidget from "../components/manajemen/admin/chat/ChatFloatingWidget";
 import { useManajemenTheme } from "../context/useManajemenTheme";
@@ -21,6 +21,16 @@ const navItems = [
   },
   { type: "section", label: "Sistem Pendaftaran" },
   { key: "pendaftaran", to: "/admin/pendaftaran", label: "Kelola Pendaftaran", icon: <FileText className="w-[18px] h-[18px] shrink-0" /> },
+  {
+    type: "dropdown",
+    key: "surat",
+    label: "Surat Penerimaan",
+    icon: <FileSignature className="w-[18px] h-[18px] shrink-0" />,
+    children: [
+      { key: "surat-penerimaan", to: "/admin/surat-penerimaan", label: "Daftar Surat", icon: <MailCheck className="w-4 h-4 shrink-0" /> },
+      { key: "surat-template", to: "/admin/surat-penerimaan/template", label: "Template Surat", icon: <LayoutTemplate className="w-4 h-4 shrink-0" /> },
+    ],
+  },
   { key: "faq", to: "/admin/faq", label: "FAQ & Quick Action", icon: <HelpCircle className="w-[18px] h-[18px] shrink-0" /> },
   { type: "section", label: "Sistem Manajemen" },
   {
@@ -60,6 +70,8 @@ const navItems = [
 const tabTitles = {
   dashboard: { title: "Dashboard", desc: "Ringkasan aktivitas sistem magang" },
   pendaftaran: { title: "Kelola Pendaftaran", desc: "Verifikasi dan kelola berkas pendaftaran magang" },
+  "surat-penerimaan": { title: "Surat Penerimaan", desc: "Terbitkan surat penerimaan magang peserta yang telah diterima" },
+  "surat-template": { title: "Template Surat", desc: "Atur kop, redaksi, gambar, dan penataan tulisan surat penerimaan" },
   bidang: { title: "Kelola Bidang", desc: "Atur daftar bidang penempatan magang" },
   mentor: { title: "Kelola Mentor", desc: "Kelola akun mentor dan penugasan bidangnya" },
   peserta: { title: "Kelola Peserta", desc: "Kelola akun peserta magang yang telah diterima" },
@@ -113,6 +125,8 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
   const activeKey =
     location.pathname === "/admin" ? "dashboard" :
     location.pathname.startsWith("/admin/pendaftaran") ? "pendaftaran" :
+    location.pathname.startsWith("/admin/surat-penerimaan/template") ? "surat-template" :
+    location.pathname.startsWith("/admin/surat-penerimaan") ? "surat-penerimaan" :
     location.pathname.startsWith("/admin/bidang") ? "bidang" :
     location.pathname.startsWith("/admin/mentor") ? "mentor" :
     location.pathname.startsWith("/admin/peserta") ? "peserta" :

@@ -50,7 +50,11 @@ type PendaftaranMagang struct {
 	DetailVerifikasi  string `gorm:"type:text" json:"detail_verifikasi"`
 	CatatanPeserta    string `gorm:"type:text" json:"catatan_peserta"`
 
-	SuratPenerimaan string `gorm:"type:varchar(255)" json:"surat_penerimaan"`
+	// Relasi ke surat penerimaan yang sudah diterbitkan admin (nil = belum ada).
+	// Menggantikan field lama `SuratPenerimaan string` yang hanya menyimpan
+	// path file yang sebenarnya tidak pernah dibuat.
+	SuratPenerimaanID *uint            `json:"surat_penerimaan_id"`
+	SuratPenerimaan   *SuratPenerimaan `gorm:"foreignKey:SuratPenerimaanID" json:"surat_penerimaan,omitempty"`
 
 	AkunPesertaID *uint          `json:"akun_peserta_id"`
 	AkunPeserta   *UserManajemen `gorm:"foreignKey:AkunPesertaID" json:"akun_peserta,omitempty"`

@@ -114,7 +114,8 @@ func TemplateStatusPendaftaran(nama string, status string, catatan string) strin
 		pesan = "Pendaftaran Anda perlu diperbaiki. Silakan cek catatan admin dan unggah ulang dokumen yang diminta."
 		badgeColor, badgeText, badgeLabel, iconEntity = "#fef3c7", "#92400e", "Perlu Revisi", "&#9888;"
 	case "diterima":
-		pesan = "Selamat, pendaftaran magang Anda telah diterima."
+		pesan = "Selamat, pendaftaran magang Anda telah diterima. " +
+			"Surat penerimaan resmi akan dikirim menyusul ke email ini setelah diterbitkan oleh admin."
 		badgeColor, badgeText, badgeLabel, iconEntity = "#d1fae5", "#065f46", "Diterima", "&#9989;"
 	case "ditolak":
 		pesan = "Mohon maaf, pendaftaran magang Anda belum dapat diterima."

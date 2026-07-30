@@ -29,6 +29,13 @@ func main() {
 	// menjadi read-only, tanpa memblokir loginnya.
 	services.JalankanSchedulerStatusMagang()
 
+	// Notifikasi in-app (tanpa email) untuk web manajemen.
+	services.InitNotifikasi(config.DB)
+
+	// Pengingat harian pukul 07.00 untuk admin: pendaftaran tertunda,
+	// akun peserta belum dibuat, mentor belum ditugaskan, sertifikat pending.
+	services.MulaiPengingatNotifikasiAdmin(config.DB)
+
 	router := gin.Default()
 
 	// Batas maksimal ukuran total form-data (6 file x 10MB + field lain)
@@ -44,6 +51,10 @@ func main() {
 
 	// Static file untuk menyajikan file yang diunggah
 	router.Static("/uploads", "./uploads")
+
+	// Aset bawaan aplikasi (logo instansi untuk kop surat, dll) supaya
+	// pratinjau di frontend bisa memakai gambar yang sama dengan PDF.
+	router.Static("/assets", "./assets")
 
 	// Endpoint root untuk pengecekan server
 	router.GET("/", func(c *gin.Context) {

@@ -351,6 +351,17 @@ func CreatePendaftaranMagang(c *gin.Context) {
 		}
 	}()
 
+	// Notifikasi in-app untuk admin (tanpa email)
+	go services.KirimNotifikasiAdmin(
+		"pendaftaran_baru",
+		"Pendaftaran magang baru",
+		fmt.Sprintf("%s (%s) mendaftar untuk bidang %s.",
+			pendaftaran.NamaLengkap, pendaftaran.KategoriPendaftar, pendaftaran.PosisiBidang),
+		"pendaftaran_magangs", &pendaftaran.ID,
+		fmt.Sprintf("/admin/pendaftaran?id=%d", pendaftaran.ID),
+		"tinggi", false,
+	)
+
 	utils.SuccessResponse(c, http.StatusCreated, "Pendaftaran magang berhasil dikirim", pendaftaran)
 }
 
@@ -445,11 +456,13 @@ func UpdateStatusPendaftaranMagang(c *gin.Context) {
 		if input.TanggalMulai != "" {
 			pendaftaran.TanggalMulai = input.TanggalMulai
 		}
-		pendaftaran.SuratPenerimaan = fmt.Sprintf("surat-penerimaan/pendaftaran-%s.pdf", id)
 	}
 
+	// Kalau keputusan dibatalkan/diubah, surat yang sudah terbit harus dicabut
+	// lewat menu Surat Penerimaan, bukan dihapus diam-diam di sini.
+	// Yang dilakukan hanya melepas tautannya bila status bukan lagi 'diterima'.
 	if input.StatusPendaftaran != "diterima" {
-		pendaftaran.SuratPenerimaan = ""
+		pendaftaran.SuratPenerimaanID = nil
 	}
 
 	if err := config.DB.Save(&pendaftaran).Error; err != nil {
@@ -472,6 +485,30 @@ func UpdateStatusPendaftaranMagang(c *gin.Context) {
 				log.Println("Gagal mengirim email status pendaftaran:", err)
 			}
 		}()
+	}
+
+	// Notifikasi in-app: pendaftaran diterima tapi akun peserta belum dibuat
+	if pendaftaran.StatusPendaftaran == "diterima" && pendaftaran.AkunPesertaID == nil {
+		go services.KirimNotifikasiAdmin(
+			"akun_belum_dibuat",
+			"Akun peserta perlu dibuat",
+			fmt.Sprintf("%s sudah diterima. Buatkan akun peserta agar bisa mulai presensi.", pendaftaran.NamaLengkap),
+			"pendaftaran_magangs", &pendaftaran.ID,
+			"/admin/peserta",
+			"tinggi", true,
+		)
+	}
+
+	// Notifikasi in-app: pendaftaran diterima tapi surat penerimaan belum diterbitkan
+	if pendaftaran.StatusPendaftaran == "diterima" && pendaftaran.SuratPenerimaanID == nil {
+		go services.KirimNotifikasiAdmin(
+			"surat_belum_terbit",
+			"Surat penerimaan perlu diterbitkan",
+			fmt.Sprintf("%s sudah diterima. Terbitkan surat penerimaan untuk dikirim ke institusi.", pendaftaran.NamaLengkap),
+			"pendaftaran_magangs", &pendaftaran.ID,
+			"/admin/surat-penerimaan",
+			"tinggi", true,
+		)
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Status pendaftaran berhasil diperbarui", pendaftaran)
@@ -655,6 +692,16 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan revisi dokumen")
 			return
 		}
+
+		// Notifikasi in-app: admin perlu memverifikasi ulang dokumen
+		go services.KirimNotifikasiAdmin(
+			"revisi_dokumen",
+			"Revisi dokumen diterima",
+			fmt.Sprintf("%s mengirim ulang dokumen revisi dan menunggu verifikasi ulang.", pendaftaran.NamaLengkap),
+			"pendaftaran_magangs", &pendaftaran.ID,
+			fmt.Sprintf("/admin/pendaftaran?id=%d", pendaftaran.ID),
+			"tinggi", true,
+		)
 
 		utils.SuccessResponse(c, http.StatusOK, "Revisi dokumen berhasil dikirim dan menunggu review ulang admin", pendaftaran)
 	}

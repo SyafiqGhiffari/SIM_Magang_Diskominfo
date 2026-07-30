@@ -1,5 +1,34 @@
-import { useEffect, useRef, useState } from "react";
-import { Search, X, Menu } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Search, X, Menu, UserPlus, FileEdit, MessageSquare,
+  UserCog, Award, Clock, CheckCheck, Bell, FileSignature, Trash2, BellOff,
+} from "lucide-react";
+import {
+  getNotifikasi, bacaNotifikasi, bacaSemuaNotifikasi,
+  hapusNotifikasi, hapusSemuaNotifikasi,
+} from "../../../../services/notifikasiService";
+
+const NOTIF_META = {
+  pendaftaran_baru:        { icon: UserPlus,        color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  revisi_dokumen:          { icon: FileEdit,        color: "text-amber-500",   bg: "bg-amber-500/10" },
+  chat_baru:               { icon: MessageSquare,   color: "text-sky-500",     bg: "bg-sky-500/10" },
+  akun_belum_dibuat:       { icon: UserCog,         color: "text-violet-500",  bg: "bg-violet-500/10" },
+  mentor_belum_ditugaskan: { icon: UserCog,         color: "text-rose-500",    bg: "bg-rose-500/10" },
+  sertifikat_pending:      { icon: Award,           color: "text-yellow-500",  bg: "bg-yellow-500/10" },
+  pendaftaran_tertunda:    { icon: Clock,           color: "text-orange-500",  bg: "bg-orange-500/10" },
+  surat_belum_terbit:      { icon: FileSignature,   color: "text-amber-600",   bg: "bg-amber-500/10" },
+  sistem:                  { icon: Bell,            color: "text-slate-400",   bg: "bg-slate-500/10" },
+};
+
+const waktuRelatif = (iso) => {
+  const detik = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (detik < 60) return "baru saja";
+  if (detik < 3600) return `${Math.floor(detik / 60)} menit lalu`;
+  if (detik < 86400) return `${Math.floor(detik / 3600)} jam lalu`;
+  if (detik < 604800) return `${Math.floor(detik / 86400)} hari lalu`;
+  return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+};
 
 const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setIsDark, onMenuClick }) => {
   const [clock, setClock] = useState(new Date());
@@ -11,9 +40,88 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
   const mobileSearchInputRef = useRef(null);
   const mobileSearchRef = useRef(null);
 
+  const [notifList, setNotifList] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const navigate = useNavigate();
+
   const handleSearchChange = (val) => {
     setInternalSearch(val);
     onSearchChange?.(val);
+  };
+
+  // Loader murni: TIDAK memanggil setState secara sinkron — semua setState
+  // terjadi setelah await, sehingga aman dipakai di dalam callback timer.
+  const muatNotifikasi = useCallback(async () => {
+    try {
+      const res = await getNotifikasi({ limit: 15 });
+      const data = res.data?.data ?? {};
+      setNotifList(data.items ?? []);
+      setUnreadCount(data.unread_count ?? 0);
+    } catch {
+      // diamkan: notifikasi tidak boleh mengganggu alur utama
+    }
+  }, []);
+
+  // Polling tiap 45 detik.
+  // Muatan pertama dijadwalkan lewat setTimeout(0) supaya tidak ada setState
+  // sinkron di badan efek (mencegah cascading render).
+  useEffect(() => {
+    const timerAwal = setTimeout(() => {
+      muatNotifikasi();
+    }, 0);
+
+    const interval = setInterval(() => {
+      muatNotifikasi();
+    }, 45000);
+
+    return () => {
+      clearTimeout(timerAwal);
+      clearInterval(interval);
+    };
+  }, [muatNotifikasi]);
+
+  // Buka/tutup dropdown + segarkan data saat dibuka.
+  // Ini event handler, bukan efek, jadi setState di sini memang tempatnya.
+  const bukaTutupNotif = async () => {
+    const akanDibuka = !notifOpen;
+    setNotifOpen(akanDibuka);
+    if (!akanDibuka) return;
+
+    setNotifLoading(true);
+    await muatNotifikasi();
+    setNotifLoading(false);
+  };
+
+  const handleKlikNotif = async (n) => {
+    setNotifOpen(false);
+    if (!n.dibaca_pada) {
+      setNotifList((p) => p.map((x) => (x.id === n.id ? { ...x, dibaca_pada: new Date().toISOString() } : x)));
+      setUnreadCount((p) => Math.max(0, p - 1));
+      try { await bacaNotifikasi(n.id); } catch { /* abaikan */ }
+    }
+    if (n.url_tujuan) navigate(n.url_tujuan);
+  };
+
+  const handleBacaSemua = async () => {
+    const now = new Date().toISOString();
+    setNotifList((p) => p.map((x) => (x.dibaca_pada ? x : { ...x, dibaca_pada: now })));
+    setUnreadCount(0);
+    try { await bacaSemuaNotifikasi(); } catch { muatNotifikasi(); }
+  };
+
+  // Hapus satu notifikasi. stopPropagation supaya tidak ikut membuka url tujuan.
+  const handleHapusNotif = async (e, n) => {
+    e.stopPropagation();
+    setNotifList((p) => p.filter((x) => x.id !== n.id));
+    if (!n.dibaca_pada) setUnreadCount((p) => Math.max(0, p - 1));
+    try { await hapusNotifikasi(n.id); } catch { muatNotifikasi(); }
+  };
+
+  const handleHapusSemua = async () => {
+    setNotifList([]);
+    setUnreadCount(0);
+    try { await hapusSemuaNotifikasi(); } catch { muatNotifikasi(); }
   };
 
   useEffect(() => {
@@ -151,31 +259,131 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
 
         {/* Notifikasi */}
         <div className="relative" ref={notifRef}>
-          <button onClick={() => setNotifOpen(p => !p)}
+          <button onClick={bukaTutupNotif}
             className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 ${isDark ? "hover:bg-white/10 text-slate-300" : "hover:bg-slate-100 text-slate-600"} ${notifOpen ? (isDark ? "bg-white/10" : "bg-slate-100") : ""}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
             </svg>
+
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 flex min-w-[14px] h-[14px] items-center justify-center rounded-full bg-rose-500 px-[3px] text-[8.5px] font-bold leading-none tabular-nums text-white ring-[1.5px] ring-white shadow-sm dark:ring-[#161b22]">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </button>
 
           {notifOpen && (
             <div className={`absolute right-0 top-12 z-50 w-72 rounded-2xl border shadow-2xl overflow-hidden animate-[fadeslide_0.2s_ease-out] ${isDark ? "bg-[#1c2128] border-white/10 shadow-black/40" : "bg-white border-slate-200 shadow-slate-200/70"}`}>
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gradient-to-r from-[#0B1442] to-[#1E3A8A]">
-                <div className="flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                  </svg>
-                  <span className="text-xs font-extrabold text-white">Notifikasi Terkini</span>
+              <div className="relative overflow-hidden border-b border-white/10 bg-gradient-to-br from-[#0B1442] via-[#123072] to-[#004F9F] px-4 py-3">
+                <span className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-[#00A5EC]/25 blur-2xl" />
+                <div className="relative flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
+                      <Bell className="w-3.5 h-3.5 text-white" />
+                    </span>
+                    <span className="flex flex-col">
+                      <span className="text-xs font-extrabold leading-tight text-white">Notifikasi</span>
+                      <span className="text-[9.5px] font-semibold leading-tight text-white/60">
+                        {unreadCount > 0 ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleBacaSemua}
+                        title="Tandai semua sudah dibaca"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition hover:bg-white/15 hover:text-white cursor-pointer"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {notifList.length > 0 && (
+                      <button
+                        onClick={handleHapusSemua}
+                        title="Hapus semua notifikasi"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition hover:bg-rose-500/80 hover:text-white cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="py-10 text-center">
-                <div className={`mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full ${isDark ? "bg-white/5" : "bg-slate-100"}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-6 h-6 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                  </svg>
+
+              {notifLoading && notifList.length === 0 ? (
+                <div className="py-10 text-center">
+                  <p className={`text-xs font-sans ${isDark ? "text-slate-500" : "text-slate-400"}`}>Memuat notifikasi…</p>
                 </div>
-                <p className={`text-xs font-sans ${isDark ? "text-slate-500" : "text-slate-400"}`}>Belum ada notifikasi.</p>
-              </div>
+              ) : notifList.length === 0 ? (
+                <div className="py-10 text-center">
+                  <div className={`mx-auto mb-2.5 flex h-14 w-14 items-center justify-center rounded-2xl ${isDark ? "bg-white/5 ring-1 ring-white/10" : "bg-gradient-to-br from-slate-100 to-slate-50 ring-1 ring-slate-200"}`}>
+                    <BellOff className={`w-6 h-6 ${isDark ? "text-slate-500" : "text-slate-400"}`} />
+                  </div>
+                  <p className={`text-xs font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>Tidak ada notifikasi</p>
+                  <p className={`mt-0.5 text-[10.5px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>Semua pekerjaan Anda sudah tertangani.</p>
+                </div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto">
+                  {notifList.map((n) => {
+                    const meta = NOTIF_META[n.tipe] ?? NOTIF_META.sistem;
+                    const Icon = meta.icon;
+                    const belumDibaca = !n.dibaca_pada;
+                    return (
+                      <div
+                        key={n.id}
+                        className={`group/notif relative flex items-start border-b transition-colors ${
+                          isDark
+                            ? `border-white/5 hover:bg-white/5 ${belumDibaca ? "bg-white/[0.03]" : ""}`
+                            : `border-slate-100 hover:bg-slate-50/80 ${belumDibaca ? "bg-sky-50/40" : ""}`
+                        }`}
+                      >
+                        {belumDibaca && (
+                          <span className="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-[#00A5EC] to-[#004F9F]" />
+                        )}
+
+                        <button
+                          onClick={() => handleKlikNotif(n)}
+                          className="flex min-w-0 flex-1 items-start gap-3 px-3.5 py-3 pr-1 text-left cursor-pointer"
+                        >
+                          <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover/notif:scale-105 ${meta.bg}`}>
+                            <Icon className={`w-4 h-4 ${meta.color}`} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5">
+                              <span className={`truncate text-[11px] font-extrabold ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                                {n.judul}
+                              </span>
+                              {belumDibaca && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" />}
+                            </span>
+                            <span className={`mt-0.5 block text-[10.5px] leading-snug ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                              {n.pesan}
+                            </span>
+                            <span className={`mt-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
+                              isDark ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-500"
+                            }`}>
+                              <Clock className="w-2.5 h-2.5" />
+                              {waktuRelatif(n.created_at)}
+                            </span>
+                          </span>
+                        </button>
+
+                        <button
+                          onClick={(e) => handleHapusNotif(e, n)}
+                          title="Hapus notifikasi"
+                          className={`mr-2.5 mt-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg opacity-0 transition-all duration-200 group-hover/notif:opacity-100 focus:opacity-100 cursor-pointer ${
+                            isDark
+                              ? "text-slate-500 hover:bg-rose-500/15 hover:text-rose-400"
+                              : "text-slate-400 hover:bg-rose-50 hover:text-rose-500"
+                          }`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>

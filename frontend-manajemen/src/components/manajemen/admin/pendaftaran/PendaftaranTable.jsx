@@ -91,7 +91,7 @@ const SortableHeader = ({ column, columnSort, setColumnSort }) => {
   );
 };
 
-const PendaftaranTable = ({ data, onReview, onVerifikasi, onBuatAkun, columnSort = { key: null, direction: null }, setColumnSort = () => {} }) => {
+const PendaftaranTable = ({ data, onReview, onVerifikasi, onBuatAkun, onSurat = () => {}, suratMap = {}, columnSort = { key: null, direction: null }, setColumnSort = () => {} }) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-[13px]">
@@ -166,8 +166,11 @@ const PendaftaranTable = ({ data, onReview, onVerifikasi, onBuatAkun, columnSort
                       verifikasiDisabled={verifikasiDisabled}
                       isFinalStatus={isFinalStatus}
                       showBuatAkun={p.status_pendaftaran === "diterima"}
-                      sudahPunyaAkun={Boolean(p.akun_peserta_id)}
+                        sudahPunyaAkun={Boolean(p.akun_peserta_id)}
                       onBuatAkun={() => onBuatAkun(p)}
+                      showSurat={p.status_pendaftaran === "diterima"}
+                      suratSudahAda={Boolean(suratMap[p.id])}
+                      onSurat={() => onSurat(p)}
                     />
                   </td>
                 </tr>

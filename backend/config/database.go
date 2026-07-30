@@ -58,6 +58,10 @@ func ConnectDatabase() {
 		&models.Presensi{},
 		&models.PenutupanPresensi{},
 		&models.PengajuanIzin{},
+		&models.Notifikasi{},
+		&models.TemplateSurat{},
+		&models.PengaturanSuratPenerimaan{},
+		&models.SuratPenerimaan{},
 	)
 
 	if err != nil {

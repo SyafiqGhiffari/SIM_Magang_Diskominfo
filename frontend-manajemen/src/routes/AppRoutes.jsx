@@ -8,6 +8,8 @@ import BidangPage from "../pages/admin/BidangPage";
 import MentorPage from "../pages/admin/MentorPage";
 import PesertaPage from "../pages/admin/PesertaPage";
 import PendaftaranPage from "../pages/admin/PendaftaranPage";
+import SuratPenerimaanPage from "../pages/admin/SuratPenerimaanPage";
+import TemplateSuratPage from "../pages/admin/TemplateSuratPage";
 import JamKerjaLiburPage from "../pages/admin/JamKerjaLiburPage";
 import DataPresensiPage from "../pages/admin/DataPresensiPage";
 import RekapPresensiPage from "../pages/admin/RekapPresensiPage";
@@ -47,6 +49,8 @@ const AppRoutes = () => {
       <Route path="/admin/mentor" element={<ProtectedRoute allowedRoles={["admin"]}><MentorPage /></ProtectedRoute>} />
       <Route path="/admin/peserta" element={<ProtectedRoute allowedRoles={["admin"]}><PesertaPage /></ProtectedRoute>} />
       <Route path="/admin/pendaftaran" element={<ProtectedRoute allowedRoles={["admin"]}><PendaftaranPage /></ProtectedRoute>} />
+      <Route path="/admin/surat-penerimaan" element={<ProtectedRoute allowedRoles={["admin"]}><SuratPenerimaanPage /></ProtectedRoute>} />
+      <Route path="/admin/surat-penerimaan/template" element={<ProtectedRoute allowedRoles={["admin"]}><TemplateSuratPage /></ProtectedRoute>} />
       <Route path="/admin/jam-kerja" element={<ProtectedRoute allowedRoles={["admin"]}><JamKerjaLiburPage /></ProtectedRoute>} />
       <Route path="/admin/presensi/rekap" element={<ProtectedRoute allowedRoles={["admin"]}><RekapPresensiPage /></ProtectedRoute>} />
       <Route path="/admin/presensi" element={<ProtectedRoute allowedRoles={["admin"]}><DataPresensiPage /></ProtectedRoute>} />

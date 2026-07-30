@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -8,6 +9,7 @@ import (
 
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
+	"sim-magang-backend/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -317,6 +319,40 @@ func SendChatMessage(c *gin.Context) {
 		})
 	}
 
+	// Notifikasi in-app untuk admin.
+	// Digabungkan per sesi (Gabungkan=true) supaya bell tidak dibanjiri.
+	var namaPengirim string
+	var pendaftar models.UserPendaftaran
+	if err := config.DB.First(&pendaftar, userID).Error; err == nil && pendaftar.Nama != "" {
+		namaPengirim = pendaftar.Nama
+	} else {
+		namaPengirim = "Pendaftar"
+	}
+
+	sesiID := session.ID
+	if botReply == nil {
+		// Tidak ada FAQ yang cocok -> benar-benar butuh balasan admin
+		go services.KirimNotifikasiAdmin(
+			"chat_baru",
+			"Pesan chat belum terjawab",
+			fmt.Sprintf("%s: \"%s\" — belum terjawab otomatis, butuh balasan admin.",
+				namaPengirim, potongTeks(body.Content, 80)),
+			"chat_sessions", &sesiID,
+			fmt.Sprintf("/admin?chat=%d", sesiID),
+			"tinggi", true,
+		)
+	} else {
+		go services.KirimNotifikasiAdmin(
+			"chat_baru",
+			"Pesan chat baru",
+			fmt.Sprintf("%s: \"%s\" — sudah dijawab otomatis oleh FAQ.",
+				namaPengirim, potongTeks(body.Content, 80)),
+			"chat_sessions", &sesiID,
+			fmt.Sprintf("/admin?chat=%d", sesiID),
+			"rendah", true,
+		)
+	}
+
 	resp := gin.H{
 		"success":     true,
 		"message":     "Pesan berhasil dikirim",
@@ -328,6 +364,15 @@ func SendChatMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, resp)
+}
+
+// potongTeks memendekkan isi pesan agar rapi di dropdown notifikasi.
+func potongTeks(s string, maks int) string {
+	r := []rune(s)
+	if len(r) <= maks {
+		return s
+	}
+	return string(r[:maks]) + "…"
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -502,7 +547,10 @@ func AdminGetChatSessions(c *gin.Context) {
 	for _, s := range sessions {
 		// Ambil pesan terakhir
 		var lastMsg models.ChatMessage
-		config.DB.Where("session_id = ?", s.ID).Order("created_at desc").First(&lastMsg)
+		config.DB.Where("session_id = ?", s.ID).
+			Order("created_at desc").
+			Limit(1).
+			Find(&lastMsg)
 
 		result = append(result, SessionResp{
 			ID:               s.ID,
