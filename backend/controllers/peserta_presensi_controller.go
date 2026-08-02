@@ -208,7 +208,10 @@ func PresensiMasuk(c *gin.Context) {
 	presensi.Keterangan = keterangan
 	presensi.Sumber = "peserta"
 	presensi.DicatatOlehID = &pesertaID
+
+	fotoMasukLama := ""
 	if pathFoto != "" {
+		fotoMasukLama = presensi.FotoMasuk // foto lama (kasus record ditimpa)
 		presensi.FotoMasuk = pathFoto
 	}
 	if presensi.PendaftaranID == nil {
@@ -227,6 +230,9 @@ func PresensiMasuk(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan presensi masuk")
 		return
 	}
+
+	// Simpan sukses → hapus foto selfie lama yang sudah tidak dipakai
+	gantiFile(fotoMasukLama, pathFoto)
 
 	pesan := "Presensi masuk berhasil dicatat"
 	if hasil.Status == "terlambat" {
@@ -272,7 +278,10 @@ func PresensiPulang(c *gin.Context) {
 	}
 
 	presensi.JamPulang = &jam
+
+	fotoPulangLama := ""
 	if pathFoto != "" {
+		fotoPulangLama = presensi.FotoPulang
 		presensi.FotoPulang = pathFoto
 	}
 	if catatan := strings.TrimSpace(c.PostForm("keterangan")); catatan != "" {
@@ -284,6 +293,8 @@ func PresensiPulang(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan presensi pulang")
 		return
 	}
+
+	gantiFile(fotoPulangLama, pathFoto)
 
 	utils.SuccessResponse(c, http.StatusOK, "Presensi pulang berhasil dicatat", presensi)
 }
@@ -432,11 +443,28 @@ func BuatPengajuanIzin(c *gin.Context) {
 		FileBukti:      pathBukti,
 		Status:         "menunggu",
 	}
+	// Kumpulkan bukti dari pengajuan lama yang DITOLAK pada rentang tanggal sama,
+	// karena file-nya sudah tidak berguna lagi setelah diajukan ulang.
+	var buktiLama []string
+	if pathBukti != "" {
+		var izinDitolak []models.PengajuanIzin
+		config.DB.
+			Where("peserta_id = ? AND status = 'ditolak'", pesertaID).
+			Where("tanggal_mulai <= ? AND tanggal_selesai >= ?", selesai, mulai).
+			Where("file_bukti <> ''").
+			Find(&izinDitolak)
+		for _, lama := range izinDitolak {
+			buktiLama = append(buktiLama, lama.FileBukti)
+		}
+	}
+
 	if err := config.DB.Create(&izin).Error; err != nil {
 		cleanupUploadedFiles(pathBukti)
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan pengajuan izin")
 		return
 	}
+
+	hapusFileLama(buktiLama...)
 
 	go kirimEmailPengajuanIzinBaru(izin.ID)
 

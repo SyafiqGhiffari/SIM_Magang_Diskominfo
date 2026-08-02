@@ -132,6 +132,38 @@ func cleanupUploadedFiles(filePaths ...string) {
 	}
 }
 
+// hapusFileLama menghapus file fisik lama dari folder uploads.
+// Aman dipanggil dengan string kosong, path duplikat, atau path di luar uploads
+// (path di luar folder uploads sengaja diabaikan demi keamanan).
+func hapusFileLama(paths ...string) {
+	for _, p := range paths {
+		p = strings.TrimSpace(strings.ReplaceAll(p, "\\", "/"))
+		if p == "" {
+			continue
+		}
+		p = strings.TrimPrefix(p, "/")
+
+		// Proteksi: hanya boleh menghapus di dalam folder uploads
+		if !strings.HasPrefix(p, "uploads/") || strings.Contains(p, "..") {
+			continue
+		}
+		if info, err := os.Stat(p); err != nil || info.IsDir() {
+			continue
+		}
+		_ = os.Remove(p)
+	}
+}
+
+// gantiFile menghapus pathLama HANYA jika benar-benar diganti file baru yang berbeda.
+func gantiFile(pathLama, pathBaru string) {
+	lama := strings.ReplaceAll(strings.TrimSpace(pathLama), "\\", "/")
+	baru := strings.ReplaceAll(strings.TrimSpace(pathBaru), "\\", "/")
+	if lama == "" || baru == "" || lama == baru {
+		return
+	}
+	hapusFileLama(lama)
+}
+
 // Fungsi untuk peserta mengirim pendaftaran magang
 func CreatePendaftaranMagang(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
@@ -143,6 +175,15 @@ func CreatePendaftaranMagang(c *gin.Context) {
 	var existingPendaftaran models.PendaftaranMagang
 	if err := config.DB.Where("user_pendaftaran_id = ?", userID).First(&existingPendaftaran).Error; err == nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Anda sudah pernah mengirim pendaftaran magang")
+		return
+	}
+
+	// Tolak pengiriman jika admin sedang menutup pendaftaran atau di luar periode.
+	if dibuka, alasan := PendaftaranSedangDibuka(); !dibuka {
+		if alasan == "" {
+			alasan = "Pendaftaran magang sedang ditutup"
+		}
+		utils.ErrorResponse(c, http.StatusForbidden, alasan)
 		return
 	}
 
@@ -581,6 +622,7 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 	}
 
 	var newUploadedFiles []string
+	var fileLamaDiganti []string // <— path lama yang akan dihapus setelah DB sukses
 
 	// 2. Setelah semua file valid, baru simpan file yang dikirim
 	if cvHeader != nil {
@@ -591,6 +633,7 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 		}
 
 		newUploadedFiles = append(newUploadedFiles, fileCV)
+		fileLamaDiganti = append(fileLamaDiganti, pendaftaran.FileCV) // simpan yang lama
 		pendaftaran.FileCV = fileCV
 	}
 
@@ -603,6 +646,7 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 		}
 
 		newUploadedFiles = append(newUploadedFiles, fileSuratPengantar)
+		fileLamaDiganti = append(fileLamaDiganti, pendaftaran.FileSuratPengantar)
 		pendaftaran.FileSuratPengantar = fileSuratPengantar
 	}
 
@@ -615,6 +659,7 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 		}
 
 		newUploadedFiles = append(newUploadedFiles, fileTranskrip)
+		fileLamaDiganti = append(fileLamaDiganti, pendaftaran.FileTranskrip)
 		pendaftaran.FileTranskrip = fileTranskrip
 	}
 
@@ -627,6 +672,7 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 		}
 
 		newUploadedFiles = append(newUploadedFiles, filePortofolio)
+		fileLamaDiganti = append(fileLamaDiganti, pendaftaran.FilePortofolio)
 		pendaftaran.FilePortofolio = filePortofolio
 	}
 
@@ -639,6 +685,7 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 		}
 
 		newUploadedFiles = append(newUploadedFiles, filePasFoto)
+		fileLamaDiganti = append(fileLamaDiganti, pendaftaran.FilePasFoto)
 		pendaftaran.FilePasFoto = filePasFoto
 	}
 
@@ -651,6 +698,7 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 		}
 
 		newUploadedFiles = append(newUploadedFiles, fileProposalMagang)
+		fileLamaDiganti = append(fileLamaDiganti, pendaftaran.FileProposalMagang)
 		pendaftaran.FileProposalMagang = fileProposalMagang
 	}
 
@@ -688,10 +736,14 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 		pendaftaran.CatatanPeserta = c.PostForm("catatan")
 
 		if err := config.DB.Save(&pendaftaran).Error; err != nil {
+			// DB gagal → buang file BARU, file lama tetap dipertahankan
 			cleanupUploadedFiles(newUploadedFiles...)
 			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan revisi dokumen")
 			return
 		}
+
+		// DB sukses → baru hapus file lama yang sudah tidak direferensikan lagi
+		hapusFileLama(fileLamaDiganti...)
 
 		// Notifikasi in-app: admin perlu memverifikasi ulang dokumen
 		go services.KirimNotifikasiAdmin(

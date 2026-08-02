@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette, CalendarCheck, ClipboardList, BarChart3, FileSignature, MailCheck, LayoutTemplate } from "lucide-react";
+import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette, CalendarCheck, ClipboardList, BarChart3, FileSignature, MailCheck, LayoutTemplate, Inbox, MessagesSquare, Globe } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import ChatFloatingWidget from "../components/manajemen/admin/chat/ChatFloatingWidget";
 import { useManajemenTheme } from "../context/useManajemenTheme";
@@ -31,7 +31,17 @@ const navItems = [
       { key: "surat-template", to: "/admin/surat-penerimaan/template", label: "Template Surat", icon: <LayoutTemplate className="w-4 h-4 shrink-0" /> },
     ],
   },
-  { key: "faq", to: "/admin/faq", label: "FAQ & Quick Action", icon: <HelpCircle className="w-[18px] h-[18px] shrink-0" /> },
+  {
+    type: "dropdown",
+    key: "bantuan",
+    label: "Pusat Bantuan",
+    icon: <MessagesSquare className="w-[18px] h-[18px] shrink-0" />,
+    children: [
+      { key: "faq", to: "/admin/faq", label: "FAQ & Quick Action", icon: <HelpCircle className="w-4 h-4 shrink-0" /> },
+      { key: "pertanyaan", to: "/admin/pertanyaan", label: "Pertanyaan Masuk", icon: <Inbox className="w-4 h-4 shrink-0" /> },
+      { key: "analitik-faq", to: "/admin/analitik-faq", label: "Analitik FAQ", icon: <BarChart3 className="w-4 h-4 shrink-0" /> },
+    ],
+  },
   { type: "section", label: "Sistem Manajemen" },
   {
     type: "dropdown",
@@ -65,6 +75,13 @@ const navItems = [
       { key: "sertifikat-template", to: "/admin/sertifikat/template", label: "Template Sertifikat", icon: <Palette className="w-4 h-4 shrink-0" /> },
     ],
   },
+  { type: "section", label: "Pengaturan Situs" },
+  {
+    key: "pengaturan-landing",
+    to: "/admin/pengaturan-landing",
+    label: "Landing Page",
+    icon: <Globe className="w-[18px] h-[18px] shrink-0" />,
+  },
 ];
 
 const tabTitles = {
@@ -76,6 +93,8 @@ const tabTitles = {
   mentor: { title: "Kelola Mentor", desc: "Kelola akun mentor dan penugasan bidangnya" },
   peserta: { title: "Kelola Peserta", desc: "Kelola akun peserta magang yang telah diterima" },
   faq: { title: "FAQ & Quick Action", desc: "Kelola jawaban otomatis chatbot" },
+  pertanyaan: { title: "Pertanyaan Masuk", desc: "Pertanyaan peserta yang belum terjawab" },
+  "analitik-faq": { title: "Analitik FAQ", desc: "Performa jawaban otomatis dan celah pengetahuan chatbot" },
   akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
   "jam-kerja": { title: "Jam Kerja & Hari Libur", desc: "Atur jam kerja harian dan hari libur untuk presensi peserta" },
   "presensi-data": { title: "Data Presensi", desc: "Pantau kehadiran harian peserta magang" },
@@ -130,7 +149,9 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
     location.pathname.startsWith("/admin/bidang") ? "bidang" :
     location.pathname.startsWith("/admin/mentor") ? "mentor" :
     location.pathname.startsWith("/admin/peserta") ? "peserta" :
+    location.pathname.startsWith("/admin/analitik-faq") ? "analitik-faq" :
     location.pathname.startsWith("/admin/faq") ? "faq" :
+    location.pathname.startsWith("/admin/pertanyaan") ? "pertanyaan" :
     location.pathname.startsWith("/admin/jam-kerja") ? "jam-kerja" :
     location.pathname.startsWith("/admin/presensi/rekap") ? "presensi-rekap" :
     location.pathname.startsWith("/admin/presensi") ? "presensi-data" :

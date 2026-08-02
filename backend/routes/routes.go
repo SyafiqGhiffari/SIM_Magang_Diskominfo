@@ -18,6 +18,17 @@ func SetupRoutes(router *gin.Engine) {
 
 	api.GET("/bidang", controllers.GetPublicBidang)
 
+	// Endpoint publik: seluruh konten landing page dalam satu response
+	api.GET("/landing", controllers.GetLandingPublik)
+
+	// Endpoint publik: FAQ untuk landing page (tanpa login)
+	// Mendukung query ?kategori= dan ?cari=
+	api.GET("/faq", controllers.GetFaqPublik)
+	// Saran jawaban otomatis saat calon peserta mengetik pertanyaan
+	api.POST("/faq/saran", controllers.SaranFaqPublik)
+	// Kirim pertanyaan dari form halaman FAQ
+	api.POST("/faq/ask", controllers.KirimPertanyaanPublik)
+
 	// Auth Web Pendaftaran
 	pendaftaran := api.Group("/pendaftaran")
 	{
@@ -129,6 +140,10 @@ func SetupRoutes(router *gin.Engine) {
 			chat.GET("/quick-actions", controllers.GetQuickActions)
 			// Gunakan quick action — catat ke riwayat chat
 			chat.POST("/quick-action/:id", controllers.UseQuickAction)
+			// Buka jawaban dari chip "Mungkin maksud Anda"
+			chat.POST("/saran/:id", controllers.BukaSaranFAQ)
+			// Nilai jawaban bot dengan jempol naik/turun
+			chat.POST("/faq/:id/feedback", controllers.KirimFeedbackFAQ)
 		}
 	}
 
@@ -141,7 +156,7 @@ func SetupRoutes(router *gin.Engine) {
 			middlewares.AuthMiddleware("manajemen"),
 			controllers.LogoutManajemen,
 		)
-		
+
 		manajemen.PUT("/ganti-password",
 			middlewares.AuthMiddleware("manajemen"),
 			controllers.GantiPasswordManajemen,
@@ -361,6 +376,34 @@ func SetupRoutes(router *gin.Engine) {
 			admin.PUT("/surat-penerimaan/:id", controllers.UpdateSuratPenerimaan)
 			admin.DELETE("/surat-penerimaan/:id", controllers.DeleteSuratPenerimaan)
 
+			// ── PENGATURAN LANDING PAGE (identitas, kontak, status pendaftaran) ──
+			admin.GET("/pengaturan-landing", controllers.GetPengaturanLanding)
+			admin.PUT("/pengaturan-landing", controllers.UpdatePengaturanLanding)
+			admin.POST("/pengaturan-landing/upload/:jenis", controllers.UploadFilePengaturanLanding)
+			admin.DELETE("/pengaturan-landing/upload/:jenis", controllers.DeleteFilePengaturanLanding)
+
+			// slide gambar hero landing page
+			admin.GET("/hero-slide", controllers.GetHeroSlides)
+			admin.POST("/hero-slide", controllers.CreateHeroSlide)
+			admin.PUT("/hero-slide/:id", controllers.UpdateHeroSlide)
+			admin.DELETE("/hero-slide/:id", controllers.DeleteHeroSlide)
+
+			// pengaturan tampilan bidang di landing page
+			admin.GET("/bidang-tampilan", controllers.GetTampilanBidang)
+			admin.PUT("/bidang-tampilan/:id", controllers.UpdateTampilanBidang)
+
+			// konten landing page (persyaratan, dokumen, alur, benefit, misi, tujuan, keunggulan)
+			admin.GET("/landing-konten/:jenis", controllers.GetKontenLanding)
+			admin.POST("/landing-konten/:jenis", controllers.CreateKontenLanding)
+			admin.PUT("/landing-konten/:jenis/urutan", controllers.UrutkanKontenLanding)
+			admin.PUT("/landing-konten-item/:id", controllers.UpdateKontenLanding)
+			admin.DELETE("/landing-konten-item/:id", controllers.DeleteKontenLanding)
+			
+			// menu navigasi landing page (route dikunci, hanya label & urutan yang bisa diubah)
+			admin.GET("/landing-menu", controllers.GetMenuLanding)
+			admin.PUT("/landing-menu/urutan", controllers.UrutkanMenuLanding)
+			admin.PUT("/landing-menu/:id", controllers.UpdateMenuLanding)
+
 			// pengaturan surat penerimaan (kop, redaksi, penandatangan)
 			admin.GET("/pengaturan-surat", controllers.GetPengaturanSuratPenerimaan)
 			admin.PUT("/pengaturan-surat", controllers.UpdatePengaturanSuratPenerimaan)
@@ -380,8 +423,22 @@ func SetupRoutes(router *gin.Engine) {
 			// ── FAQ CRUD ──
 			admin.GET("/faq", controllers.AdminGetFAQ)
 			admin.POST("/faq", controllers.AdminCreateFAQ)
+			// PENTING: rute statis harus didaftarkan SEBELUM rute ber-parameter
+			admin.GET("/faq/pratinjau", controllers.AdminPratinjauQuickAction)
+			admin.GET("/faq/analitik", controllers.AdminAnalitikFaq)
+			admin.GET("/faq/ekspor", controllers.AdminEksporFaqCSV)
+			admin.GET("/faq/contoh-impor", controllers.AdminContohImporCSV)
+			admin.POST("/faq/massal", controllers.AdminAksiMassalFAQ)
+			admin.POST("/faq/impor", controllers.AdminImporFaqCSV)
+			admin.PUT("/faq/urutan", controllers.AdminReorderFAQ)
 			admin.PUT("/faq/:id", controllers.AdminUpdateFAQ)
 			admin.DELETE("/faq/:id", controllers.AdminDeleteFAQ)
+
+			// ── PERTANYAAN MASUK (bahan FAQ baru) ──
+			// Sengaja memakai prefix terpisah agar tidak bentrok dengan /faq/:id
+			admin.GET("/pertanyaan-faq", controllers.AdminGetPertanyaanFaq)
+			admin.PUT("/pertanyaan-faq/:id", controllers.AdminUpdatePertanyaanFaq)
+			admin.DELETE("/pertanyaan-faq/:id", controllers.AdminDeletePertanyaanFaq)
 		}
 	}
 }

@@ -1,4 +1,9 @@
+import { useLanding } from "../../context/landingContext";
+
 const AboutSection = () => {
+  const { config } = useLanding();
+  const t = config.tentang || {};
+
   return (
     <section className="bg-slate-50 px-6 py-20 relative overflow-hidden">
       <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-2 md:items-center">
@@ -34,18 +39,20 @@ const AboutSection = () => {
 
         {/* Right side: Content */}
         <div className="text-left">
-          <span className="inline-block rounded-md bg-brand-light/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-medium">
-            Mengenal Kami
-          </span>
+          {t.about_badge && (
+            <span className="inline-block rounded-md bg-brand-light/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-medium">
+              {t.about_badge}
+            </span>
+          )}
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-brand-dark md:text-4xl">
-            Tentang Program Magang
+            {t.about_judul}
           </h2>
-          <p className="mt-6 text-base leading-relaxed text-slate-600">
-            Program magang Diskominfo Ponorogo merupakan sarana pembelajaran dan pengenalan dunia kerja di lingkungan pemerintahan bagi mahasiswa dan siswa SMA/SMK/MA.
-          </p>
-          <p className="mt-4 text-base leading-relaxed text-slate-600">
-            Kami memberikan ruang seluas-luasnya bagi talenta muda untuk berkontribusi dalam digitalisasi daerah, memahami tata kelola informasi publik, dan mengasah keterampilan teknis di bawah bimbingan tenaga ahli profesional.
-          </p>
+          {t.about_paragraf1 && (
+            <p className="mt-6 text-base leading-relaxed text-slate-600">{t.about_paragraf1}</p>
+          )}
+          {t.about_paragraf2 && (
+            <p className="mt-4 text-base leading-relaxed text-slate-600">{t.about_paragraf2}</p>
+          )}
         </div>
       </div>
     </section>

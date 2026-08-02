@@ -1,27 +1,15 @@
-const benefits = [
-  {
-    title: "Sertifikat Resmi",
-    desc: "Sebagai bukti kompetensi dan pengalaman berharga untuk portofolio karier Anda.",
-    icon: "🎓",
-  },
-  {
-    title: "Pengalaman Proyek",
-    desc: "Keterlibatan langsung dalam proyek strategis digitalisasi pemerintah daerah.",
-    icon: "🚀",
-  },
-  {
-    title: "Bimbingan Mentor",
-    desc: "Didampingi oleh mentor profesional ahli di setiap bidang spesialisasi.",
-    icon: "🤝",
-  },
-  {
-    title: "Penilaian Kinerja",
-    desc: "Evaluasi obyektif untuk membantu merefleksikan kompetensi magang Anda.",
-    icon: "📈",
-  },
-];
+import { useLanding } from "../../context/landingContext";
 
 const WhyChooseUs = () => {
+  const { config } = useLanding();
+  const benefits = (config.konten?.benefit || []).map((b) => ({
+    title: b.judul,
+    desc: b.deskripsi,
+    icon: b.icon || "✨",
+  }));
+
+  if (benefits.length === 0) return null;
+
   return (
     <section className="px-6 py-20 bg-white">
       <div className="mx-auto max-w-6xl text-center">

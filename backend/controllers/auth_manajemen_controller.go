@@ -340,10 +340,15 @@ func DeleteUserManajemen(c *gin.Context) {
 		config.DB.Model(&models.PendaftaranMagang{}).Where("akun_peserta_id = ?", user.ID).Update("akun_peserta_id", nil)
 	}
 
+	fotoProfilLama := user.FotoProfil
+
 	if err := config.DB.Delete(&user).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menghapus akun")
 		return
 	}
+
+	// Akun terhapus → foto profilnya tidak lagi direferensikan siapa pun
+	hapusFileLama(fotoProfilLama)
 
 	utils.SuccessResponse(c, http.StatusOK, "Akun berhasil dihapus", nil)
 }
@@ -427,13 +432,23 @@ func UploadFotoUserManajemen(c *gin.Context) {
 		return
 	}
 
-	user.FotoProfil = savePath
+	fotoLama := user.FotoProfil // simpan dulu sebelum ditimpa
+	cleanPath := strings.ReplaceAll(savePath, "\\", "/")
+
+	user.FotoProfil = cleanPath
 	if err := config.DB.Save(&user).Error; err != nil {
+		_ = os.Remove(savePath) // rollback file baru
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui foto akun")
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusOK, "Foto berhasil diunggah", gin.H{"foto_profil": user.FotoProfil})
+	// Hapus foto lama agar folder uploads tidak menumpuk
+	gantiFile(fotoLama, cleanPath)
+
+	utils.SuccessResponse(c, http.StatusOK, "Foto berhasil diunggah", gin.H{
+		"foto_profil": user.FotoProfil,
+		"foto_url":    "/" + cleanPath,
+	})
 }
 
 // CekUserBisaDihapus — dipanggil frontend sebelum dialog konfirmasi hapus mentor

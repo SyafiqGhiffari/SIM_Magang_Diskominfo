@@ -1,27 +1,15 @@
-const steps = [
-  {
-    no: "01",
-    title: "Registrasi Online",
-    desc: "Buat akun baru dan lengkapi data profil pendaftar di portal kami.",
-  },
-  {
-    no: "02",
-    title: "Isi Formulir & Dokumen",
-    desc: "Isi form pendaftaran magang dan unggah surat pengantar resmi (PDF).",
-  },
-  {
-    no: "03",
-    title: "Verifikasi Berkas",
-    desc: "Tim administrasi memvalidasi dokumen dan kesesuaian kuota divisi.",
-  },
-  {
-    no: "04",
-    title: "Pengumuman Hasil",
-    desc: "Status kelulusan dikirim via portal dan email resmi peserta.",
-  },
-];
+import { useLanding } from "../../context/landingContext";
 
 const AlurPendaftaran = () => {
+  const { config } = useLanding();
+  const steps = (config.konten?.alur || []).map((a, i) => ({
+    no: a.icon || String(i + 1).padStart(2, "0"),
+    title: a.judul,
+    desc: a.deskripsi,
+  }));
+
+  if (steps.length === 0) return null;
+
   return (
     <section className="px-6 py-20 bg-white relative overflow-hidden">
       {/* Background shape */}
@@ -43,7 +31,7 @@ const AlurPendaftaran = () => {
           <div className="absolute left-16 right-16 top-6 hidden h-[2px] bg-gradient-to-r from-brand-dark via-brand-medium to-brand-light lg:block opacity-30" />
           
           {steps.map((step, idx) => (
-            <div key={step.no} className="group relative flex flex-col items-center text-center">
+            <div key={`${step.no}-${idx}`} className="group relative flex flex-col items-center text-center">
               {/* Animated node */}
               <div
                 className={`flex h-12 w-12 items-center justify-center rounded-full border-2 text-sm font-extrabold shadow-md transition-all duration-300 group-hover:scale-110 z-10 ${

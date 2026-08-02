@@ -48,7 +48,41 @@ export const createSertifikat = (data) => api.post("/manajemen/admin/sertifikat"
 export const updateSertifikat = (id, data) => api.put(`/manajemen/admin/sertifikat/${id}`, data);
 export const deleteSertifikat = (id) => api.delete(`/manajemen/admin/sertifikat/${id}`);
 
-//pengaturan (template) sertifikat
+// ── Pengaturan landing page ──
+export const getPengaturanLanding = () => api.get("/manajemen/admin/pengaturan-landing");
+export const updatePengaturanLanding = (data) => api.put("/manajemen/admin/pengaturan-landing", data);
+export const uploadFileLanding = (jenis, formData) =>
+  api.post(`/manajemen/admin/pengaturan-landing/upload/${jenis}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+export const deleteFileLanding = (jenis) => api.delete(`/manajemen/admin/pengaturan-landing/upload/${jenis}`);
+
+// slide gambar hero landing page
+export const getHeroSlides = () => api.get("/manajemen/admin/hero-slide");
+export const createHeroSlide = (formData) => api.post("/manajemen/admin/hero-slide", formData);
+export const updateHeroSlide = (id, formData) => api.put(`/manajemen/admin/hero-slide/${id}`, formData);
+export const deleteHeroSlide = (id) => api.delete(`/manajemen/admin/hero-slide/${id}`);
+
+// tampilan bidang magang di landing page
+export const getTampilanBidang = () => api.get("/manajemen/admin/bidang-tampilan");
+export const updateTampilanBidang = (id, data) =>
+  api.put(`/manajemen/admin/bidang-tampilan/${id}`, data);
+
+// konten landing page
+export const getKontenLanding = (jenis) => api.get(`/manajemen/admin/landing-konten/${jenis}`);
+export const createKontenLanding = (jenis, data) => api.post(`/manajemen/admin/landing-konten/${jenis}`, data);
+export const urutkanKontenLanding = (jenis, urutan) =>
+  api.put(`/manajemen/admin/landing-konten/${jenis}/urutan`, { urutan });
+export const updateKontenLanding = (id, data) => api.put(`/manajemen/admin/landing-konten-item/${id}`, data);
+export const deleteKontenLanding = (id) => api.delete(`/manajemen/admin/landing-konten-item/${id}`);
+
+// menu navigasi landing page
+export const getMenuLanding = () => api.get("/manajemen/admin/landing-menu");
+export const updateMenuLanding = (id, data) => api.put(`/manajemen/admin/landing-menu/${id}`, data);
+export const urutkanMenuLanding = (urutan) =>
+  api.put("/manajemen/admin/landing-menu/urutan", { urutan });
+
+// ── Pengaturan sertifikat ──
 export const getPengaturanSertifikat = () => api.get("/manajemen/admin/pengaturan-sertifikat");
 export const updatePengaturanSertifikat = (data) => api.put("/manajemen/admin/pengaturan-sertifikat", data);
 export const uploadFileSertifikat = (jenis, formData) => api.post(`/manajemen/admin/pengaturan-sertifikat/upload/${jenis}`, formData, {

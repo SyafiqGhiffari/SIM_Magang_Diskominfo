@@ -1,8 +1,13 @@
+import TeksKaya from "../../utils/teksKaya";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import {
   X, Send, MessageCircle, ChevronDown,
   Loader2, Headphones, Zap, Bot, Sparkles,
+  ArrowRight, Download, UserRound, ClipboardCheck,
+  FileText, CalendarClock, Award, HelpCircle, Building2,
+  ThumbsUp, ThumbsDown, Lightbulb,
 } from "lucide-react";
 import {
   getOrCreateChatSession,
@@ -12,10 +17,47 @@ import {
   getAdminStatus,
   getQuickActions,
   useQuickAction as recordQuickActionUsage,
+  bukaSaranFaq,
+  kirimFeedbackFaq,
 } from "../../services/chatService";
 
+// ─── Ikon yang boleh dipilih admin untuk tombol quick action ────────────────
+// Kunci di sini harus sama dengan nilai yang disimpan pada kolom quick_icon.
+const IKON_TERSEDIA = {
+  FileText,
+  CalendarClock,
+  Award,
+  HelpCircle,
+  Building2,
+  Download,
+  UserRound,
+  ClipboardCheck,
+  Zap,
+};
+
+// ─── Karakter visual tiap tipe aksi ─────────────────────────────────────────
+// Tipe "jawaban" sengaja tidak diberi ikon khusus supaya tetap memakai
+// palet warna berputar seperti sebelumnya.
+const GAYA_AKSI = {
+  navigasi: { ikon: ArrowRight,      warna: "#0ea5e9", petunjuk: "Buka halaman" },
+  unduh:    { ikon: Download,        warna: "#8b5cf6", petunjuk: "Unduh berkas" },
+  eskalasi: { ikon: UserRound,       warna: "#ef4444", petunjuk: "Hubungi admin" },
+  status:   { ikon: ClipboardCheck,  warna: "#10b981", petunjuk: "Status saya" },
+};
+
+// Mengubah target aksi dari backend menjadi URL yang bisa dibuka browser.
+// Target relatif ("/uploads/x.pdf") disambung ke host API, karena berkas
+// disajikan oleh backend, bukan oleh Vite.
+const bangunUrlBerkas = (target) => {
+  if (!target) return "";
+  if (target.startsWith("http://") || target.startsWith("https://")) return target;
+
+  const dasar = (import.meta.env.VITE_API_URL || "").replace(/\/api\/?$/, "");
+  return `${dasar}${target}`;
+};
+
 // ─── Bubble Pesan ────────────────────────────────────────────────────────────
-const MessageBubble = ({ msg, dk }) => {
+const MessageBubble = ({ msg, dk, faqId, nilai, onNilai }) => {
   const isUser = msg.sender_type === "user";
   const isBot = msg.sender_type === "bot";
 
@@ -38,7 +80,7 @@ const MessageBubble = ({ msg, dk }) => {
             wordBreak: "break-word",
             letterSpacing: "0.01em",
           }}>
-            {msg.content}
+            <TeksKaya teks={msg.content} />
           </div>
           <p style={{ fontSize: 10, textAlign: "right", marginTop: 4, color: dk ? "#475569" : "#94a3b8" }}>
             {time} <span style={{ color: msg.is_read_admin ? (dk ? "#38bdf8" : "#00a5ec") : "inherit", fontWeight: 800, marginLeft: 2 }}>✓</span>
@@ -85,12 +127,67 @@ const MessageBubble = ({ msg, dk }) => {
           boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
           letterSpacing: "0.01em",
         }}>
-          {msg.content}
+          <TeksKaya teks={msg.content} />
         </div>
         {isBot && (
           <p style={{ fontSize: 10, marginTop: 4, paddingLeft: 2, color: dk ? "#7c3aed" : "#a78bfa", fontStyle: "italic" }}>
             ℹ️ Pesan ini dijawab otomatis oleh sistem, bukan oleh admin
           </p>
+        )}
+
+        {/* Penilaian jawaban — hanya untuk balasan bot yang bersumber dari FAQ */}
+        {isBot && faqId && (
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 6, paddingLeft: 2 }}>
+            {nilai === undefined ? (
+              <>
+                <span style={{ fontSize: 10, color: dk ? "#64748b" : "#94a3b8", fontWeight: 600 }}>
+                  Membantu?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onNilai(faqId, msg.id, true)}
+                  title="Jawaban ini membantu"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: 24, height: 24, borderRadius: 8, cursor: "pointer",
+                    border: `1px solid ${dk ? "rgba(255,255,255,0.09)" : "#e2e8f0"}`,
+                    background: "transparent", color: dk ? "#64748b" : "#94a3b8",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#10b981"; e.currentTarget.style.borderColor = "#10b981"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = dk ? "#64748b" : "#94a3b8"; e.currentTarget.style.borderColor = dk ? "rgba(255,255,255,0.09)" : "#e2e8f0"; }}
+                >
+                  <ThumbsUp style={{ width: 11, height: 11 }} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNilai(faqId, msg.id, false)}
+                  title="Jawaban ini kurang membantu"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: 24, height: 24, borderRadius: 8, cursor: "pointer",
+                    border: `1px solid ${dk ? "rgba(255,255,255,0.09)" : "#e2e8f0"}`,
+                    background: "transparent", color: dk ? "#64748b" : "#94a3b8",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.borderColor = "#ef4444"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = dk ? "#64748b" : "#94a3b8"; e.currentTarget.style.borderColor = dk ? "rgba(255,255,255,0.09)" : "#e2e8f0"; }}
+                >
+                  <ThumbsDown style={{ width: 11, height: 11 }} />
+                </button>
+              </>
+            ) : (
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                fontSize: 10, fontWeight: 700,
+                color: nilai ? "#10b981" : "#94a3b8",
+              }}>
+                {nilai
+                  ? <><ThumbsUp style={{ width: 10, height: 10 }} /> Terima kasih atas penilaian Anda</>
+                  : <><ThumbsDown style={{ width: 10, height: 10 }} /> Masukan Anda kami catat</>}
+              </span>
+            )}
+          </div>
         )}
         <p style={{ fontSize: 10, marginTop: isBot ? 2 : 4, paddingLeft: 2, color: dk ? "#475569" : "#94a3b8" }}>
           {time}
@@ -160,6 +257,20 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
   const [messages, setMessages] = useState([]);
   const [faqs, setFaqs] = useState([]);
   const [quickActions, setQuickActions] = useState([]);
+  const [statusUser, setStatusUser] = useState("");
+  const [aksiSibuk, setAksiSibuk] = useState(null); // id tombol yang sedang diproses
+  const navigate = useNavigate();
+
+  // Chip "Mungkin maksud Anda" dari balasan terakhir bot
+  const [saran, setSaran] = useState([]);
+  const [saranSibuk, setSaranSibuk] = useState(null);
+
+  // Pemetaan id pesan bot -> id FAQ sumbernya, supaya tombol jempol
+  // tahu FAQ mana yang sedang dinilai.
+  const [faqPerPesan, setFaqPerPesan] = useState({});
+
+  // Pemetaan id pesan -> penilaian yang sudah diberikan (true/false)
+  const [nilaiPerPesan, setNilaiPerPesan] = useState({});
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
   const [sessionId, setSessionId] = useState(null);
@@ -203,6 +314,7 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
       setSessionId(sessionRes.data.data.id);
       setFaqs(faqRes.data.data || []);
       setQuickActions(qaRes.data.data || []);
+      setStatusUser(qaRes.data.status_user || "");
       const msgRes = await getChatMessages();
       const msgs = msgRes.data.data || [];
       setMessages(msgs);
@@ -210,6 +322,79 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
     } catch { setError("Gagal memuat chat. Coba lagi."); }
     finally { setLoading(false); }
   }, []);
+
+  // Menjalankan satu quick action sesuai tipenya.
+  // Alur: tampilkan gelembung pengguna → minta backend memprosesnya →
+  // tampilkan balasan asli dari server → jalankan efek samping (pindah/unduh).
+  const jalankanQuickAction = useCallback(async (qa) => {
+    if (aksiSibuk) return; // cegah klik ganda
+    setAksiSibuk(qa.id);
+    setShowFaq(false);
+
+    const waktu = new Date().toISOString();
+
+    // Gelembung pengguna tampil seketika supaya terasa responsif
+    setMessages((prev) => [
+      ...prev,
+      { id: `qa-u-${qa.id}-${Date.now()}`, sender_type: "user", content: qa.question, created_at: waktu },
+    ]);
+    setIsBotTyping(true);
+
+    try {
+      const res = await recordQuickActionUsage(qa.id);
+      const balasan = res.data?.bot_reply;
+      const tipe = res.data?.action_type || qa.action_type || "jawaban";
+      const target = res.data?.action_target || qa.action_target || "";
+
+      // Jeda singkat agar indikator mengetik tidak berkedip
+      await new Promise((r) => setTimeout(r, 500));
+
+      setMessages((prev) => [
+        ...prev,
+        balasan ?? {
+          id: `qa-b-${qa.id}-${Date.now()}`,
+          sender_type: "bot",
+          content: qa.answer,
+          created_at: waktu,
+        },
+      ]);
+      setIsBotTyping(false);
+
+      // ── Efek samping sesuai tipe aksi ──
+      if (tipe === "navigasi" && target) {
+        // Beri waktu peserta membaca balasan sebelum halaman berpindah
+        setTimeout(() => {
+          setIsOpen(false);
+          navigate(target);
+        }, 1200);
+      }
+
+      if (tipe === "unduh" && target) {
+        const url = bangunUrlBerkas(target);
+        // Dibuka di tab baru agar sesi chat tidak ikut tertutup
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+
+      if (tipe === "eskalasi") {
+        // Admin sudah diberi tahu oleh backend; arahkan fokus ke kotak ketik
+        setTimeout(() => inputRef.current?.focus(), 300);
+      }
+    } catch (err) {
+      setIsBotTyping(false);
+
+      const pesan =
+        err.response?.status === 403
+          ? "Pintasan ini tidak tersedia untuk status pendaftaran Anda saat ini."
+          : "Maaf, terjadi gangguan saat memproses pintasan. Silakan ketik pertanyaan Anda langsung.";
+
+      setMessages((prev) => [
+        ...prev,
+        { id: `qa-e-${qa.id}-${Date.now()}`, sender_type: "bot", content: pesan, created_at: waktu },
+      ]);
+    } finally {
+      setAksiSibuk(null);
+    }
+  }, [aksiSibuk, navigate]);
 
   const pollMessages = useCallback(async () => {
     try {
@@ -262,6 +447,7 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
     tempIdCounter.current += 1;
     const temp = { id: `temp-${tempIdCounter.current}`, sender_type: "user", content: text, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, temp]);
+    setSaran([]);
     try {
       const sendRes = await sendChatMessage(text);
       if (sendRes.data.bot_replied) {
@@ -270,11 +456,71 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
         setIsBotTyping(false);
       }
       const res = await getChatMessages();
-      setMessages(res.data.data || []);
+      const daftar = res.data.data || [];
+      setMessages(daftar);
+
+      // Kaitkan balasan bot terbaru dengan FAQ sumbernya
+      const idFaq = sendRes.data.faq_id;
+      if (idFaq) {
+        const balasanTerakhir = [...daftar].reverse().find((m) => m.sender_type === "bot");
+        if (balasanTerakhir) {
+          setFaqPerPesan((prev) => ({ ...prev, [balasanTerakhir.id]: idFaq }));
+        }
+      }
+
+      // Bot ragu — tawarkan pilihan
+      setSaran(sendRes.data.saran || []);
     } catch {
       setError("Gagal mengirim pesan. Periksa koneksi Anda.");
       setMessages(prev => prev.filter(m => m.id !== temp.id));
     } finally { setSending(false); setTimeout(() => inputRef.current?.focus(), 100); }
+  };
+
+  // Peserta menekan salah satu chip saran
+  const handleBukaSaran = async (item) => {
+    if (saranSibuk) return;
+    setSaranSibuk(item.id);
+    setIsBotTyping(true);
+
+    try {
+      const res = await bukaSaranFaq(item.id);
+      await new Promise((r) => setTimeout(r, 500));
+
+      const daftar = await getChatMessages();
+      setMessages(daftar.data.data || []);
+
+      const balasan = res.data?.bot_reply;
+      if (balasan?.id) {
+        setFaqPerPesan((prev) => ({ ...prev, [balasan.id]: item.id }));
+      }
+      setSaran([]); // chip hilang setelah dipilih
+    } catch {
+      setError("Gagal membuka jawaban. Coba lagi.");
+    } finally {
+      setIsBotTyping(false);
+      setSaranSibuk(null);
+    }
+  };
+
+  // Peserta menekan jempol naik/turun
+  const handleNilai = async (faqId, messageId, membantu) => {
+    // Tampilkan hasilnya seketika; kegagalan jaringan tidak perlu
+    // mengganggu peserta karena penilaian bukan aksi kritis.
+    setNilaiPerPesan((prev) => ({ ...prev, [messageId]: membantu }));
+
+    try {
+      await kirimFeedbackFaq(faqId, {
+        membantu,
+        message_id: typeof messageId === "number" ? messageId : undefined,
+      });
+    } catch {
+      // Kembalikan tombol bila gagal, agar peserta bisa mencoba lagi
+      setNilaiPerPesan((prev) => {
+        const salinan = { ...prev };
+        delete salinan[messageId];
+        return salinan;
+      });
+    }
   };
 
   const handleKeyDown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } };
@@ -515,12 +761,110 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
                         </span>
                       </div>
                     )}
-                    <MessageBubble msg={msg} dk={dk} />
+                    <MessageBubble
+                      msg={msg}
+                      dk={dk}
+                      faqId={faqPerPesan[msg.id]}
+                      nilai={nilaiPerPesan[msg.id]}
+                      onNilai={handleNilai}
+                    />
                   </div>
                 );
               })}
 
               {isBotTyping && <TypingBubble dk={dk} />}
+
+              {/* CHIP SARAN — muncul saat bot tidak cukup yakin */}
+              {saran.length > 0 && !isBotTyping && (
+                <div style={{
+                  marginLeft: 39, marginBottom: 14,
+                  animation: "welcomeIn 0.3s ease-out",
+                }}>
+                  <p style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    fontSize: 10, fontWeight: 700, marginBottom: 7,
+                    color: dk ? "#a78bfa" : "#7c3aed",
+                  }}>
+                    <Lightbulb style={{ width: 11, height: 11 }} />
+                    Mungkin maksud Anda
+                  </p>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {saran.map((s) => {
+                      const sibuk = saranSibuk === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          disabled={saranSibuk !== null}
+                          onClick={() => handleBukaSaran(s)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            textAlign: "left", width: "100%",
+                            padding: "9px 13px", borderRadius: 13,
+                            fontSize: 12, fontWeight: 600,
+                            border: `1px dashed ${dk ? "rgba(167,139,250,0.35)" : "#ddd6fe"}`,
+                            background: dk ? "rgba(124,58,237,0.06)" : "#faf5ff",
+                            color: dk ? "#c4b5fd" : "#6d28d9",
+                            cursor: saranSibuk !== null ? "not-allowed" : "pointer",
+                            opacity: saranSibuk !== null && !sibuk ? 0.45 : 1,
+                            transition: "all 0.18s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (saranSibuk !== null) return;
+                            e.currentTarget.style.borderStyle = "solid";
+                            e.currentTarget.style.transform = "translateX(4px)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderStyle = "dashed";
+                            e.currentTarget.style.transform = "translateX(0)";
+                          }}
+                        >
+                          {sibuk
+                            ? <Loader2 style={{ width: 12, height: 12, flexShrink: 0, animation: "spin 0.8s linear infinite" }} />
+                            : <Sparkles style={{ width: 12, height: 12, flexShrink: 0, opacity: 0.7 }} />}
+                          <span style={{ flex: 1 }}>{s.question}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <p style={{ fontSize: 10, marginTop: 7, color: dk ? "#475569" : "#94a3b8" }}>
+                    Tidak ada yang cocok? Tulis ulang pertanyaan Anda, admin juga akan membantu.
+                  </p>
+                </div>
+              )}
+
+              {/* SPANDUK STATUS — hanya saat percakapan masih kosong */}
+              {showFaq && messages.length === 0 && statusUser === "revisi" && (
+                <div style={{
+                  marginTop: 6, padding: "11px 13px", borderRadius: 13,
+                  background: dk ? "rgba(245,158,11,0.09)" : "#fffbeb",
+                  border: `1px solid ${dk ? "rgba(245,158,11,0.22)" : "#fde68a"}`,
+                  display: "flex", gap: 9, alignItems: "flex-start",
+                  animation: "welcomeIn 0.3s ease-out",
+                }}>
+                  <ClipboardCheck style={{ width: 14, height: 14, color: "#f59e0b", flexShrink: 0, marginTop: 1 }} />
+                  <p style={{ fontSize: 11.5, lineHeight: 1.55, fontWeight: 600, color: dk ? "#fcd34d" : "#92400e", margin: 0 }}>
+                    Berkas Anda perlu diperbaiki. Gunakan pintasan di bawah untuk membuka halaman revisi.
+                  </p>
+                </div>
+              )}
+
+              {showFaq && messages.length === 0 && statusUser === "diterima" && (
+                <div style={{
+                  marginTop: 6, padding: "11px 13px", borderRadius: 13,
+                  background: dk ? "rgba(16,185,129,0.09)" : "#f0fdfa",
+                  border: `1px solid ${dk ? "rgba(16,185,129,0.22)" : "#99f6e4"}`,
+                  display: "flex", gap: 9, alignItems: "flex-start",
+                  animation: "welcomeIn 0.3s ease-out",
+                }}>
+                  <Award style={{ width: 14, height: 14, color: "#10b981", flexShrink: 0, marginTop: 1 }} />
+                  <p style={{ fontSize: 11.5, lineHeight: 1.55, fontWeight: 600, color: dk ? "#6ee7b7" : "#065f46", margin: 0 }}>
+                    Selamat, pendaftaran Anda diterima. Surat penerimaan sudah bisa diunduh dari dasbor.
+                  </p>
+                </div>
+              )}
 
               {/* QUICK ACTION BUTTONS */}
               {showFaq && quickActions.length > 0 && messages.length === 0 && (
@@ -540,39 +884,66 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
                         { bg: dk ? "rgba(16,185,129,0.07)" : "#f0fdfa", border: dk ? "rgba(16,185,129,0.2)" : "#99f6e4", txt: dk ? "#6ee7b7" : "#065f46", dot: "#10b981" },
                         { bg: dk ? "rgba(245,158,11,0.07)" : "#fffbeb", border: dk ? "rgba(245,158,11,0.2)" : "#fde68a", txt: dk ? "#fcd34d" : "#92400e", dot: "#f59e0b" },
                         { bg: dk ? "rgba(239,68,68,0.07)" : "#fff1f2", border: dk ? "rgba(239,68,68,0.2)" : "#fecdd3", txt: dk ? "#fca5a5" : "#9f1239", dot: "#ef4444" },
+                        { bg: dk ? "rgba(14,165,233,0.07)" : "#f0f9ff", border: dk ? "rgba(14,165,233,0.2)" : "#bae6fd", txt: dk ? "#7dd3fc" : "#075985", dot: "#0ea5e9" },
                       ];
-                      const p = palette[i % palette.length];
-                      return (
-                        <button key={qa.id}
-                          onClick={async () => {
-                            setShowFaq(false);
-                            const now = new Date().toISOString();
-                            const tmpUser = { id: `qa-u-${qa.id}`, sender_type: "user", content: qa.question, created_at: now };
-                            setMessages(prev => [...prev, tmpUser]);
-                            
-                            // Nyalakan indikator bot sedang mengetik
-                            setIsBotTyping(true);
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                            
-                            const tmpBot = { id: `qa-b-${qa.id}`, sender_type: "bot", content: qa.answer, created_at: now };
-                            setMessages(prev => [...prev, tmpBot]);
-                            setIsBotTyping(false);
 
-                            // Catat ke DB di background
-                            try { await recordQuickActionUsage(qa.id); } catch { /* silent */ }
-                          }}
+                      const tipe = qa.action_type || "jawaban";
+                      const gaya = GAYA_AKSI[tipe];
+                      const p = palette[i % palette.length];
+
+                      // Ikon pilihan admin > ikon bawaan tipe aksi > titik warna
+                      const IkonPilihan = qa.icon ? IKON_TERSEDIA[qa.icon] : null;
+                      const IkonAksi = IkonPilihan || gaya?.ikon || null;
+                      const warnaAksi = gaya?.warna || p.dot;
+
+                      const sedangProses = aksiSibuk === qa.id;
+                      const adaProsesLain = aksiSibuk !== null && !sedangProses;
+
+                      return (
+                        <button
+                          key={qa.id}
+                          type="button"
+                          disabled={aksiSibuk !== null}
+                          title={gaya?.petunjuk || "Tampilkan jawaban"}
+                          onClick={() => jalankanQuickAction(qa)}
                           style={{
                             textAlign: "left", fontSize: 12, fontWeight: 600,
                             padding: "10px 14px", borderRadius: 13,
                             border: `1px solid ${p.border}`, background: p.bg, color: p.txt,
-                            cursor: "pointer", transition: "all 0.18s ease",
+                            cursor: aksiSibuk !== null ? "not-allowed" : "pointer",
+                            opacity: adaProsesLain ? 0.5 : 1,
+                            transition: "all 0.18s ease",
                             display: "flex", alignItems: "center", gap: 9, width: "100%",
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.transform = "translateX(5px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.09)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.transform = "translateX(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                          onMouseEnter={(e) => {
+                            if (aksiSibuk !== null) return;
+                            e.currentTarget.style.transform = "translateX(5px)";
+                            e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.09)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "translateX(0)";
+                            e.currentTarget.style.boxShadow = "none";
+                          }}
                         >
-                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: p.dot, flexShrink: 0 }} />
-                          {qa.question}
+                          {sedangProses ? (
+                            <Loader2
+                              style={{ width: 13, height: 13, flexShrink: 0, color: warnaAksi, animation: "spin 0.8s linear infinite" }}
+                            />
+                          ) : IkonAksi ? (
+                            <IkonAksi style={{ width: 13, height: 13, flexShrink: 0, color: warnaAksi }} />
+                          ) : (
+                            <span style={{ width: 7, height: 7, borderRadius: "50%", background: p.dot, flexShrink: 0 }} />
+                          )}
+
+                          <span style={{ flex: 1 }}>{qa.label || qa.question}</span>
+
+                          {/* Penanda kecil bahwa tombol ini melakukan sesuatu, bukan sekadar menjawab */}
+                          {tipe === "navigasi" && (
+                            <ArrowRight style={{ width: 11, height: 11, flexShrink: 0, opacity: 0.55 }} />
+                          )}
+                          {tipe === "unduh" && (
+                            <Download style={{ width: 11, height: 11, flexShrink: 0, opacity: 0.55 }} />
+                          )}
                         </button>
                       );
                     })}

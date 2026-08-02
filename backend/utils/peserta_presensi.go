@@ -68,6 +68,8 @@ SELECT
 	COALESCE(p.kategori_pendaftar, '') AS kategori,
 	COALESCE(p.posisi_bidang, '')      AS bidang,
 	COALESCE(NULLIF(p.asal_kampus, ''), p.asal_sekolah, '') AS institusi,
+	COALESCE(u.foto_profil, '')   AS foto_profil,
+	COALESCE(p.file_pas_foto, '') AS foto_peserta,
 	p.tanggal_mulai,
 	p.tanggal_selesai,
 	p.mentor_id

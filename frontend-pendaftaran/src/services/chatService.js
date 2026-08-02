@@ -31,3 +31,11 @@ export const useQuickAction = (id) =>
 // Cek apakah admin sedang online di web manajemen (endpoint publik, tanpa auth)
 export const getAdminStatus = () =>
   api.get("/chat/admin-status");
+
+// Buka jawaban dari chip "Mungkin maksud Anda"
+export const bukaSaranFaq = (id) =>
+  api.post(`/pendaftaran/chat/saran/${id}`);
+
+// Nilai jawaban bot: membantu (true) atau tidak (false)
+export const kirimFeedbackFaq = (id, payload) =>
+  api.post(`/pendaftaran/chat/faq/${id}/feedback`, payload);

@@ -203,3 +203,164 @@ input::-webkit-credentials-auto-fill-button {
   25% { transform: rotate(-8deg); }
   75% { transform: rotate(8deg); }
 }
+
+/* Kartu pilihan pada dialog SweetAlert (aksi massal "Ubah kategori") */
+.swal-opsi-popup {
+  width: 33rem !important;
+  padding: 1.75rem 1.75rem 1.5rem !important;
+}
+
+.swal-opsi-popup .swal2-title {
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 1.0625rem !important;
+  line-height: 1.35 !important;
+  text-align: left !important;
+}
+
+.swal-opsi-popup .swal2-html-container {
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+  overflow: visible !important;
+}
+
+.swal-opsi-popup .swal2-actions {
+  margin: 1.25rem 0 0 !important;
+  padding: 0 !important;
+  justify-content: flex-end !important;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.swal-opsi-popup .swal2-actions button {
+  margin: 0 !important;
+  font-size: 0.8125rem !important;
+  padding: 0.5625rem 1.125rem !important;
+}
+
+.swal-opsi-popup .swal2-validation-message {
+  margin: 0.875rem 0 0 !important;
+  border-radius: 0.625rem;
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  font-size: 0.75rem !important;
+  font-weight: 600;
+  justify-content: flex-start;
+}
+
+.swal-opsi-intro {
+  margin: 0.375rem 0 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.swal-opsi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+@media (max-width: 540px) {
+  .swal-opsi-grid { grid-template-columns: 1fr; }
+}
+
+.swal-opsi {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  animation: fadeslide 0.25s ease-out backwards;
+}
+
+.swal-opsi:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.swal-opsi.terpilih {
+  border-color: #004f9f;
+  background: #f5f9ff;
+  box-shadow: inset 0 0 0 1px #004f9f;
+}
+
+.swal-opsi-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.swal-opsi-teks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.swal-opsi-judul {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swal-opsi-ket {
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swal-opsi-tanda {
+  position: relative;
+  flex: 0 0 auto;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  border-radius: 9999px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.swal-opsi:hover .swal-opsi-tanda { border-color: #94a3b8; }
+
+.swal-opsi.terpilih .swal-opsi-tanda {
+  border-color: #004f9f;
+  background: #004f9f;
+  box-shadow: inset 0 0 0 2.5px #ffffff;
+}
+
+/* Animasi batang grafik pada halaman Analitik FAQ */
+@keyframes barGrow {
+  from { transform: scaleY(0); opacity: 0; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes barSlide {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

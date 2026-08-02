@@ -1,52 +1,15 @@
-import BidangMagang from "../../components/landingPage/BidangMagang";
-const bidangMagangList = [
-  {
-    title: "Sekretariat",
-    desc: "Mempelajari tata kelola administrasi perkantoran, persuratan digital, kearsipan dinas, serta manajemen logistik internal.",
-    competencies: [
-      "Manajemen dokumen persuratan digital (Tata Naskah Dinas)",
-      "Penyusunan laporan kearsipan instansi pemerintah",
-      "Koordinasi keprotokolan dan tata kelola sarpras internal",
-    ],
-    icon: "📁",
-    duration: "Sesuai Kebutuhan Peserta",
-  },
-  {
-    title: "Informasi & Komunikasi Publik",
-    desc: "Fokus pada hubungan masyarakat, pengelolaan konten media sosial, produksi video/grafis edukatif, dan liputan berita daerah.",
-    competencies: [
-      "Penulisan rilis pers dan berita resmi pemkab Ponorogo",
-      "Desain infografis & pembuatan konten media sosial",
-      "Teknik videografi dan editing video informasi publik",
-    ],
-    icon: "📣",
-    duration: "Sesuai Kebutuhan Peserta",
-  },
-  {
-    title: "Aplikasi & Informatika",
-    desc: "Pengembangan software aplikasi e-government, pemeliharaan server, pengelolaan database, dan pengawasan jaringan serat optik.",
-    competencies: [
-      "Pengembangan web/mobile e-government (React/Laravel/HTML)",
-      "Manajemen database dan administrasi sistem server",
-      "Monitoring jaringan & troubleshooting infrastruktur IT",
-    ],
-    icon: "💻",
-    duration: "Sesuai Kebutuhan Peserta",
-  },
-  {
-    title: "Statistik & Persandian",
-    desc: "Menganalisis data sektoral daerah Kabupaten Ponorogo, visualisasi statistik daerah, dan pemeliharaan keamanan informasi sandi.",
-    competencies: [
-      "Pengolahan dan analisis data statistik sektoral",
-      "Pembuatan dashboard visualisasi data pembangunan daerah",
-      "Pemahaman prosedur persandian & pengamanan informasi publik",
-    ],
-    icon: "📊",
-    duration: "Sesuai Kebutuhan Peserta",
-  },
-];
+import { useLanding } from "../../context/landingContext";
 
 const ProgramMagangPage = () => {
+  const { config } = useLanding();
+  const bidangMagangList = (config.bidang || []).map((b) => ({
+    title: b.nama,
+    desc: b.deskripsi_panjang || b.deskripsi,
+    competencies: b.kompetensi || [],
+    icon: b.icon || "🏢",
+    duration: b.durasi || "Sesuai Kebutuhan Peserta",
+  }));
+
   return (
     <section className="bg-slate-50 min-h-[75vh]">
       {/* Banner */}
@@ -62,6 +25,12 @@ const ProgramMagangPage = () => {
 
       {/* Grid Program */}
       <div className="mx-auto max-w-6xl px-6 py-16">
+        {bidangMagangList.length === 0 && (
+          <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+            Belum ada bidang magang yang ditampilkan. Silakan cek kembali nanti.
+          </p>
+        )}
+
         <div className="grid gap-8 md:grid-cols-2">
           {bidangMagangList.map((bidang) => (
             <div
@@ -86,6 +55,7 @@ const ProgramMagangPage = () => {
                 </p>
 
                 {/* Kompetensi list */}
+                {bidang.competencies.length > 0 && (
                 <div className="mt-6">
                   <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Kompetensi yang akan Dipelajari:</h4>
                   <ul className="mt-3 space-y-2 text-xs text-slate-600">
@@ -97,6 +67,7 @@ const ProgramMagangPage = () => {
                     ))}
                   </ul>
                 </div>
+                )}
               </div>
             </div>
           ))}

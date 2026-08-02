@@ -1,22 +1,17 @@
 import { Link } from "react-router-dom";
-
-const persyaratanUmum = [
-  "Terdaftar sebagai mahasiswa aktif (D3/D4/S1) atau siswa aktif SMA/SMK/MA sederajat.",
-  "Membawa Surat Pengantar/Permohonan Magang resmi dari institusi pendidikan asal.",
-  "Mengisi formulir pendaftaran secara online melalui portal SIM Magang.",
-  "Melampirkan Curriculum Vitae (CV) dan dokumen pendukung lainnya.",
-  "Bersedia mematuhi peraturan tata tertib serta jam kerja operasional dinas.",
-];
-
-const dokumenWajib = [
-  "Surat Pengantar Permohonan Magang resmi dari kampus atau sekolah (PDF)",
-  "Kartu Tanda Mahasiswa (KTM) atau Kartu Pelajar aktif",
-  "Curriculum Vitae (CV) terbaru yang memuat riwayat studi & keahlian",
-  "Pas Foto berwarna terbaru (latar belakang merah)",
-  "Proposal Rencana Kegiatan Magang (jika dipersyaratkan oleh institusi asal)",
-];
+import { useLanding } from "../../context/landingContext";
 
 const PersyaratanPage = () => {
+  const { config } = useLanding();
+  const ambil = (jenis, kategori) =>
+    (config.konten?.[jenis] || [])
+      .filter((k) => (k.kategori || "umum") === kategori)
+      .map((k) => k.judul);
+
+  const persyaratanUmum = ambil("persyaratan", "umum");
+  const dokumenWajib = ambil("dokumen", "umum");
+  const persyaratanMahasiswa = ambil("persyaratan", "mahasiswa");
+  const persyaratanSiswa = ambil("persyaratan", "siswa");
 
   return (
     <section className="bg-slate-50 min-h-[75vh]">
@@ -67,6 +62,46 @@ const PersyaratanPage = () => {
             </ul>
           </div>
         </div>
+
+        {(persyaratanMahasiswa.length > 0 || persyaratanSiswa.length > 0) && (
+          <div className="mt-8 grid gap-8 md:grid-cols-2">
+            {persyaratanMahasiswa.length > 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-left shadow-sm">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-brand-dark">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-medium/5 text-base">🎓</span>
+                  Khusus Mahasiswa
+                </h2>
+                <div className="my-4 h-0.5 bg-slate-100" />
+                <ul className="space-y-4">
+                  {persyaratanMahasiswa.map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-sm text-slate-600">
+                      <span className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-medium/10 text-[9px] font-extrabold text-brand-medium">✓</span>
+                      <span className="leading-relaxed">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {persyaratanSiswa.length > 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-left shadow-sm">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-brand-dark">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-light/10 text-base">🏫</span>
+                  Khusus Siswa SMA/SMK/MA
+                </h2>
+                <div className="my-4 h-0.5 bg-slate-100" />
+                <ul className="space-y-4">
+                  {persyaratanSiswa.map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-sm text-slate-600">
+                      <span className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-light/10 text-[9px] font-extrabold text-brand-medium">✓</span>
+                      <span className="leading-relaxed">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Call to Action bottom banner */}
         <div className="mt-12 rounded-2xl bg-gradient-to-r from-brand-dark to-brand-medium p-8 text-center text-white shadow-lg shadow-brand-dark/10">

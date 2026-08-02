@@ -77,3 +77,71 @@ export const blockedActionDialog = ({ title = "Tidak dapat dilanjutkan", text = 
     },
   });
 };
+
+
+// Dialog pemilihan berbentuk kartu, dipakai aksi massal "Ubah kategori".
+// opsi: [{ nilai, label, deskripsi, warna, inisial }]
+export const pilihOpsiDialog = ({
+  title = "Pilih nilai",
+  text = "",
+  opsi = [],
+  confirmText = "Simpan",
+  cancelText = "Batal",
+  pesanKosong = "Pilihan wajib diisi",
+}) => {
+  let terpilih = null;
+
+  const kartu = opsi
+    .map(
+      (o, i) => `
+      <button type="button" class="swal-opsi" data-nilai="${o.nilai}" style="animation-delay:${i * 45}ms">
+        <span class="swal-opsi-chip" style="background:${o.warna}1a;color:${o.warna}">${o.inisial || o.label.charAt(0)}</span>
+        <span class="swal-opsi-teks">
+          <span class="swal-opsi-judul">${o.label}</span>
+          <span class="swal-opsi-ket">${o.deskripsi || ""}</span>
+        </span>
+        <span class="swal-opsi-tanda" style="--warna:${o.warna}"></span>
+      </button>`
+    )
+    .join("");
+
+  return baseSwal.fire({
+    title,
+    html: `<p class="swal-opsi-intro">${text}</p><div class="swal-opsi-grid">${kartu}</div>`,
+    showCancelButton: true,
+    confirmButtonText: confirmText,
+    cancelButtonText: cancelText,
+    confirmButtonColor: "#004f9f",
+    cancelButtonColor: "#94a3b8",
+    reverseButtons: true,
+    focusConfirm: false,
+    customClass: {
+      popup: "swal-popup-custom swal-opsi-popup",
+      title: "swal-title-custom",
+      htmlContainer: "swal-text-custom",
+      confirmButton: "swal-confirm-custom",
+      cancelButton: "swal-cancel-custom",
+    },
+    didOpen: () => {
+      const popup = Swal.getPopup();
+      const semua = popup.querySelectorAll(".swal-opsi");
+      semua.forEach((el) => {
+        el.addEventListener("click", () => {
+          semua.forEach((x) => x.classList.remove("terpilih"));
+          el.classList.add("terpilih");
+          terpilih = el.dataset.nilai;
+          Swal.resetValidationMessage();
+        });
+        // Klik ganda langsung menyetujui pilihan
+        el.addEventListener("dblclick", () => Swal.clickConfirm());
+      });
+    },
+    preConfirm: () => {
+      if (!terpilih) {
+        Swal.showValidationMessage(pesanKosong);
+        return false;
+      }
+      return terpilih;
+    },
+  });
+};

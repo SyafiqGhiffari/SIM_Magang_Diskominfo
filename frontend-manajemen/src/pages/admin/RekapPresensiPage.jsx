@@ -63,8 +63,8 @@ const RekapPresensiPage = () => {
 
   const [view, setView] = useState("tabel");
   const [statusMap, setStatusMap] = useState({});
-  const [matrixLoading, setMatrixLoading] = useState(false);
   const [matrixBulan, setMatrixBulan] = useState("");
+  const [matrixGagal, setMatrixGagal] = useState("");
 
   const [detail, setDetail] = useState(null);
 
@@ -108,14 +108,25 @@ const RekapPresensiPage = () => {
   // Bidang dipakai sebagai query matriks — ambil dari filter modal
   const bidangQuery = filter.bidang.length > 0 ? filter.bidang.join(",") : "";
 
+  // Kunci cache matriks: gabungan bulan + filter bidang yang sedang aktif.
+  const kunciMatriks = `${bulan}|${bidangQuery}`;
+
+  // Status memuat matriks TIDAK lagi disimpan di state, melainkan diturunkan
+  // dari perbandingan kunci cache. Dengan begitu spinner mustahil nyangkut
+  // menyala ketika sebuah permintaan dibatalkan karena admin berpindah mode.
+  const matrixLoading =
+    view === "matriks" &&
+    !!dari &&
+    !!sampai &&
+    matrixBulan !== kunciMatriks &&
+    matrixGagal !== kunciMatriks;
+
   useEffect(() => {
     if (view !== "matriks" || !dari || !sampai) return;
-    if (matrixBulan === `${bulan}|${bidangQuery}`) return;
+    if (matrixBulan === kunciMatriks || matrixGagal === kunciMatriks) return;
 
     let aktif = true;
-    const id = setTimeout(async () => {
-      if (!aktif) return;
-      setMatrixLoading(true);
+    (async () => {
       try {
         const res = await getMatriksPresensi({
           bulan,
@@ -128,15 +139,22 @@ const RekapPresensiPage = () => {
           map[`${r.peserta_id}|${r.tanggal}`] = r;
         });
         setStatusMap(map);
-        setMatrixBulan(`${bulan}|${bidangQuery}`);
+        setMatrixBulan(kunciMatriks);
       } catch (err) {
-        if (aktif) toastError(err.response?.data?.message || "Gagal memuat matriks kehadiran.");
-      } finally {
-        if (aktif) setMatrixLoading(false);
+        if (!aktif) return;
+        setMatrixGagal(kunciMatriks);
+        toastError(err.response?.data?.message || "Gagal memuat matriks kehadiran.");
       }
-    }, 0);
-    return () => { aktif = false; clearTimeout(id); };
-  }, [view, dari, sampai, bulan, bidangQuery, matrixBulan]);
+    })();
+    return () => { aktif = false; };
+  }, [view, dari, sampai, bulan, bidangQuery, kunciMatriks, matrixBulan, matrixGagal]);
+
+  // Berpindah tampilan. Setiap kali masuk ke matriks, tanda gagal dibersihkan
+  // supaya permintaan yang sebelumnya error otomatis dicoba ulang.
+  const gantiView = (key) => {
+    if (key === "matriks") setMatrixGagal("");
+    setView(key);
+  };
 
   const keyword = `${search} ${tableSearch}`.trim().toLowerCase();
 
@@ -366,7 +384,7 @@ const payloadMatriks = { bulan, periode, rows: filtered, statusMap };
                       <button
                         key={v.key}
                         title={v.hint}
-                        onClick={() => setView(v.key)}
+                        onClick={() => gantiView(v.key)}
                         className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
                           view === v.key ? "bg-white text-[#004F9F] shadow-sm ring-1 ring-[#004F9F]/20" : "text-slate-400 hover:text-slate-600"
                         }`}

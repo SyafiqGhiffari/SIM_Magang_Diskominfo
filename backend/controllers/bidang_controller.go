@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
@@ -208,11 +209,16 @@ func GetPublicBidang(c *gin.Context) {
 	}
 
 	type publicBidang struct {
-		ID        uint   `json:"id"`
-		Nama      string `json:"nama"`
-		Deskripsi string `json:"deskripsi"`
-		Kuota     int    `json:"kuota"`
-		Terisi    int    `json:"terisi"`
+		ID               uint     `json:"id"`
+		Nama             string   `json:"nama"`
+		Deskripsi        string   `json:"deskripsi"`
+		DeskripsiPanjang string   `json:"deskripsi_panjang"`
+		Icon             string   `json:"icon"`
+		Badge            string   `json:"badge"`
+		Durasi           string   `json:"durasi"`
+		Kompetensi       []string `json:"kompetensi"`
+		Kuota            int      `json:"kuota"`
+		Terisi           int      `json:"terisi"`
 	}
 
 	result := make([]publicBidang, 0, len(bidangList))
@@ -223,13 +229,154 @@ func GetPublicBidang(c *gin.Context) {
 			Count(&terisi)
 
 		result = append(result, publicBidang{
-			ID:        b.ID,
-			Nama:      b.Nama,
-			Deskripsi: b.Deskripsi,
-			Kuota:     b.Kuota,
-			Terisi:    int(terisi),
+			ID:               b.ID,
+			Nama:             b.Nama,
+			Deskripsi:        b.Deskripsi,
+			DeskripsiPanjang: b.DeskripsiPanjang,
+			Icon:             b.Icon,
+			Badge:            b.Badge,
+			Durasi:           b.Durasi,
+			Kompetensi:       pecahKompetensi(b.Kompetensi),
+			Kuota:            b.Kuota,
+			Terisi:           int(terisi),
 		})
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Data bidang berhasil diambil", result)
+}
+
+// ==================== TAMPILAN LANDING (Tahap 2) ====================
+
+// pecahKompetensi mengubah teks multi-baris menjadi array agar mudah dirender frontend.
+func pecahKompetensi(s string) []string {
+	hasil := make([]string, 0)
+	for _, baris := range strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n") {
+		baris = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(baris), "-"))
+		if baris != "" {
+			hasil = append(hasil, baris)
+		}
+	}
+	return hasil
+}
+
+// seedTampilanBidangJikaKosong mengisi ikon/badge/durasi bidang yang masih kosong
+// dengan nilai yang sebelumnya hardcoded di frontend, dicocokkan lewat kata kunci nama.
+func seedTampilanBidangJikaKosong() {
+	var bidangList []models.BidangMagang
+	if err := config.DB.Where("icon IS NULL OR icon = ?", "").Find(&bidangList).Error; err != nil {
+		return
+	}
+	if len(bidangList) == 0 {
+		return
+	}
+
+	type preset struct {
+		kunci, icon, badge, kompetensi string
+	}
+	presets := []preset{
+		{"sekretariat", "📁", "Administrasi",
+			"Manajemen dokumen persuratan digital (Tata Naskah Dinas)\nPenyusunan laporan kearsipan instansi pemerintah\nKoordinasi keprotokolan dan tata kelola sarpras internal"},
+		{"informasi", "📣", "Humas & Kreatif",
+			"Penulisan rilis pers dan berita resmi pemkab Ponorogo\nDesain infografis & pembuatan konten media sosial\nTeknik videografi dan editing video informasi publik"},
+		{"aplikasi", "💻", "IT & Software",
+			"Pengembangan web/mobile e-government (React/Laravel/HTML)\nManajemen database dan administrasi sistem server\nMonitoring jaringan & troubleshooting infrastruktur IT"},
+		{"statistik", "📊", "Data & Security",
+			"Pengolahan dan analisis data statistik sektoral\nPembuatan dashboard visualisasi data pembangunan daerah\nPemahaman prosedur persandian & pengamanan informasi publik"},
+	}
+
+	for i, b := range bidangList {
+		nama := strings.ToLower(b.Nama)
+		terpilih := preset{"", "🏢", "Bidang Magang", ""}
+		for _, p := range presets {
+			if strings.Contains(nama, p.kunci) {
+				terpilih = p
+				break
+			}
+		}
+
+		b.Icon = terpilih.icon
+		b.Badge = terpilih.badge
+		if b.Kompetensi == "" {
+			b.Kompetensi = terpilih.kompetensi
+		}
+		if b.DeskripsiPanjang == "" {
+			b.DeskripsiPanjang = b.Deskripsi
+		}
+		if b.Durasi == "" {
+			b.Durasi = "Sesuai Kebutuhan Peserta"
+		}
+		if b.Urutan == 0 {
+			b.Urutan = i + 1
+		}
+		b.TampilkanDiLanding = true
+
+		config.DB.Save(&b)
+	}
+}
+
+// GetTampilanBidang — daftar bidang khusus untuk form pengaturan tampilan landing.
+func GetTampilanBidang(c *gin.Context) {
+	seedTampilanBidangJikaKosong()
+
+	var bidangList []models.BidangMagang
+	if err := config.DB.Order("urutan asc, nama asc").Find(&bidangList).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data bidang")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Data bidang berhasil diambil", bidangList)
+}
+
+type tampilanBidangInput struct {
+	Icon               *string `json:"icon"`
+	Badge              *string `json:"badge"`
+	DeskripsiPanjang   *string `json:"deskripsi_panjang"`
+	Kompetensi         *string `json:"kompetensi"`
+	Durasi             *string `json:"durasi"`
+	Urutan             *int    `json:"urutan"`
+	TampilkanDiLanding *bool   `json:"tampilkan_di_landing"`
+}
+
+// UpdateTampilanBidang hanya mengubah kolom tampilan — nama, kuota, dan status
+// bidang tetap dikelola melalui menu Kelola Bidang agar tidak bentrok.
+func UpdateTampilanBidang(c *gin.Context) {
+	var bidang models.BidangMagang
+	if err := config.DB.First(&bidang, c.Param("id")).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Bidang tidak ditemukan")
+		return
+	}
+
+	var input tampilanBidangInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Format data tidak valid")
+		return
+	}
+
+	if input.Icon != nil {
+		bidang.Icon = strings.TrimSpace(*input.Icon)
+	}
+	if input.Badge != nil {
+		bidang.Badge = strings.TrimSpace(*input.Badge)
+	}
+	if input.DeskripsiPanjang != nil {
+		bidang.DeskripsiPanjang = strings.TrimSpace(*input.DeskripsiPanjang)
+	}
+	if input.Kompetensi != nil {
+		bidang.Kompetensi = strings.TrimSpace(*input.Kompetensi)
+	}
+	if input.Durasi != nil {
+		bidang.Durasi = strings.TrimSpace(*input.Durasi)
+	}
+	if input.Urutan != nil {
+		bidang.Urutan = *input.Urutan
+	}
+	if input.TampilkanDiLanding != nil {
+		bidang.TampilkanDiLanding = *input.TampilkanDiLanding
+	}
+
+	if err := config.DB.Save(&bidang).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan tampilan bidang")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Tampilan bidang berhasil disimpan", bidang)
 }

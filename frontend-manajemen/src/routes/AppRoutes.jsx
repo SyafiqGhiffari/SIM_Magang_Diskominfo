@@ -3,6 +3,8 @@ import ProtectedRoute from "./ProtectedRoute";
 import LoginPage from "../pages/auth/LoginPage";
 import DashboardPage from "../pages/admin/DashboardPage";
 import FaqPage from "../pages/admin/FaqPage";
+import PertanyaanMasukPage from "../pages/admin/PertanyaanMasukPage";
+import AnalitikFaqPage from "../pages/admin/AnalitikFaqPage";
 import KelolaAkunPage from "../pages/admin/KelolaAkunPage";
 import BidangPage from "../pages/admin/BidangPage";
 import MentorPage from "../pages/admin/MentorPage";
@@ -15,6 +17,7 @@ import DataPresensiPage from "../pages/admin/DataPresensiPage";
 import RekapPresensiPage from "../pages/admin/RekapPresensiPage";
 import KelolaSertifikatPage from "../pages/admin/KelolaSertifikatPage";
 import TemplateSertifikatPage from "../pages/admin/TemplateSertifikatPage";
+import PengaturanLandingPage from "../pages/admin/PengaturanLandingPage";
 import MentorDashboardPage from "../pages/mentor/MentorDashboardPage";
 import PresensiBimbinganPage from "../pages/mentor/PresensiBimbinganPage";
 import VerifikasiIzinPage from "../pages/mentor/VerifikasiIzinPage";
@@ -44,6 +47,8 @@ const AppRoutes = () => {
       {/* Admin — hanya role admin yang boleh akses */}
       <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><DashboardPage /></ProtectedRoute>} /> 
       <Route path="/admin/faq" element={<ProtectedRoute allowedRoles={["admin"]}><FaqPage /></ProtectedRoute>} />
+      <Route path="/admin/pertanyaan" element={<ProtectedRoute allowedRoles={["admin"]}><PertanyaanMasukPage /></ProtectedRoute>} />
+      <Route path="/admin/analitik-faq" element={<AnalitikFaqPage />} />
       <Route path="/admin/akun" element={<ProtectedRoute allowedRoles={["admin"]}><KelolaAkunPage /></ProtectedRoute>} />
       <Route path="/admin/bidang" element={<ProtectedRoute allowedRoles={["admin"]}><BidangPage /></ProtectedRoute>} />
       <Route path="/admin/mentor" element={<ProtectedRoute allowedRoles={["admin"]}><MentorPage /></ProtectedRoute>} />
@@ -56,6 +61,7 @@ const AppRoutes = () => {
       <Route path="/admin/presensi" element={<ProtectedRoute allowedRoles={["admin"]}><DataPresensiPage /></ProtectedRoute>} />
       <Route path="/admin/sertifikat" element={<ProtectedRoute allowedRoles={["admin"]}><KelolaSertifikatPage /></ProtectedRoute>} />
       <Route path="/admin/sertifikat/template" element={<ProtectedRoute allowedRoles={["admin"]}><TemplateSertifikatPage /></ProtectedRoute>} />
+      <Route path="/admin/pengaturan-landing" element={<ProtectedRoute allowedRoles={["admin"]}><PengaturanLandingPage /></ProtectedRoute>} />
 
       {/* Mentor — hanya role mentor yang boleh akses */}
       <Route path="/mentor" element={<ProtectedRoute allowedRoles={["mentor"]}><MentorDashboardPage /></ProtectedRoute>} />

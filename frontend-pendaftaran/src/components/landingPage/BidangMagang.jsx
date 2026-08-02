@@ -1,33 +1,17 @@
 import { Link } from "react-router-dom";
-
-const bidang = [
-  {
-    title: "Sekretariat",
-    desc: "Manajemen administrasi perkantoran, persuratan digital, kearsipan elektronik, dan tata kelola internal instansi pemerintah.",
-    icon: "📁",
-    badge: "Administrasi",
-  },
-  {
-    title: "Pengelolaan Informasi & Komunikasi Publik",
-    desc: "Hubungan masyarakat (Humas), pengelolaan portal berita daerah, manajemen media sosial, desain grafis, videografi, dan layanan informasi publik (PPID).",
-    icon: "📣",
-    badge: "Humas & Kreatif",
-  },
-  {
-    title: "Aplikasi & Informatika",
-    desc: "Pengembangan software (web/mobile), pengelolaan database, integrasi sistem SPBE, keamanan jaringan, dan pemeliharaan server perkantoran.",
-    icon: "💻",
-    badge: "IT & Software",
-  },
-  {
-    title: "Statistik & Persandian",
-    desc: "Pengumpulan dan pengolahan data sektoral daerah, analisis visualisasi statistik sektoral, serta pengamanan informasi sandi pemerintahan.",
-    icon: "📊",
-    badge: "Data & Security",
-  },
-];
+import { useLanding } from "../../context/landingContext";
 
 const BidangMagang = () => {
+  const { config } = useLanding();
+  const bidang = (config.bidang || []).map((b) => ({
+    title: b.nama,
+    desc: b.deskripsi,
+    icon: b.icon || "🏢",
+    badge: b.badge || "Bidang Magang",
+  }));
+
+  if (bidang.length === 0) return null;
+
   return (
     <section className="bg-slate-50 px-6 py-20">
       <div className="mx-auto max-w-6xl text-center">
