@@ -1,4 +1,5 @@
 import { useLanding } from "../../context/landingContext";
+import TeksKaya from "../../utils/teksKaya";
 
 const AlurPendaftaran = () => {
   const { config } = useLanding();
@@ -45,9 +46,9 @@ const AlurPendaftaran = () => {
               <h3 className="mt-6 text-base font-bold text-brand-dark transition-colors group-hover:text-brand-medium">
                 {step.title}
               </h3>
-              <p className="mt-3 max-w-[240px] text-sm leading-relaxed text-slate-500">
-                {step.desc}
-              </p>
+              <div className="mt-3 max-w-[240px] text-sm leading-relaxed text-slate-500">
+                <TeksKaya teks={step.desc} />
+              </div>
             </div>
           ))}
         </div>

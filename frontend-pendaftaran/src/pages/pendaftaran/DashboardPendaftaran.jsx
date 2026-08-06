@@ -678,22 +678,28 @@ const DashboardPendaftaran = () => {
       canvas.width = outputSize;
       canvas.height = outputSize;
       const ctx = canvas.getContext("2d");
-      ctx.beginPath();
-      ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
+
+      // Disimpan sebagai persegi utuh, BUKAN dipotong lingkaran. Bentuk bulat
+      // adalah urusan tampilan (CSS rounded-full), sehingga foto yang sama bisa
+      // dipakai ulang dalam bentuk apa pun tanpa perlu diunggah ulang.
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, outputSize, outputSize);
       ctx.drawImage(img, offsetX * ratio, offsetY * ratio, drawnW * ratio, drawnH * ratio);
 
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          toastError("Gagal memproses foto. Silakan coba unggah foto baru.");
-          return;
-        }
-        const file = new File([blob], "foto-profil.png", { type: "image/png" });
-        setFotoPreview(URL.createObjectURL(blob));
-        handleUploadFoto(file);
-        setShowFotoModal(false);
-      }, "image/png");
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            toastError("Gagal memproses foto. Silakan coba unggah foto baru.");
+            return;
+          }
+          const file = new File([blob], "foto-profil.jpg", { type: "image/jpeg" });
+          setFotoPreview(URL.createObjectURL(blob));
+          handleUploadFoto(file);
+          setShowFotoModal(false);
+        },
+        "image/jpeg",
+        0.92
+      );
     } catch (err) {
       console.error("Gagal menyimpan perubahan foto:", err);
       toastError("Terjadi kesalahan saat menyimpan foto. Silakan coba lagi.");

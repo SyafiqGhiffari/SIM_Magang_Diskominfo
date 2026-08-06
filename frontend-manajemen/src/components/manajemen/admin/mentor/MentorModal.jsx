@@ -219,20 +219,33 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
     canvas.width = outputSize;
     canvas.height = outputSize;
     const ctx = canvas.getContext("2d");
-    ctx.beginPath();
-    ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(img, offsetX * ratio, offsetY * ratio, drawnW * ratio, drawnH * ratio);
 
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], "foto-mentor.png", { type: "image/png" });
-      setFotoFile(file);
-      setFotoPreview(URL.createObjectURL(blob));
-      setShowFotoModal(false);
-    }, "image/png");
-  };
+      // Disimpan sebagai persegi utuh, BUKAN dipotong lingkaran. Bentuk bulat
+      // adalah urusan tampilan (CSS rounded-full), sehingga foto yang sama bisa
+      // dipakai ulang dalam bentuk apa pun tanpa perlu diunggah ulang.
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, outputSize, outputSize);
+      ctx.drawImage(img, offsetX * ratio, offsetY * ratio, drawnW * ratio, drawnH * ratio);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            toastError("Gagal memproses foto. Silakan coba unggah foto baru.");
+            return;
+          }
+          const file = new File([blob], "foto-profil.jpg", { type: "image/jpeg" });
+
+          // Berbeda dengan KelolaAkunPage yang langsung mengunggah, di sini foto
+          // hanya disimpan ke state lalu ikut terkirim bersama seluruh data form
+          // saat tombol simpan ditekan.
+          setFotoFile(file);
+          setFotoPreview(URL.createObjectURL(blob));
+          setShowFotoModal(false);
+        },
+        "image/jpeg",
+        0.92
+      );
+    };
 
   const handleSubmit = async (e) => {
     e.preventDefault();

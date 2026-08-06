@@ -61,7 +61,9 @@ const AppRoutes = () => {
       <Route path="/admin/presensi" element={<ProtectedRoute allowedRoles={["admin"]}><DataPresensiPage /></ProtectedRoute>} />
       <Route path="/admin/sertifikat" element={<ProtectedRoute allowedRoles={["admin"]}><KelolaSertifikatPage /></ProtectedRoute>} />
       <Route path="/admin/sertifikat/template" element={<ProtectedRoute allowedRoles={["admin"]}><TemplateSertifikatPage /></ProtectedRoute>} />
-      <Route path="/admin/pengaturan-landing" element={<ProtectedRoute allowedRoles={["admin"]}><PengaturanLandingPage /></ProtectedRoute>} />
+      <Route path="/admin/pengaturan-landing" element={<Navigate to="/admin/landing/identitas" replace />} />
+      <Route path="/admin/landing" element={<Navigate to="/admin/landing/identitas" replace />} />
+      <Route path="/admin/landing/:bagian" element={<ProtectedRoute allowedRoles={["admin"]}><PengaturanLandingPage /></ProtectedRoute>} />
 
       {/* Mentor — hanya role mentor yang boleh akses */}
       <Route path="/mentor" element={<ProtectedRoute allowedRoles={["mentor"]}><MentorDashboardPage /></ProtectedRoute>} />

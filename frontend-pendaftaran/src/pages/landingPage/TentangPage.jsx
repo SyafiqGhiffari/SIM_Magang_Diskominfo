@@ -1,4 +1,5 @@
 import { useLanding } from "../../context/landingContext";
+import TeksKaya from "../../utils/teksKaya";
 
 const TentangPage = () => {
   const { config } = useLanding();
@@ -50,9 +51,9 @@ const TentangPage = () => {
             <h2 className="mt-4 text-2xl font-extrabold text-[#0B1442] md:text-3xl">
               {t.profil_judul}
             </h2>
-            <p className="mt-6 text-sm leading-relaxed text-slate-600 md:text-base">
-              {t.profil_deskripsi}
-            </p>
+            <div className="mt-6 text-sm leading-relaxed text-slate-600 md:text-base">
+              <TeksKaya teks={t.profil_deskripsi} />
+            </div>
           </div>
         </div>
 
@@ -65,9 +66,9 @@ const TentangPage = () => {
                 Visi Instansi
               </span>
               <h3 className="mt-4 text-xl font-bold text-[#0B1442]">{t.visi_judul}</h3>
-              <p className="mt-4 text-sm leading-relaxed text-slate-600 italic">
-                &ldquo;{t.visi_teks}&rdquo;
-              </p>
+              <div className="mt-4 text-sm leading-relaxed text-slate-600 italic">
+                <TeksKaya teks={t.visi_teks ? `“${t.visi_teks}”` : ""} />
+              </div>
             </div>
             <div className="mt-6 text-3xl">👁️‍🗨️</div>
           </div>
@@ -105,7 +106,9 @@ const TentangPage = () => {
               >
                 <span className="text-2xl">{item.icon || "🌱"}</span>
                 <h4 className="mt-4 text-sm font-bold text-[#0B1442]">{item.judul}</h4>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">{item.deskripsi}</p>
+                <div className="mt-2 text-xs leading-relaxed text-slate-500">
+                  <TeksKaya teks={item.deskripsi} />
+                </div>
               </div>
             ))}
           </div>
@@ -124,7 +127,9 @@ const TentangPage = () => {
               <div key={item.id} className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
                 <div className="text-xl">{item.icon || "🏆"}</div>
                 <h4 className="mt-3 text-xs font-bold text-[#0B1442]">{item.judul}</h4>
-                <p className="mt-1 text-[8px] text-slate-400">{item.deskripsi}</p>
+                <div className="mt-1 text-[8px] text-slate-400">
+                  <TeksKaya teks={item.deskripsi} />
+                </div>
               </div>
             ))}
           </div>

@@ -277,6 +277,10 @@ func SetupRoutes(router *gin.Engine) {
 		admin := manajemen.Group("/admin")
 		admin.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("admin"))
 		{
+			// ── RINGKASAN DASHBOARD ADMIN ──
+			// Seluruh angka dashboard dihitung di sisi server dalam satu request.
+			admin.GET("/dashboard/ringkasan", controllers.GetRingkasanDashboardAdmin)
+
 			// ── KELOLA AKUN MANAJEMEN (hanya admin) ──
 			admin.GET("/akun", controllers.GetAllUserManajemen)
 			admin.POST("/akun", controllers.RegisterManajemen)

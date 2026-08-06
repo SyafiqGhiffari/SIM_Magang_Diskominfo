@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useLanding } from "../../context/landingContext";
+import TeksKaya from "../../utils/teksKaya";
 
 const Hero = () => {
   const { config } = useLanding();
@@ -52,9 +53,9 @@ const Hero = () => {
               {hero.judul}{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-cyan-200">{hero.judul_highlight}</span>
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-200 md:text-lg">
-              {hero.subjudul}
-            </p>
+            <div className="mt-6 max-w-xl text-base leading-relaxed text-slate-200 md:text-lg">
+              <TeksKaya teks={hero.subjudul} />
+            </div>
             <div className="mt-8 flex flex-col sm:flex-row justify-center md:justify-start gap-4">
               {pendaftaran.dibuka ? (
                 <Link

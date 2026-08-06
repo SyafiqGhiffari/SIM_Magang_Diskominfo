@@ -364,3 +364,22 @@ input::-webkit-credentials-auto-fill-button {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
+
+/* Batang gulir tipis untuk daftar di dalam kartu dashboard */
+.scroll-halus {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.scroll-halus::-webkit-scrollbar {
+  width: 5px;
+}
+.scroll-halus::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-halus::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+.scroll-halus:hover::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}

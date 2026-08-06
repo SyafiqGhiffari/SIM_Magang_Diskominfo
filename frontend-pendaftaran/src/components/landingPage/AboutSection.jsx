@@ -1,4 +1,5 @@
 import { useLanding } from "../../context/landingContext";
+import TeksKaya from "../../utils/teksKaya";
 
 const AboutSection = () => {
   const { config } = useLanding();
@@ -48,10 +49,14 @@ const AboutSection = () => {
             {t.about_judul}
           </h2>
           {t.about_paragraf1 && (
-            <p className="mt-6 text-base leading-relaxed text-slate-600">{t.about_paragraf1}</p>
+            <div className="mt-6 text-base leading-relaxed text-slate-600">
+              <TeksKaya teks={t.about_paragraf1} />
+            </div>
           )}
           {t.about_paragraf2 && (
-            <p className="mt-4 text-base leading-relaxed text-slate-600">{t.about_paragraf2}</p>
+            <div className="mt-4 text-base leading-relaxed text-slate-600">
+              <TeksKaya teks={t.about_paragraf2} />
+            </div>
           )}
         </div>
       </div>

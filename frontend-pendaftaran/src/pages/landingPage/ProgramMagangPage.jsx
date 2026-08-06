@@ -1,4 +1,5 @@
 import { useLanding } from "../../context/landingContext";
+import TeksKaya from "../../utils/teksKaya";
 
 const ProgramMagangPage = () => {
   const { config } = useLanding();
@@ -50,9 +51,9 @@ const ProgramMagangPage = () => {
                 <h3 className="mt-6 text-xl font-bold text-brand-dark group-hover:text-brand-medium transition-colors">
                   {bidang.title}
                 </h3>
-                <p className="mt-3 text-sm leading-relaxed text-slate-500">
-                  {bidang.desc}
-                </p>
+                <div className="mt-3 text-sm leading-relaxed text-slate-500">
+                  <TeksKaya teks={bidang.desc} />
+                </div>
 
                 {/* Kompetensi list */}
                 {bidang.competencies.length > 0 && (

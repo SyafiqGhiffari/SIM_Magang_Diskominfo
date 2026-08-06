@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { CalendarCheck, ClipboardList, MailCheck } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
-import { logoutAdmin, getProfile } from "../services/authService";
+import { logoutAdmin, getMe } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
 import { clearAuthData } from "../utils/authStorage";
 
@@ -55,7 +55,7 @@ const MentorLayout = ({ children, searchValue = "", onSearchChange }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await getProfile();
+        const res = await getMe();
         setProfile(res.data.data);
       } catch {
         navigate("/login");

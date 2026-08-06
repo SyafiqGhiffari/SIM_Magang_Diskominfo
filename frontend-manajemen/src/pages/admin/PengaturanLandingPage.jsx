@@ -1,9 +1,30 @@
 import { useEffect, useState } from "react";
+import { useParams, Navigate } from "react-router-dom";
 import AdminLayout from "../../layouts/AdminLayout";
+import { useManajemenTheme } from "../../context/useManajemenTheme";
+import LandingStats from "../../components/manajemen/admin/landing/LandingStats";
+import PanduanCard from "../../components/manajemen/admin/landing/PanduanCard";
+import {
+  CheckCircle2, CircleDashed, Gauge, LayoutPanelTop,
+  Palette, Sparkles, Images, Building2, Info, Target,
+  ListChecks, Menu as MenuIcon, Phone, ToggleLeft, Search, Eye,
+  MousePointerClick, Megaphone, DoorOpen, Link2, MapPin, Share2,
+} from "lucide-react";
+import KepalaKartu from "../../components/manajemen/admin/landing/KepalaKartu";
+import StatusSimpan from "../../components/manajemen/admin/landing/StatusSimpan";
+import DropZoneGambar from "../../components/manajemen/admin/landing/DropZoneGambar";
+import TabBar from "../../components/manajemen/admin/landing/TabBar";
+import EditorTeksKaya from "../../components/manajemen/admin/landing/EditorTeksKaya";
+import Sakelar from "../../components/manajemen/admin/landing/Sakelar";
+import RangkaHalamanLanding, {
+  RangkaKontenLanding,
+} from "../../components/manajemen/admin/landing/RangkaLanding";
 import KelolaHeroSlide from "../../components/manajemen/KelolaHeroSlide";
 import KelolaTampilanBidang from "../../components/manajemen/KelolaTampilanBidang";
 import KelolaKontenLanding from "../../components/manajemen/KelolaKontenLanding";
 import KelolaMenuLanding from "../../components/manajemen/KelolaMenuLanding";
+import useAutoSimpan from "../../utils/useAutoSimpan";
+import { confirmDialog, toastSuccess, toastError } from "../../utils/swal";
 import {
   getPengaturanLanding,
   updatePengaturanLanding,
@@ -11,20 +32,127 @@ import {
   deleteFileLanding,
 } from "../../services/adminService";
 
+// Judul kecil untuk kotak pengelompokan di dalam kartu.
+// Didefinisikan di level modul agar tidak dibuat ulang setiap render.
+const JudulGrup = ({ icon: Ikon, teks, ket, isDark }) => (
+  <div className="mb-4 flex items-center gap-2.5">
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#004F9F] to-[#00A5EC] text-white shadow-sm">
+      <Ikon className="h-4 w-4" strokeWidth={2.3} />
+    </span>
+    <div className="min-w-0">
+      <p
+        className={`text-[12px] font-black uppercase tracking-wide ${
+          isDark ? "text-slate-200" : "text-[#0B1442]"
+        }`}
+      >
+        {teks}
+      </p>
+      {ket && (
+        <p className={`text-[11px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+          {ket}
+        </p>
+      )}
+    </div>
+  </div>
+);
+
 const TABS = [
-  { key: "identitas", label: "Identitas & Branding" },
-  { key: "hero", label: "Hero Section" },
-  { key: "slide", label: "Slide Gambar" },
-  { key: "bidang", label: "Bidang Magang" },
-  { key: "tentang", label: "Tentang & Profil" },
-  { key: "konten", label: "Konten Daftar" },
-  { key: "menu", label: "Menu Navigasi" },
-  { key: "kontak", label: "Kontak & Media Sosial" },
-  { key: "status", label: "Status Pendaftaran" },
-  { key: "seo", label: "SEO & Berbagi" },
+  { key: "identitas", label: "Identitas & Branding", icon: Palette },
+  { key: "hero", label: "Hero Section", icon: Sparkles },
+  { key: "slide", label: "Slide Gambar", icon: Images },
+  { key: "bidang", label: "Bidang Magang", icon: Building2 },
+  { key: "tentang", label: "Tentang & Profil", icon: Info },
+  { key: "konten", label: "Konten Daftar", icon: ListChecks },
+  { key: "menu", label: "Menu Navigasi", icon: MenuIcon },
+  { key: "kontak", label: "Kontak & Media Sosial", icon: Phone },
+  { key: "status", label: "Status Pendaftaran", icon: ToggleLeft },
+  { key: "seo", label: "SEO & Berbagi", icon: Search },
 ];
 
-const TAB_MANDIRI = ["slide", "bidang", "konten", "menu"];
+const hitungStats = (form, grup) => {
+  const nilai = Object.values(form || {});
+  const total = nilai.length;
+  const terisi = nilai.filter(
+    (v) => v !== null && v !== undefined && String(v).trim() !== ""
+  ).length;
+  const kosong = total - terisi;
+  const persen = total > 0 ? Math.round((terisi / total) * 100) : 0;
+
+  return [
+    {
+      icon: CheckCircle2,
+      label: "Kolom Terisi",
+      value: terisi,
+      caption: `dari ${total} kolom pengaturan`,
+      gradient: "from-emerald-500 to-emerald-700",
+      lightGradient: "from-emerald-300 to-white",
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+    },
+    {
+      icon: CircleDashed,
+      label: "Masih Kosong",
+      value: kosong,
+      caption: kosong > 0 ? "Perlu segera dilengkapi" : "Semua sudah lengkap",
+      gradient: "from-amber-500 to-amber-700",
+      lightGradient: "from-amber-300 to-white",
+      iconBg: "bg-amber-50",
+      iconColor: "text-amber-600",
+    },
+    {
+      icon: Gauge,
+      label: "Kelengkapan",
+      value: `${persen}%`,
+      caption: "Kesiapan tampil ke publik",
+      gradient: "from-[#004F9F] to-[#0B1442]",
+      lightGradient: "from-blue-300 to-white",
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-600",
+    },
+    {
+      icon: LayoutPanelTop,
+      label: "Bagian Aktif",
+      value: grup?.tabs?.length || 0,
+      caption: grup?.judul || "-",
+      gradient: "from-slate-600 to-slate-800",
+      lightGradient: "from-slate-300 to-white",
+      iconBg: "bg-slate-100",
+      iconColor: "text-slate-600",
+    },
+  ];
+};
+
+// Pengelompokan tab menjadi sub-halaman.
+// Kunci objek = potongan URL, contoh: /admin/landing/tampilan
+const GRUP = {
+  identitas: {
+    judul: "Identitas & SEO",
+    desc: "Atur nama situs, logo, favicon, serta judul dan deskripsi untuk mesin pencari.",
+    tabs: ["identitas", "seo"],
+  },
+  tampilan: {
+    judul: "Tampilan Beranda",
+    desc: "Atur bagian sambutan (hero), slide gambar, dan tampilan kartu bidang magang.",
+    tabs: ["hero", "slide", "bidang"],
+  },
+  profil: {
+    judul: "Konten & Profil",
+    desc: "Atur profil instansi, visi misi, persyaratan, alur pendaftaran, dan benefit.",
+    tabs: ["tentang", "konten"],
+  },
+  navigasi: {
+    judul: "Navigasi & Kontak",
+    desc: "Atur menu navigasi, informasi kontak, dan tautan media sosial.",
+    tabs: ["menu", "kontak"],
+  },
+  status: {
+    judul: "Status Pendaftaran",
+    desc: "Buka atau tutup pendaftaran magang dan atur banner pengumuman.",
+    tabs: ["status"],
+  },
+};
+
+const GRUP_BAWAAN = "identitas";
 
 const kosongkanNull = (v) => (v === null || v === undefined ? "" : v);
 const formatTanggal = (v) => (v ? String(v).slice(0, 10) : "");
@@ -79,7 +207,37 @@ const petakanForm = (p) => ({
 });
 
 const PengaturanLandingPage = () => {
-  const [tab, setTab] = useState("identitas");
+  const { isDark } = useManajemenTheme();
+  const { bagian } = useParams();
+  const grup = GRUP[bagian] || null;
+
+  // Tab yang dipilih manual oleh admin di dalam satu sub-halaman.
+  const [tabDipilih, setTabDipilih] = useState(null);
+
+  // Rangka (skeleton) singkat saat berpindah tab, supaya perpindahan terasa
+  // sama seperti halaman lain dan isi kartu tidak "meloncat" begitu saja.
+  const [memuatTab, setMemuatTab] = useState(false);
+
+  const gantiTab = (key) => {
+    if (key === tabDipilih) return;
+    setTabDipilih(key);
+    setMemuatTab(true);
+  };
+
+  // Tab aktif DITURUNKAN, bukan disimpan. Jika tab yang dipilih tidak
+  // termasuk grup saat ini (misal admin pindah sub-halaman), otomatis
+  // kembali ke tab pertama tanpa perlu setState di dalam effect.
+  const tab =
+    grup && grup.tabs.includes(tabDipilih) ? tabDipilih : grup?.tabs[0];
+
+  // Matikan rangka tab lewat timer (callback, bukan setState langsung di badan
+  // effect) agar tidak melanggar aturan react-hooks/set-state-in-effect.
+  useEffect(() => {
+    if (!memuatTab) return undefined;
+    const t = setTimeout(() => setMemuatTab(false), 380);
+    return () => clearTimeout(t);
+  }, [memuatTab]);
+
   const [form, setForm] = useState(null);
   const [urlLogo, setUrlLogo] = useState("");
   const [urlFavicon, setUrlFavicon] = useState("");
@@ -88,17 +246,41 @@ const PengaturanLandingPage = () => {
   const [statusEfektif, setStatusEfektif] = useState(true);
   const [alasanDitutup, setAlasanDitutup] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [notif, setNotif] = useState(null);
-
+  const [mengunggah, setMengunggah] = useState(null); // jenis berkas yang sedang diunggah
+  
   const tampilkanNotif = (tipe, pesan) => {
-    setNotif({ tipe, pesan });
-    setTimeout(() => setNotif(null), 4000);
+    if (tipe === "sukses") toastSuccess(pesan);
+    else toastError(pesan);
   };
 
   // Penanda untuk memicu pemuatan ulang tanpa memanggil setState di badan effect
   const [versiData, setVersiData] = useState(0);
   const muatUlang = () => setVersiData((v) => v + 1);
+
+  // ── SIMPAN OTOMATIS ──
+  // Tidak ada lagi tombol "Simpan Perubahan". Setiap perubahan pada form
+  // dikirim sendiri ke server setelah admin berhenti mengetik sejenak.
+  const { status: statusSimpan, tandaiTersimpan } = useAutoSimpan(
+    form,
+    async (nilai) => {
+      try {
+        await updatePengaturanLanding(nilai);
+      } catch (err) {
+        toastError(err.response?.data?.message || "Gagal menyimpan perubahan");
+        throw err;
+      }
+      toastSuccess("Perubahan tersimpan");
+      // segarkan status efektif tanpa menimpa isian yang sedang diketik
+      try {
+        const res = await getPengaturanLanding();
+        const d = res.data.data;
+        setStatusEfektif(d.status_efektif);
+        setAlasanDitutup(d.alasan_ditutup || "");
+      } catch {
+        /* status efektif bersifat tambahan, abaikan bila gagal */
+      }
+    }
+  );
 
   useEffect(() => {
     let aktif = true;
@@ -108,7 +290,9 @@ const PengaturanLandingPage = () => {
         const res = await getPengaturanLanding();
         if (!aktif) return;
         const d = res.data.data;
-        setForm(petakanForm(d.pengaturan));
+        const terpetakan = petakanForm(d.pengaturan);
+        tandaiTersimpan(terpetakan); // data dari server dianggap sudah tersimpan
+        setForm(terpetakan);
         setUrlLogo(d.url_logo || "");
         setUrlFavicon(d.url_favicon || "");
         setUrlFotoKantor(d.url_foto_kantor || "");
@@ -116,7 +300,7 @@ const PengaturanLandingPage = () => {
         setStatusEfektif(d.status_efektif);
         setAlasanDitutup(d.alasan_ditutup || "");
       } catch {
-        if (aktif) setNotif({ tipe: "error", pesan: "Gagal memuat pengaturan landing page" });
+        if (aktif) toastError("Gagal memuat pengaturan landing page");
       } finally {
         if (aktif) setLoading(false);
       }
@@ -126,27 +310,16 @@ const PengaturanLandingPage = () => {
     return () => {
       aktif = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [versiData]);
 
   const ubah = (key, value) => setForm((f) => ({ ...f, [key]: value }));
-
-  const simpan = async () => {
-    setSaving(true);
-    try {
-      await updatePengaturanLanding(form);
-      muatUlang();
-      tampilkanNotif("sukses", "Pengaturan berhasil disimpan");
-    } catch (err) {
-      tampilkanNotif("error", err.response?.data?.message || "Gagal menyimpan pengaturan");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const unggah = async (jenis, file) => {
     if (!file) return;
     const fd = new FormData();
     fd.append("file", file);
+    setMengunggah(jenis);
     try {
       await uploadFileLanding(jenis, fd);
       muatUlang();
@@ -160,11 +333,20 @@ const PengaturanLandingPage = () => {
       tampilkanNotif("sukses", `${namaJenis} berhasil diperbarui`);
     } catch (err) {
       tampilkanNotif("error", err.response?.data?.message || "Gagal mengunggah file");
+    } finally {
+      setMengunggah(null);
     }
   };
 
   const hapusFile = async (jenis) => {
-    if (!window.confirm("Hapus file ini?")) return;
+    const konfirmasi = await confirmDialog({
+      title: "Hapus berkas ini?",
+      text: "Berkas akan dihapus dari server dan tidak lagi tampil di halaman publik.",
+      confirmText: "Ya, hapus",
+      icon: "warning",
+      danger: true,
+    });
+    if (!konfirmasi.isConfirmed) return;
     try {
       await deleteFileLanding(jenis);
       muatUlang();
@@ -174,59 +356,115 @@ const PengaturanLandingPage = () => {
     }
   };
 
+  // URL tidak dikenal → arahkan ke sub-halaman pertama.
+  // Diletakkan SETELAH semua hook agar urutan hook tetap konsisten.
+  if (!grup) {
+    return <Navigate to={`/admin/landing/${GRUP_BAWAAN}`} replace />;
+  }
+
   if (loading || !form) {
     return (
       <AdminLayout>
-        <div className="p-6 text-sm text-slate-500">Memuat pengaturan…</div>
+        <RangkaHalamanLanding isDark={isDark} />
       </AdminLayout>
     );
   }
 
-  const inputClass =
-    "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
-  const labelClass = "text-xs font-semibold uppercase tracking-wide text-slate-500";
+  // Kolom isian: sudut lebih membulat, latar lembut, cincin fokus bercahaya.
+  const inputClass = `mt-1.5 w-full rounded-xl border px-4 py-3 text-sm font-medium outline-none transition-all duration-200 ${
+    isDark
+      ? "border-white/10 bg-white/5 text-slate-100 placeholder-slate-500 hover:border-white/20 focus:border-[#00A5EC] focus:bg-white/[0.07] focus:ring-4 focus:ring-[#00A5EC]/20"
+      : "border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-300 hover:border-slate-300 hover:bg-white focus:border-[#004F9F] focus:bg-white focus:ring-4 focus:ring-[#00A5EC]/15"
+  }`;
+
+  const labelClass = `flex items-center gap-1.5 text-[10.5px] font-black uppercase tracking-wider ${
+    isDark ? "text-slate-400" : "text-slate-400"
+  } before:h-1 before:w-1 before:rounded-full before:bg-[#00A5EC]/70 before:content-['']`;
+
+  // Kartu isian utama.
+  const cardClass = `relative space-y-5 overflow-hidden rounded-3xl border p-6 shadow-sm transition-all duration-300 hover:shadow-xl ${
+    isDark
+      ? "border-white/10 bg-gradient-to-b from-[#111c33] to-[#0f172a] hover:border-[#00A5EC]/25"
+      : "border-slate-200/80 bg-white hover:border-[#00A5EC]/35"
+  }`;
+  const cardClassPolos = cardClass.replace("space-y-5 ", "");
+
+  // Kotak pengelompokan di dalam kartu (sub-bagian).
+  const grupClass = `rounded-2xl border p-5 transition-all duration-300 ${
+    isDark
+      ? "border-white/10 bg-white/[0.03] hover:border-white/20"
+      : "border-slate-200/70 bg-gradient-to-br from-slate-50 to-white hover:border-[#00A5EC]/30 hover:shadow-sm"
+  }`;
 
   return (
     <AdminLayout>
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-slate-800">Pengaturan Landing Page</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Kelola identitas situs, informasi kontak, dan status pendaftaran yang tampil di web pendaftaran.
+      <div className="space-y-6 animate-[fadeslide_0.35s_ease-out]">
+        <div>
+          <p className={`text-[10.5px] font-black uppercase tracking-widest ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+            Pengaturan Landing Page
+          </p>
+          <h2 className={`mt-1 text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+            {grup.judul}
+          </h2>
+          <p className={`mt-1.5 max-w-xl text-xs leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+            {grup.desc}
           </p>
         </div>
 
-        {notif && (
-          <div
-            className={`mb-4 rounded-lg px-4 py-3 text-sm ${
-              notif.tipe === "sukses"
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : "bg-red-50 text-red-700 border border-red-200"
-            }`}
-          >
-            {notif.pesan}
-          </div>
+        <LandingStats cards={hitungStats(form, grup)} isDark={isDark} />
+
+        {/* Tab hanya ditampilkan bila sub-halaman ini memang punya lebih dari satu bagian */}
+        {grup.tabs.length > 1 && (
+          <TabBar
+            tabs={TABS.filter((t) => grup.tabs.includes(t.key))}
+            aktif={tab}
+            onPilih={gantiTab}
+            isDark={isDark}
+          />
         )}
 
-        <div className="mb-5 flex flex-wrap gap-2 border-b border-slate-200">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition ${
-                tab === t.key
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
+      {memuatTab ? (
+        <RangkaKontenLanding isDark={isDark} />
+      ) : (
+        <>
+      {/* ── Pratinjau hasil pencarian: lebar penuh, di atas seluruh kartu ── */}
+      {tab === "seo" && (
+        <div className={`${cardClassPolos} mb-5`}>
+          <KepalaKartu
+            icon={Eye}
+            judul="Pratinjau Hasil Akhir"
+            sub="Perkiraan tampilan situs Anda di halaman pencarian Google"
+            isDark={isDark}
+          />
+          <div
+            className={`mt-5 rounded-2xl border p-5 ${
+              isDark ? "border-white/10 bg-white/[0.03]" : "border-slate-100 bg-slate-50"
+            }`}
+          >
+            <p className="text-[11.5px] font-medium text-emerald-700">
+              simmagang.ponorogo.go.id
+            </p>
+            <p className="mt-1 break-words text-lg font-medium leading-snug text-blue-700">
+              {form.seo_title || "Judul halaman belum diisi"}
+            </p>
+            <p
+              className={`mt-1.5 text-[13px] leading-relaxed ${
+                isDark ? "text-slate-400" : "text-slate-600"
               }`}
             >
-              {t.label}
-            </button>
-          ))}
+              {form.seo_description || "Deskripsi singkat belum diisi."}
+            </p>
+          </div>
         </div>
+      )}
 
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        {/* ── Kolom kiri: seluruh form isian ── */}
+        <div className="min-w-0 space-y-5">
         {/* ── TAB IDENTITAS ── */}
         {tab === "identitas" && (
-          <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
+          <div className={cardClass}>
+            <KepalaKartu icon={Palette} judul="Identitas & Branding" sub="Nama, tagline, logo, dan favicon situs" isDark={isDark} />
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className={labelClass}>Nama Situs</label>
@@ -240,7 +478,7 @@ const PengaturanLandingPage = () => {
 
             <div>
               <label className={labelClass}>Tagline Footer</label>
-              <textarea rows={3} className={inputClass} value={form.tagline_footer} onChange={(e) => ubah("tagline_footer", e.target.value)} />
+              <EditorTeksKaya rows={3} isDark={isDark} nilai={form.tagline_footer} onUbah={(v) => ubah("tagline_footer", v)} />
             </div>
 
             <div>
@@ -248,40 +486,96 @@ const PengaturanLandingPage = () => {
               <input className={inputClass} value={form.teks_copyright} onChange={(e) => ubah("teks_copyright", e.target.value)} />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              {[
-                { jenis: "logo", judul: "Logo Situs", url: urlLogo, ket: "JPG, PNG, WEBP, atau SVG. Maks 2 MB." },
-                { jenis: "favicon", judul: "Favicon", url: urlFavicon, ket: "PNG, ICO, atau SVG. Maks 2 MB." },
-              ].map((f) => (
-                <div key={f.jenis} className="rounded-lg border border-slate-200 p-4">
-                  <p className="text-sm font-semibold text-slate-700">{f.judul}</p>
-                  <div className="mt-3 flex h-20 w-full items-center justify-center rounded bg-slate-50">
-                    {f.url ? (
-                      <img src={f.url} alt={f.judul} className="max-h-16 object-contain" />
-                    ) : (
-                      <span className="text-xs text-slate-400">Belum ada file</span>
-                    )}
+            <div className={grupClass}>
+              <JudulGrup isDark={isDark} icon={Images} teks="Berkas Gambar" ket="Seret berkas ke kotak atau klik untuk memilih" />
+
+              {/* Penjelasan sederhana agar pengguna awam tidak bingung */}
+              <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                <div
+                  className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 ${
+                    isDark
+                      ? "border-[#00A5EC]/25 bg-[#00A5EC]/[0.07]"
+                      : "border-sky-200 bg-gradient-to-br from-sky-50 to-white"
+                  }`}
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#004F9F] to-[#00A5EC] text-white shadow-sm">
+                    <Images className="h-4 w-4" strokeWidth={2.4} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className={`text-[12px] font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                      Apa itu Logo Situs?
+                    </p>
+                    <p className={`mt-1 text-[11.5px] leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                      Gambar lambang instansi yang tampil di <b>pojok kiri atas halaman</b> (navbar)
+                      dan di bagian bawah halaman (footer). Ini yang paling sering dilihat
+                      pengunjung. Sebaiknya gunakan gambar dengan latar transparan (PNG/SVG)
+                      agar menyatu dengan warna halaman.
+                    </p>
                   </div>
-                  <input
-                    type="file"
-                    className="mt-3 w-full text-xs"
-                    onChange={(e) => unggah(f.jenis, e.target.files?.[0])}
-                  />
-                  <p className="mt-2 text-[11px] text-slate-400">{f.ket}</p>
-                  {f.url && (
-                    <button onClick={() => hapusFile(f.jenis)} className="mt-2 text-xs font-semibold text-red-600 hover:underline">
-                      Hapus file
-                    </button>
-                  )}
                 </div>
-              ))}
+
+                <div
+                  className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 ${
+                    isDark
+                      ? "border-white/10 bg-white/[0.04]"
+                      : "border-slate-200 bg-gradient-to-br from-slate-50 to-white"
+                  }`}
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1442] to-[#1E3A8A] text-white shadow-sm">
+                    <Info className="h-4 w-4" strokeWidth={2.4} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className={`text-[12px] font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                      Apa itu Favicon?
+                    </p>
+                    <p className={`mt-1 text-[11.5px] leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                      Ikon mungil yang muncul di <b>tab browser</b>, di daftar bookmark, dan saat
+                      situs disimpan di layar utama ponsel. Ukurannya sangat kecil, jadi pakai
+                      gambar sederhana &mdash; cukup lambang saja tanpa tulisan, berbentuk persegi
+                      (misal 512 &times; 512 piksel).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <DropZoneGambar
+                  judul="Logo Situs"
+                  ket="Tampil di navbar & footer. JPG, PNG, WEBP, atau SVG."
+                  url={urlLogo}
+                  accept=".jpg,.jpeg,.png,.webp,.svg"
+                  maksMb={2}
+                  muat="contain"
+                  rasio="h-36"
+                  mengunggah={mengunggah === "logo"}
+                  onPilih={(file) => unggah("logo", file)}
+                  onHapus={() => hapusFile("logo")}
+                  isDark={isDark}
+                />
+                <DropZoneGambar
+                  judul="Favicon"
+                  ket="Ikon tab browser, bentuk persegi. PNG, ICO, atau SVG."
+                  url={urlFavicon}
+                  accept=".png,.ico,.svg"
+                  maksMb={2}
+                  muat="contain"
+                  rasio="h-36"
+                  mengunggah={mengunggah === "favicon"}
+                  onPilih={(file) => unggah("favicon", file)}
+                  onHapus={() => hapusFile("favicon")}
+                  isDark={isDark}
+                />
+              </div>
             </div>
+
+            <StatusSimpan status={statusSimpan} isDark={isDark} />
           </div>
         )}
 
         {/* ── TAB HERO SECTION ── */}
         {tab === "hero" && (
-          <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
+          <div className={cardClass}>
+            <KepalaKartu icon={Sparkles} judul="Hero Section" sub="Judul utama dan foto sampul beranda" isDark={isDark} />
             <div>
               <label className={labelClass}>Badge Kecil di Atas Judul</label>
               <input className={inputClass} value={form.hero_badge} onChange={(e) => ubah("hero_badge", e.target.value)} placeholder="⚡ Pendaftaran Magang" />
@@ -300,12 +594,12 @@ const PengaturanLandingPage = () => {
 
             <div>
               <label className={labelClass}>Sub Judul / Paragraf</label>
-              <textarea rows={3} className={inputClass} value={form.hero_subjudul} onChange={(e) => ubah("hero_subjudul", e.target.value)} />
+              <EditorTeksKaya rows={3} isDark={isDark} nilai={form.hero_subjudul} onUbah={(v) => ubah("hero_subjudul", v)} />
             </div>
 
-            <div className="rounded-lg border border-slate-200 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Tombol Utama</p>
-              <div className="mt-3 grid gap-4 md:grid-cols-2">
+            <div className={grupClass}>
+              <JudulGrup isDark={isDark} icon={MousePointerClick} teks="Tombol Utama" ket="Tombol ajakan utama di bagian hero" />
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className={labelClass}>Teks Tombol</label>
                   <input className={inputClass} value={form.hero_cta_teks} onChange={(e) => ubah("hero_cta_teks", e.target.value)} />
@@ -321,9 +615,9 @@ const PengaturanLandingPage = () => {
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-200 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Tombol Kedua</p>
-              <div className="mt-3 grid gap-4 md:grid-cols-2">
+            <div className={grupClass}>
+              <JudulGrup isDark={isDark} icon={Link2} teks="Tombol Kedua" ket="Tombol pendamping, misal menuju halaman program" />
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className={labelClass}>Teks Tombol</label>
                   <input className={inputClass} value={form.hero_cta2_teks} onChange={(e) => ubah("hero_cta2_teks", e.target.value)} />
@@ -334,20 +628,22 @@ const PengaturanLandingPage = () => {
                 </div>
               </div>
             </div>
+
+            <StatusSimpan status={statusSimpan} isDark={isDark} />
           </div>
         )}
 
         {/* ── TAB SLIDE GAMBAR ── */}
-        {tab === "slide" && <KelolaHeroSlide onNotif={tampilkanNotif} />}
+        {tab === "slide" && <KelolaHeroSlide onNotif={tampilkanNotif} isDark={isDark} />}
 
         {/* ── TAB BIDANG MAGANG ── */}
-        {tab === "bidang" && <KelolaTampilanBidang onNotif={tampilkanNotif} />}
+        {tab === "bidang" && <KelolaTampilanBidang onNotif={tampilkanNotif} isDark={isDark} />}
 
         {/* ── TAB TENTANG & PROFIL ── */}
         {tab === "tentang" && (
           <div className="space-y-6">
-            <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
-              <h3 className="text-sm font-bold text-slate-700">Section "Tentang" di Landing Page</h3>
+            <div className={cardClass}>
+              <KepalaKartu icon={Info} judul="Tentang Instansi" sub="Deskripsi singkat yang tampil di beranda" isDark={isDark} />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
@@ -362,16 +658,18 @@ const PengaturanLandingPage = () => {
 
               <div>
                 <label className={labelClass}>Paragraf 1</label>
-                <textarea rows={3} className={inputClass} value={form.about_paragraf1} onChange={(e) => ubah("about_paragraf1", e.target.value)} />
+                <EditorTeksKaya rows={3} isDark={isDark} nilai={form.about_paragraf1} onUbah={(v) => ubah("about_paragraf1", v)} />
               </div>
               <div>
                 <label className={labelClass}>Paragraf 2</label>
-                <textarea rows={3} className={inputClass} value={form.about_paragraf2} onChange={(e) => ubah("about_paragraf2", e.target.value)} />
+                <EditorTeksKaya rows={3} isDark={isDark} nilai={form.about_paragraf2} onUbah={(v) => ubah("about_paragraf2", v)} />
               </div>
+
+              <StatusSimpan status={statusSimpan} isDark={isDark} />
             </div>
 
-            <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
-              <h3 className="text-sm font-bold text-slate-700">Profil Instansi (halaman Tentang)</h3>
+            <div className={cardClass}>
+              <KepalaKartu icon={Target} judul="Profil Instansi" sub="Isi halaman Tentang beserta foto kantor" isDark={isDark} />
 
               <div>
                 <label className={labelClass}>Judul Profil</label>
@@ -379,38 +677,27 @@ const PengaturanLandingPage = () => {
               </div>
               <div>
                 <label className={labelClass}>Deskripsi Profil</label>
-                <textarea rows={5} className={inputClass} value={form.profil_deskripsi} onChange={(e) => ubah("profil_deskripsi", e.target.value)} />
+                <EditorTeksKaya rows={5} isDark={isDark} nilai={form.profil_deskripsi} onUbah={(v) => ubah("profil_deskripsi", v)} />
               </div>
 
-              <div>
-                <label className={labelClass}>Foto Kantor (maks. 5 MB)</label>
-                <div className="mt-2 flex flex-wrap items-center gap-4">
-                  {urlFotoKantor && (
-                    <img src={urlFotoKantor} alt="Foto kantor" className="h-24 w-40 rounded-lg border border-slate-200 object-cover" />
-                  )}
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.webp"
-                    className="text-sm"
-                    onChange={(e) => unggah("foto-kantor", e.target.files?.[0])}
-                  />
-                  {urlFotoKantor && (
-                    <button
-                      onClick={() => hapusFile("foto-kantor")}
-                      className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
-                    >
-                      Hapus Foto
-                    </button>
-                  )}
-                </div>
-                <p className="mt-2 text-[11px] text-slate-400">
-                  Mengunggah foto baru akan otomatis menghapus foto lama dari server.
-                </p>
-              </div>
+              <DropZoneGambar
+                judul="Foto Kantor"
+                ket="JPG, PNG, atau WEBP. Foto lama otomatis dihapus saat diganti."
+                url={urlFotoKantor}
+                accept=".jpg,.jpeg,.png,.webp"
+                maksMb={5}
+                rasio="h-52"
+                mengunggah={mengunggah === "foto-kantor"}
+                onPilih={(file) => unggah("foto-kantor", file)}
+                onHapus={() => hapusFile("foto-kantor")}
+                isDark={isDark}
+              />
+
+              <StatusSimpan status={statusSimpan} isDark={isDark} />
             </div>
 
-            <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
-              <h3 className="text-sm font-bold text-slate-700">Visi & Misi</h3>
+            <div className={cardClass}>
+              <KepalaKartu icon={ListChecks} judul="Visi & Misi" sub="Cita-cita dan langkah nyata instansi" isDark={isDark} />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
@@ -425,25 +712,28 @@ const PengaturanLandingPage = () => {
 
               <div>
                 <label className={labelClass}>Isi Visi</label>
-                <textarea rows={3} className={inputClass} value={form.visi_teks} onChange={(e) => ubah("visi_teks", e.target.value)} />
+                <EditorTeksKaya rows={3} isDark={isDark} nilai={form.visi_teks} onUbah={(v) => ubah("visi_teks", v)} />
               </div>
 
-              <p className="text-[11px] text-slate-400">
+              <p className={`text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                 Poin-poin Misi dikelola pada tab <b>Konten Daftar → Misi Instansi</b>.
               </p>
+
+              <StatusSimpan status={statusSimpan} isDark={isDark} />
             </div>
           </div>
         )}
 
         {/* ── TAB KONTEN DAFTAR ── */}
-        {tab === "konten" && <KelolaKontenLanding onNotif={tampilkanNotif} />}
+        {tab === "konten" && <KelolaKontenLanding onNotif={tampilkanNotif} isDark={isDark} />}
 
         {/* ── TAB MENU NAVIGASI ── */}
-        {tab === "menu" && <KelolaMenuLanding onNotif={tampilkanNotif} />}
+        {tab === "menu" && <KelolaMenuLanding onNotif={tampilkanNotif} isDark={isDark} />}
 
         {/* ── TAB KONTAK ── */}
         {tab === "kontak" && (
-          <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
+          <div className={cardClass}>
+            <KepalaKartu icon={Phone} judul="Kontak & Media Sosial" sub="Informasi yang tampil di bagian footer" isDark={isDark} />
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className={labelClass}>Email Resmi</label>
@@ -463,68 +753,78 @@ const PengaturanLandingPage = () => {
               </div>
             </div>
 
-            <div>
-              <label className={labelClass}>Alamat Lengkap</label>
-              <textarea rows={2} className={inputClass} value={form.alamat_lengkap} onChange={(e) => ubah("alamat_lengkap", e.target.value)} />
+            <div className={grupClass}>
+              <JudulGrup isDark={isDark} icon={MapPin} teks="Alamat & Peta" ket="Lokasi kantor yang tampil di halaman kontak" />
+              <div>
+                <label className={labelClass}>Alamat Lengkap</label>
+                <textarea rows={2} className={inputClass} value={form.alamat_lengkap} onChange={(e) => ubah("alamat_lengkap", e.target.value)} />
+              </div>
+              <div className="mt-4">
+                <label className={labelClass}>URL Embed Google Maps</label>
+                <textarea rows={3} className={inputClass} value={form.embed_maps} onChange={(e) => ubah("embed_maps", e.target.value)} />
+                <p className={`mt-1 text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                  Ambil dari Google Maps → Bagikan → Sematkan peta, lalu salin isi atribut <code>src</code> saja.
+                </p>
+              </div>
             </div>
 
-            <div>
-              <label className={labelClass}>URL Embed Google Maps</label>
-              <textarea rows={3} className={inputClass} value={form.embed_maps} onChange={(e) => ubah("embed_maps", e.target.value)} />
-              <p className="mt-1 text-[11px] text-slate-400">
-                Ambil dari Google Maps → Bagikan → Sematkan peta, lalu salin isi atribut <code>src</code> saja.
-              </p>
+            <div className={grupClass}>
+              <JudulGrup isDark={isDark} icon={Share2} teks="Media Sosial" ket="Kosongkan untuk menyembunyikan ikonnya" />
+              <div className="grid gap-4 md:grid-cols-2">
+                {[
+                  ["link_instagram", "Instagram"],
+                  ["link_facebook", "Facebook"],
+                  ["link_youtube", "YouTube"],
+                  ["link_website", "Website Resmi"],
+                ].map(([key, label]) => (
+                  <div key={key}>
+                    <label className={labelClass}>{label}</label>
+                    <input
+                      className={inputClass}
+                      placeholder="Kosongkan untuk menyembunyikan ikon"
+                      value={form[key]}
+                      onChange={(e) => ubah(key, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              {[
-                ["link_instagram", "Instagram"],
-                ["link_facebook", "Facebook"],
-                ["link_youtube", "YouTube"],
-                ["link_website", "Website Resmi"],
-              ].map(([key, label]) => (
-                <div key={key}>
-                  <label className={labelClass}>{label}</label>
-                  <input
-                    className={inputClass}
-                    placeholder="Kosongkan untuk menyembunyikan ikon"
-                    value={form[key]}
-                    onChange={(e) => ubah(key, e.target.value)}
-                  />
-                </div>
-              ))}
-            </div>
+            <StatusSimpan status={statusSimpan} isDark={isDark} />
           </div>
         )}
 
         {/* ── TAB STATUS PENDAFTARAN ── */}
         {tab === "status" && (
-          <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
+          <div className={cardClass}>
+            <KepalaKartu icon={ToggleLeft} judul="Status Pendaftaran" sub="Buka atau tutup pendaftaran beserta kuotanya" isDark={isDark} />
+
             <div
-              className={`rounded-lg border px-4 py-3 text-sm ${
+              className={`relative overflow-hidden rounded-2xl border px-5 py-4 text-sm ${
                 statusEfektif
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-amber-200 bg-amber-50 text-amber-700"
+                  ? "border-emerald-200 bg-gradient-to-r from-emerald-50 to-white text-emerald-700"
+                  : "border-amber-200 bg-gradient-to-r from-amber-50 to-white text-amber-700"
               }`}
             >
-              <strong>Status saat ini: {statusEfektif ? "Pendaftaran DIBUKA" : "Pendaftaran DITUTUP"}</strong>
+              <span
+                className={`absolute inset-y-0 left-0 w-1.5 ${
+                  statusEfektif ? "bg-emerald-500" : "bg-amber-500"
+                }`}
+              />
+              <strong className="font-black">
+                Status saat ini: {statusEfektif ? "Pendaftaran DIBUKA" : "Pendaftaran DITUTUP"}
+              </strong>
               {!statusEfektif && alasanDitutup && <p className="mt-1">{alasanDitutup}</p>}
             </div>
 
-            <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-4">
-              <input
-                type="checkbox"
-                className="mt-1"
-                checked={form.pendaftaran_dibuka}
-                onChange={(e) => ubah("pendaftaran_dibuka", e.target.checked)}
-              />
-              <span>
-                <span className="block text-sm font-semibold text-slate-700">Buka pendaftaran magang</span>
-                <span className="block text-xs text-slate-500">
-                  Jika dimatikan, tombol daftar disembunyikan dan pengiriman formulir ditolak oleh server.
-                </span>
-              </span>
-            </label>
+            <Sakelar
+              nyala={form.pendaftaran_dibuka}
+              onUbah={(v) => ubah("pendaftaran_dibuka", v)}
+              judul="Buka pendaftaran magang"
+              ket="Jika dimatikan, tombol daftar disembunyikan dan pengiriman formulir ditolak oleh server."
+              ikon={DoorOpen}
+              isDark={isDark}
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -536,7 +836,7 @@ const PengaturanLandingPage = () => {
                 <input type="date" className={inputClass} value={form.tanggal_tutup} onChange={(e) => ubah("tanggal_tutup", e.target.value)} />
               </div>
             </div>
-            <p className="-mt-2 text-[11px] text-slate-400">
+            <p className={`-mt-2 text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
               Kosongkan kedua tanggal jika ingin mengatur buka/tutup sepenuhnya secara manual.
             </p>
 
@@ -545,11 +845,17 @@ const PengaturanLandingPage = () => {
               <textarea rows={3} className={inputClass} value={form.pesan_ditutup} onChange={(e) => ubah("pesan_ditutup", e.target.value)} />
             </div>
 
-            <div className="rounded-lg border border-slate-200 p-4">
-              <label className="flex items-center gap-3">
-                <input type="checkbox" checked={form.banner_aktif} onChange={(e) => ubah("banner_aktif", e.target.checked)} />
-                <span className="text-sm font-semibold text-slate-700">Tampilkan banner pengumuman di landing page</span>
-              </label>
+            <div className={grupClass}>
+              <JudulGrup isDark={isDark} icon={Megaphone} teks="Banner Pengumuman" ket="Pita informasi di bagian atas landing page" />
+
+              <Sakelar
+                nyala={form.banner_aktif}
+                onUbah={(v) => ubah("banner_aktif", v)}
+                judul="Tampilkan banner pengumuman"
+                ket="Banner muncul di bagian paling atas halaman publik."
+                ikon={Megaphone}
+                isDark={isDark}
+              />
 
               {form.banner_aktif && (
                 <div className="mt-4 space-y-4">
@@ -568,14 +874,16 @@ const PengaturanLandingPage = () => {
                 </div>
               )}
             </div>
+
+            <StatusSimpan status={statusSimpan} isDark={isDark} />
           </div>
         )}
 
         {/* ── TAB SEO & BERBAGI ── */}
         {tab === "seo" && (
           <div className="space-y-6">
-            <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
-              <h3 className="text-sm font-bold text-slate-700">Optimasi Mesin Pencari</h3>
+            <div className={cardClass}>
+              <KepalaKartu icon={Search} judul="SEO Halaman" sub="Judul, deskripsi, dan kata kunci pencarian" isDark={isDark} />
 
               <div>
                 <label className={labelClass}>Judul Halaman (Title Tag)</label>
@@ -586,7 +894,7 @@ const PengaturanLandingPage = () => {
                   onChange={(e) => ubah("seo_title", e.target.value)}
                   placeholder="Portal Pendaftaran | SIM Magang Diskominfo Ponorogo"
                 />
-                <p className="mt-1 text-[11px] text-slate-400">
+                <p className={`mt-1 text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                   Tampil di tab browser dan sebagai judul biru di hasil Google.
                   Idealnya 50-60 karakter. Terpakai: {form.seo_title.length}/70.
                 </p>
@@ -601,7 +909,7 @@ const PengaturanLandingPage = () => {
                   value={form.seo_description}
                   onChange={(e) => ubah("seo_description", e.target.value)}
                 />
-                <p className="mt-1 text-[11px] text-slate-400">
+                <p className={`mt-1 text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                   Teks abu-abu di bawah judul pada hasil pencarian. Idealnya 120-155
                   karakter. Terpakai: {form.seo_description.length}/200.
                 </p>
@@ -616,86 +924,43 @@ const PengaturanLandingPage = () => {
                   placeholder="magang ponorogo, magang diskominfo, pkl ponorogo"
                 />
               </div>
+
+              <StatusSimpan status={statusSimpan} isDark={isDark} />
             </div>
 
-            <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
-              <h3 className="text-sm font-bold text-slate-700">
-                Gambar Saat Link Dibagikan (OG Image)
-              </h3>
-              <p className="text-xs text-slate-500">
+            <div className={cardClass}>
+              <KepalaKartu icon={Images} judul="Gambar Berbagi" sub="Tampil saat tautan dibagikan ke media sosial" isDark={isDark} />
+              <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                 Gambar ini muncul ketika alamat web dibagikan di WhatsApp, Facebook, atau
-                Twitter. Ukuran ideal 1200 × 630 piksel, maksimal 5 MB.
+                Twitter. Ukuran ideal 1200 × 630 piksel.
               </p>
 
-              <div className="flex flex-wrap items-center gap-4">
-                {urlOgImage ? (
-                  <img
-                    src={urlOgImage}
-                    alt="Pratinjau OG"
-                    className="h-28 w-52 rounded-lg border border-slate-200 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-28 w-52 items-center justify-center rounded-lg bg-slate-50 text-xs text-slate-400">
-                    Belum ada gambar
-                  </div>
-                )}
+              <DropZoneGambar
+                judul="Gambar Saat Link Dibagikan (OG Image)"
+                ket="JPG, PNG, atau WEBP. Gambar lama otomatis dihapus saat diganti."
+                url={urlOgImage}
+                accept=".jpg,.jpeg,.png,.webp"
+                maksMb={5}
+                rasio="h-52"
+                mengunggah={mengunggah === "og-image"}
+                onPilih={(file) => unggah("og-image", file)}
+                onHapus={() => hapusFile("og-image")}
+                isDark={isDark}
+              />
 
-                <div className="space-y-2">
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.webp"
-                    className="text-sm"
-                    onChange={(e) => unggah("og-image", e.target.files?.[0])}
-                  />
-                  {urlOgImage && (
-                    <button
-                      onClick={() => hapusFile("og-image")}
-                      className="block rounded-md bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
-                    >
-                      Hapus Gambar
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <p className="text-[11px] text-slate-400">
-                Mengunggah gambar baru otomatis menghapus gambar lama dari server.
-              </p>
-            </div>
-
-            {/* Pratinjau hasil pencarian */}
-            <div className="rounded-xl border border-slate-200 bg-white p-6">
-              <h3 className="mb-4 text-sm font-bold text-slate-700">
-                Pratinjau di Hasil Google
-              </h3>
-              <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-                <p className="text-[11px] text-emerald-700">
-                  simmagang.ponorogo.go.id
-                </p>
-                <p className="mt-0.5 truncate text-base text-blue-700">
-                  {form.seo_title || "Judul halaman belum diisi"}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                  {form.seo_description || "Deskripsi singkat belum diisi."}
-                </p>
-              </div>
+              <StatusSimpan status={statusSimpan} isDark={isDark} />
             </div>
           </div>
         )}
+          </div>
 
-        {!TAB_MANDIRI.includes(tab) && (
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={simpan}
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            {saving ? "Menyimpan…" : "Simpan Perubahan"}
-          </button>
-        </div>
-        )}
+          {/* ── Kolom kanan: panduan penulisan ── */}
+        <PanduanCard tab={tab} isDark={isDark} />
       </div>
-    </AdminLayout>
+      </>
+    )}
+  </div>
+</AdminLayout>
   );
 };
 

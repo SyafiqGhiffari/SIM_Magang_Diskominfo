@@ -1,7 +1,44 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { LogOut, Settings, ChevronDown, ChevronRight, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { createPortal } from "react-dom";
+import { getFileUrl } from "../../../../utils/fileUrl";
+
+// Sidebar ini di-unmount & mount ulang setiap kali berpindah halaman
+// (lihat catatan di ManajemenShell.jsx). Karena itu status buka/tutup dropdown
+// disimpan di luar komponen, agar tidak ikut ter-reset dan animasinya konsisten.
+let dropdownTersimpan = {};
+
+// Posisi scroll daftar menu. Disimpan di luar komponen dengan alasan yang sama:
+// sidebar dibuat ulang tiap ganti halaman, sehingga scrollTop-nya selalu reset ke 0
+// dan menu yang letaknya di bawah terasa "melompat" ke atas sendiri.
+let posisiScrollNav = 0;
+
+// Avatar profil. Dideklarasikan di luar ManajemenSidebar supaya tidak dibuat
+// ulang setiap render — komponen yang dibuat saat render akan kehilangan
+// state-nya (di sini: status gagal memuat gambar) pada setiap perubahan.
+const AvatarProfil = ({ fotoUrl, inisial, nama, size, ring }) => {
+  const [gagal, setGagal] = useState(false);
+
+  if (fotoUrl && !gagal) {
+    return (
+      <img
+        src={fotoUrl}
+        alt={nama || "Foto profil"}
+        onError={() => setGagal(true)}
+        className={`${size} shrink-0 rounded-full object-cover shadow ${ring}`}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${size} shrink-0 rounded-full bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white flex items-center justify-center font-black shadow ${ring}`}
+    >
+      {inisial}
+    </div>
+  );
+};
 
 const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profile, homePath, kelolaAkunPath, isDark, isOpen, onClose, collapsed, onToggleCollapse }) => {
   const [avatarOpen, setAvatarOpen] = useState(false);
@@ -13,14 +50,34 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
   const [flyoutPos, setFlyoutPos] = useState({ top: 0, left: 0 });
   const flyoutRef = useRef(null);
   const flyoutBtnRefs = useRef({});
+  const navRef = useRef(null);
+
+  // useLayoutEffect (bukan useEffect) supaya posisi dikembalikan SEBELUM browser
+  // menggambar layar — jadi tidak terlihat berkedip naik lalu turun lagi.
+  useLayoutEffect(() => {
+    if (navRef.current) navRef.current.scrollTop = posisiScrollNav;
+  }, []);
+
+  const simpanPosisiScroll = (e) => {
+    posisiScrollNav = e.currentTarget.scrollTop;
+  };
 
   const toggleAvatar = () => {
     const r = triggerRef.current?.getBoundingClientRect();
     if (r) setMenuPos({ bottom: window.innerHeight - r.bottom, left: r.right + 12 });
     setAvatarOpen((p) => !p);
   };
-  const [dropdownOverride, setDropdownOverride] = useState({});
+  const [dropdownOverride, setDropdownOverrideState] = useState(dropdownTersimpan);
   const dropdownRefs = useRef({});
+
+  // Pembungkus: selain memperbarui state, nilainya juga disimpan ke variabel
+  // modul supaya tetap bertahan saat sidebar dibuat ulang antar halaman.
+  const setDropdownOverride = (updater) =>
+    setDropdownOverrideState((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      dropdownTersimpan = next;
+      return next;
+    });
 
   useEffect(() => {
     const fn = (e) => {
@@ -28,11 +85,9 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
       const insideMenu = menuRef.current?.contains(e.target);
       if (!insideTrigger && !insideMenu) setAvatarOpen(false);
 
-      Object.entries(dropdownRefs.current).forEach(([key, el]) => {
-        if (el && !el.contains(e.target)) {
-          setDropdownOverride((prev) => (prev[key] ? { ...prev, [key]: false } : prev));
-        }
-      });
+      // Dropdown accordion sengaja TIDAK ditutup saat klik di luar.
+      // Menu sidebar harus tetap terbuka selama admin berada di dalam bagian itu,
+      // dan hanya tertutup bila tombol induknya diklik langsung.
     };
     document.addEventListener("mousedown", fn);
     return () => document.removeEventListener("mousedown", fn);
@@ -69,18 +124,41 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
     }
   }
 
-  // Dropdown otomatis terbuka kalau child-nya sedang aktif, kecuali user sudah
-  // menutupnya secara manual (tercatat di dropdownOverride).
+  // Nilai override berbentuk { buka, padaHalaman }. Menyertakan halaman saat
+  // tombol ditekan membuat penutupan manual hanya berlaku selama admin masih
+  // berada di halaman itu — begitu ia pindah halaman, aturan bawaan berlaku lagi
+  // sehingga grup yang sedang dibuka TIDAK ikut tertutup.
   const isDropdownOpen = (item) => {
-    if (dropdownOverride[item.key] !== undefined) return dropdownOverride[item.key];
-    return item.children.some((c) => c.key === activeKey);
+    const anakAktif = item.children.some((c) => c.key === activeKey);
+    const simpan = dropdownOverride[item.key];
+    if (!simpan) return anakAktif;
+    // penutupan manual kedaluwarsa setelah berpindah halaman
+    if (!simpan.buka && simpan.padaHalaman !== activeKey) return anakAktif;
+    return simpan.buka;
   };
 
   const toggleDropdown = (item) => {
-    setDropdownOverride((prev) => ({ ...prev, [item.key]: !isDropdownOpen(item) }));
+    const buka = !isDropdownOpen(item);
+    setDropdownOverride((prev) => ({
+      ...prev,
+      [item.key]: { buka, padaHalaman: activeKey },
+    }));
   };
 
-  const initial = profile?.email ? profile.email.charAt(0).toUpperCase() : "A";
+  // Inisial diambil dari nama bila ada, karena lebih bermakna daripada
+  // huruf pertama alamat email.
+  const initial = (() => {
+    const sumber = profile?.nama || profile?.email || "A";
+    return sumber
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase();
+  })();
+
+  const fotoUrl = profile?.foto_profil ? getFileUrl(profile.foto_profil) : null;
 
   return (
     <>
@@ -126,7 +204,11 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
           </button>
         </div>
 
-        <nav className={`flex-1 overflow-y-auto px-4 pt-3 space-y-1.5 ${collapsed ? "md:px-3" : ""}`}>
+        <nav
+          ref={navRef}
+          onScroll={simpanPosisiScroll}
+          className={`flex-1 overflow-y-auto px-4 pt-3 space-y-1.5 ${collapsed ? "md:px-3" : ""}`}
+        >
           {navItems.map((item, idx) => {
             if (item.type === "section") {
               return (
@@ -175,29 +257,24 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                   {/* Submenu accordion — muncul saat parent "Kelola Pengguna" diklik pada sidebar mode normal (tidak diciutkan) */}
                   {!collapsed && (
                     <div
-                      className={`grid transition-all duration-300 ease-out ${
+                      className={`grid transition-[grid-template-rows,opacity,margin] duration-250 ease-out ${
                         isOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0 mt-0"
                       }`}
                     >
                       <div className="overflow-hidden">
                         <div className="ml-4 space-y-1 border-l-2 border-slate-100 pl-3 py-0.5">
-                          {item.children.map((child, ci) => (
+                          {item.children.map((child) => (
                             <Link
                               key={child.key}
                               to={child.to}
                               onClick={onClose}
-                              className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-[12.5px] font-bold whitespace-nowrap transition-all duration-200 ${
+                              className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-[12.5px] font-bold whitespace-nowrap transition-colors duration-200 ${
                                 activeKey === child.key
                                   ? "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-md"
                                   : isDark
                                   ? "text-slate-400 hover:bg-white/5 hover:text-slate-100"
                                   : "text-slate-600 hover:bg-slate-50 hover:text-[#0B1442]"
                               }`}
-                              style={{
-                                transitionDelay: isOpen ? `${ci * 40}ms` : "0ms",
-                                opacity: isOpen ? 1 : 0,
-                                transform: isOpen ? "translateX(0)" : "translateX(-8px)",
-                              }}
                             >
                               {child.icon}
                               <span className="min-w-0 truncate">{child.label}</span>
@@ -273,15 +350,20 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
             <button
               ref={triggerRef}
               onClick={toggleAvatar}
-              title={collapsed ? profile?.email : undefined}
+              title={collapsed ? profile?.nama || profile?.email : undefined}
               className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all cursor-pointer ${isDark ? "hover:bg-white/5" : "hover:bg-slate-50"} ${collapsed ? "md:justify-center md:px-0" : ""}`}
             >
-              <div className="h-9 w-9 shrink-0 rounded-full bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white flex items-center justify-center text-sm font-black shadow">
-                {initial}
-              </div>
+              <AvatarProfil
+                key={fotoUrl || "inisial"}
+                fotoUrl={fotoUrl}
+                inisial={initial}
+                nama={profile?.nama}
+                size="h-9 w-9 text-[11px]"
+                ring={isDark ? "ring-2 ring-white/10" : "ring-2 ring-slate-200"}
+              />
               <div className={`flex-1 text-left min-w-0 ${collapsed ? "md:hidden" : ""}`}>
-                <p className={`text-xs font-extrabold truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{profile?.email || "Memuat..."}</p>
-                <p className={`text-[9px] truncate capitalize ${isDark ? "text-slate-500" : "text-slate-400"}`}>{roleLabel}</p>
+                <p className={`text-xs font-extrabold truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{profile?.nama || profile?.email || "Memuat..."}</p>
+                <p className={`text-[9px] truncate capitalize ${isDark ? "text-slate-500" : "text-slate-400"}`}>{profile?.jabatan || roleLabel}</p>
               </div>
               <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${isDark ? "text-slate-500" : "text-slate-400"} ${avatarOpen ? "rotate-180" : ""} ${collapsed ? "md:hidden" : ""}`} />
             </button>
@@ -300,9 +382,14 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                   <div className="pointer-events-none absolute -bottom-6 -left-3 h-14 w-14 rounded-full bg-[#00A5EC]/40 blur-xl" />
                   <div className="relative flex items-center gap-2.5">
                     <div className="relative shrink-0">
-                      <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm text-white flex items-center justify-center text-sm font-black ring-2 ring-white/30">
-                        {initial}
-                      </div>
+                      <AvatarProfil
+                        key={fotoUrl || "inisial"}
+                        fotoUrl={fotoUrl}
+                        inisial={initial}
+                        nama={profile?.nama}
+                        size="h-10 w-10 text-[12px]"
+                        ring="ring-2 ring-white/30"
+                      />
                       {/* Titik online berkedip */}
                       <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
                         <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />

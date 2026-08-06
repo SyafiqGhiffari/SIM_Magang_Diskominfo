@@ -1,5 +1,9 @@
 import api from "./api";
 
+// ── Ringkasan dashboard admin (satu request untuk seluruh angka) ──
+export const getRingkasanDashboard = (params) =>
+  api.get("/manajemen/admin/dashboard/ringkasan", { params });
+
 //kelola pendaftaran
 export const getAllPendaftaran = () => api.get("/manajemen/admin/pendaftaran");
 export const getDetailPendaftaran = (id) => api.get(`/manajemen/admin/pendaftaran/${id}`);

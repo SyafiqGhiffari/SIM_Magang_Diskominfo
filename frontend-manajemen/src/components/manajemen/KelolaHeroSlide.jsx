@@ -1,25 +1,34 @@
 import { useEffect, useState } from "react";
 import {
-  getHeroSlides,
-  createHeroSlide,
-  updateHeroSlide,
-  deleteHeroSlide,
-} from "../../services/adminService";
+  Images,
+  Plus,
+  Pencil,
+  Trash2,
+  Eye,
+  EyeOff,
+  Loader2,
+  ImagePlus,
+} from "lucide-react";
+import KepalaKartu from "./admin/landing/KepalaKartu";
+import SlideModal from "./admin/landing/SlideModal";
+import { getHeroSlides, deleteHeroSlide } from "../../services/adminService";
+import { confirmDialog } from "../../utils/swal";
 
-const inputClass =
-  "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
-const labelClass = "text-xs font-semibold uppercase tracking-wide text-slate-500";
-
-const FORM_KOSONG = { id: null, judul: "", url_gambar: "", urutan: 0, is_active: true, file: null };
-
-const KelolaHeroSlide = ({ onNotif }) => {
+const KelolaHeroSlide = ({ onNotif, isDark }) => {
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [versi, setVersi] = useState(0);
-  const [form, setForm] = useState(FORM_KOSONG);
-  const [saving, setSaving] = useState(false);
+
+  // null = modal tertutup, { slide: null } = tambah, { slide: data } = edit
+  const [modal, setModal] = useState(null);
 
   const muatUlang = () => setVersi((v) => v + 1);
+
+  const cardClass = `relative space-y-5 overflow-hidden rounded-3xl border p-6 shadow-sm transition-all duration-300 hover:shadow-xl ${
+    isDark
+      ? "border-white/10 bg-gradient-to-b from-[#111c33] to-[#0f172a] hover:border-[#00A5EC]/25"
+      : "border-slate-200/80 bg-white hover:border-[#00A5EC]/35"
+  }`;
 
   useEffect(() => {
     let aktif = true;
@@ -37,42 +46,20 @@ const KelolaHeroSlide = ({ onNotif }) => {
     return () => {
       aktif = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [versi]);
 
-  const ubah = (key, value) => setForm((f) => ({ ...f, [key]: value }));
-
-  const simpan = async () => {
-    if (!form.file && !form.url_gambar.trim()) {
-      onNotif("error", "Unggah gambar atau isi tautan gambar terlebih dahulu");
-      return;
-    }
-
-    const fd = new FormData();
-    fd.append("judul", form.judul);
-    fd.append("url_gambar", form.url_gambar);
-    fd.append("urutan", String(form.urutan || 0));
-    fd.append("is_active", form.is_active ? "true" : "false");
-    if (form.file) fd.append("file", form.file);
-
-    setSaving(true);
-    try {
-      if (form.id) await updateHeroSlide(form.id, fd);
-      else await createHeroSlide(fd);
-      setForm(FORM_KOSONG);
-      muatUlang();
-      onNotif("sukses", form.id ? "Slide berhasil diperbarui" : "Slide berhasil ditambahkan");
-    } catch (err) {
-      onNotif("error", err.response?.data?.message || "Gagal menyimpan slide");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const hapus = async (s) => {
-    if (!window.confirm(`Hapus slide "${s.judul || "tanpa judul"}"?`)) return;
+    const konfirmasi = await confirmDialog({
+      title: "Hapus slide ini?",
+      text: `Slide "${s.judul || "tanpa judul"}" akan dihapus permanen dari daftar.`,
+      confirmText: "Ya, hapus",
+      icon: "warning",
+      danger: true,
+    });
+    if (!konfirmasi.isConfirmed) return;
     try {
       await deleteHeroSlide(s.id);
-      if (form.id === s.id) setForm(FORM_KOSONG);
       muatUlang();
       onNotif("sukses", "Slide berhasil dihapus");
     } catch (err) {
@@ -80,65 +67,125 @@ const KelolaHeroSlide = ({ onNotif }) => {
     }
   };
 
-  if (loading) return <div className="p-6 text-sm text-slate-500">Memuat slide…</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center gap-2.5 py-16 text-sm text-slate-400">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Memuat slide…
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Daftar slide */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
-        <h3 className="text-sm font-bold text-slate-700">Slide Gambar Hero</h3>
-        <p className="mt-1 text-xs text-slate-500">
-          Gambar berganti otomatis setiap 5 detik di latar belakang Hero. Urutan terkecil tampil lebih dulu.
-        </p>
+      <div className={cardClass}>
+        <KepalaKartu
+          icon={Images}
+          judul="Slide Gambar Hero"
+          sub="Gambar berganti otomatis setiap 5 detik. Urutan terkecil tampil lebih dulu."
+          isDark={isDark}
+          aksi={
+            <div className="flex items-center gap-2.5">
+              <span className="hidden items-center gap-1.5 rounded-full bg-gradient-to-r from-[#004F9F] to-[#00A5EC] px-3 py-1.5 text-[11px] font-black text-white shadow-sm sm:inline-flex">
+                {slides.length} slide
+              </span>
+              <button
+                onClick={() => setModal({ slide: null })}
+                className="group/tambah relative inline-flex shrink-0 cursor-pointer items-center gap-1.5 overflow-hidden rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-4 py-2 text-[11.5px] font-black text-white shadow-md shadow-[#0B1442]/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:scale-95"
+              >
+                <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-white/0 via-white/20 to-white/0 transition-transform duration-1000 group-hover/tambah:translate-x-full" />
+                <Plus className="relative h-3.5 w-3.5" strokeWidth={3} />
+                <span className="relative">Tambah Slide</span>
+              </button>
+            </div>
+          }
+        />
 
         {slides.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-400">Belum ada slide.</p>
+          <button
+            onClick={() => setModal({ slide: null })}
+            className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-12 text-center transition-all duration-300 ${
+              isDark
+                ? "border-white/10 text-slate-500 hover:border-[#00A5EC]/40 hover:bg-white/[0.03]"
+                : "border-slate-200 text-slate-400 hover:border-[#00A5EC]/45 hover:bg-[#00A5EC]/[0.03]"
+            }`}
+          >
+            <ImagePlus className="h-7 w-7" strokeWidth={1.8} />
+            <span className="text-sm font-bold">Belum ada slide</span>
+            <span className="text-xs">Klik di sini untuk menambahkan gambar pertama Anda.</span>
+          </button>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {slides.map((s) => (
-              <div key={s.id} className="overflow-hidden rounded-lg border border-slate-200">
-                <div className="h-28 w-full bg-slate-100">
-                  {s.pratinjau && (
-                    <img src={s.pratinjau} alt={s.judul} className="h-28 w-full object-cover" />
+              <div
+                key={s.id}
+                className={`group/slide relative overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+                  isDark ? "border-white/10 bg-white/[0.03]" : "border-slate-200 bg-white"
+                }`}
+              >
+                <div className="relative h-36 w-full overflow-hidden bg-slate-100">
+                  {s.pratinjau ? (
+                    <img
+                      src={s.pratinjau}
+                      alt={s.judul}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover/slide:scale-110"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                      Tanpa gambar
+                    </div>
                   )}
-                </div>
-                <div className="p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-semibold text-slate-700">
-                      {s.judul || "Tanpa judul"}
-                    </p>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        s.is_active ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      {s.is_active ? "AKTIF" : "NONAKTIF"}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-slate-400">Urutan: {s.urutan}</p>
-                  <div className="mt-3 flex gap-2">
+
+                  {/* lapisan gelap + tombol aksi */}
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 bg-gradient-to-t from-[#0B1442]/85 via-[#0B1442]/25 to-transparent opacity-0 transition-opacity duration-300 group-hover/slide:opacity-100">
                     <button
-                      onClick={() =>
-                        setForm({
-                          id: s.id,
-                          judul: s.judul || "",
-                          url_gambar: s.url_gambar || "",
-                          urutan: s.urutan || 0,
-                          is_active: !!s.is_active,
-                          file: null,
-                        })
-                      }
-                      className="rounded-md bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-100"
+                      onClick={() => setModal({ slide: s })}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-white/95 px-3 py-1.5 text-[11.5px] font-black text-[#0B1442] shadow-lg transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
                     >
+                      <Pencil className="h-3.5 w-3.5" strokeWidth={2.6} />
                       Edit
                     </button>
                     <button
                       onClick={() => hapus(s)}
-                      className="rounded-md bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-red-500/95 px-3 py-1.5 text-[11.5px] font-black text-white shadow-lg transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
                     >
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={2.6} />
                       Hapus
                     </button>
                   </div>
+
+                  {/* status tampil */}
+                  <span
+                    className={`absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide shadow-sm backdrop-blur ${
+                      s.is_active
+                        ? "bg-emerald-500/90 text-white"
+                        : "bg-slate-700/80 text-slate-200"
+                    }`}
+                  >
+                    {s.is_active ? (
+                      <Eye className="h-3 w-3" strokeWidth={3} />
+                    ) : (
+                      <EyeOff className="h-3 w-3" strokeWidth={3} />
+                    )}
+                    {s.is_active ? "Tampil" : "Disembunyikan"}
+                  </span>
+
+                  <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-black text-[#0B1442] shadow-sm">
+                    #{s.urutan}
+                  </span>
+                </div>
+
+                <div className="p-3.5">
+                  <p
+                    className={`truncate text-[13px] font-black tracking-tight ${
+                      isDark ? "text-slate-100" : "text-[#0B1442]"
+                    }`}
+                  >
+                    {s.judul || "Tanpa judul"}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                    Urutan tampil ke-{s.urutan}
+                  </p>
                 </div>
               </div>
             ))}
@@ -146,83 +193,17 @@ const KelolaHeroSlide = ({ onNotif }) => {
         )}
       </div>
 
-      {/* Form tambah / edit */}
-      <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6">
-        <h3 className="text-sm font-bold text-slate-700">
-          {form.id ? "Edit Slide" : "Tambah Slide Baru"}
-        </h3>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className={labelClass}>Judul / Keterangan</label>
-            <input
-              className={inputClass}
-              value={form.judul}
-              onChange={(e) => ubah("judul", e.target.value)}
-              placeholder="Misal: Suasana Kantor Diskominfo"
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Urutan</label>
-            <input
-              type="number"
-              className={inputClass}
-              value={form.urutan}
-              onChange={(e) => ubah("urutan", Number(e.target.value))}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className={labelClass}>Unggah Gambar (maks. 5 MB)</label>
-          <input
-            type="file"
-            accept=".jpg,.jpeg,.png,.webp,.svg"
-            className={inputClass}
-            onChange={(e) => ubah("file", e.target.files?.[0] || null)}
-          />
-          <p className="mt-1 text-[11px] text-slate-400">
-            Mengunggah gambar baru akan otomatis menghapus gambar lama slide ini.
-          </p>
-        </div>
-
-        <div>
-          <label className={labelClass}>Atau Tautan Gambar (URL)</label>
-          <input
-            className={inputClass}
-            value={form.url_gambar}
-            onChange={(e) => ubah("url_gambar", e.target.value)}
-            placeholder="https://..."
-          />
-        </div>
-
-        <label className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={form.is_active}
-            onChange={(e) => ubah("is_active", e.target.checked)}
-          />
-          <span className="text-sm font-semibold text-slate-700">Tampilkan slide ini</span>
-        </label>
-
-        <div className="flex justify-end gap-2">
-          {form.id && (
-            <button
-              onClick={() => setForm(FORM_KOSONG)}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-            >
-              Batal
-            </button>
-          )}
-          <button
-            onClick={simpan}
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            {saving ? "Menyimpan…" : form.id ? "Simpan Perubahan" : "Tambah Slide"}
-          </button>
-        </div>
-      </div>
+      {/* ── Modal tambah / edit ── */}
+      {modal && (
+        <SlideModal
+          key={modal.slide?.id || "baru"}
+          slide={modal.slide}
+          isDark={isDark}
+          onNotif={onNotif}
+          onSelesai={muatUlang}
+          onTutup={() => setModal(null)}
+        />
+      )}
     </div>
   );
 };

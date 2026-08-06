@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette, CalendarCheck, ClipboardList, BarChart3, FileSignature, MailCheck, LayoutTemplate, Inbox, MessagesSquare, Globe } from "lucide-react";
+// SESUDAH
+import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette, CalendarCheck, ClipboardList, BarChart3, FileSignature, MailCheck, LayoutTemplate, Inbox, MessagesSquare, Globe, Image as ImageIcon, ListTree, ToggleLeft } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import ChatFloatingWidget from "../components/manajemen/admin/chat/ChatFloatingWidget";
 import { useManajemenTheme } from "../context/useManajemenTheme";
-import { logoutAdmin, getProfile } from "../services/authService";
+import { logoutAdmin, getMe } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
 import { clearAuthData } from "../utils/authStorage";
 
@@ -77,10 +78,17 @@ const navItems = [
   },
   { type: "section", label: "Pengaturan Situs" },
   {
-    key: "pengaturan-landing",
-    to: "/admin/pengaturan-landing",
+    type: "dropdown",
+    key: "landing",
     label: "Landing Page",
     icon: <Globe className="w-[18px] h-[18px] shrink-0" />,
+    children: [
+      { key: "landing-identitas", to: "/admin/landing/identitas", label: "Identitas & SEO", icon: <Palette className="w-4 h-4 shrink-0" /> },
+      { key: "landing-tampilan", to: "/admin/landing/tampilan", label: "Tampilan Beranda", icon: <ImageIcon className="w-4 h-4 shrink-0" /> },
+      { key: "landing-profil", to: "/admin/landing/profil", label: "Konten & Profil", icon: <FileText className="w-4 h-4 shrink-0" /> },
+      { key: "landing-navigasi", to: "/admin/landing/navigasi", label: "Navigasi & Kontak", icon: <ListTree className="w-4 h-4 shrink-0" /> },
+      { key: "landing-status", to: "/admin/landing/status", label: "Status Pendaftaran", icon: <ToggleLeft className="w-4 h-4 shrink-0" /> },
+    ],
   },
 ];
 
@@ -101,6 +109,11 @@ const tabTitles = {
   "presensi-rekap": { title: "Rekap & Laporan Presensi", desc: "Rekap kehadiran peserta per bulan dan ekspor laporan" },
   "sertifikat-daftar": { title: "Kelola Sertifikat", desc: "Terbitkan dan kelola sertifikat magang peserta" },
   "sertifikat-template": { title: "Template Sertifikat", desc: "Kelola desain template sertifikat magang" },
+  "landing-identitas": { title: "Identitas & SEO", desc: "Atur nama situs, logo, favicon, dan optimasi mesin pencari" },
+  "landing-tampilan": { title: "Tampilan Beranda", desc: "Atur hero section, slide gambar, dan tampilan bidang magang" },
+  "landing-profil": { title: "Konten & Profil", desc: "Atur profil instansi, visi misi, persyaratan, alur, dan benefit" },
+  "landing-navigasi": { title: "Navigasi & Kontak", desc: "Atur menu navigasi, informasi kontak, dan media sosial" },
+  "landing-status": { title: "Status Pendaftaran", desc: "Buka atau tutup pendaftaran magang dan atur banner pengumuman" },
 };
 
 const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
@@ -112,7 +125,7 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await getProfile();
+        const res = await getMe();
         setProfile(res.data.data);
       } catch {
         navigate("/login");
@@ -157,6 +170,11 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
     location.pathname.startsWith("/admin/presensi") ? "presensi-data" :
     location.pathname.startsWith("/admin/sertifikat/template") ? "sertifikat-template" :
     location.pathname.startsWith("/admin/sertifikat") ? "sertifikat-daftar" :
+    location.pathname.startsWith("/admin/landing/tampilan") ? "landing-tampilan" :
+    location.pathname.startsWith("/admin/landing/profil") ? "landing-profil" :
+    location.pathname.startsWith("/admin/landing/navigasi") ? "landing-navigasi" :
+    location.pathname.startsWith("/admin/landing/status") ? "landing-status" :
+    location.pathname.startsWith("/admin/landing") ? "landing-identitas" :
     location.pathname.startsWith("/admin/akun") ? "akun" : "dashboard";
 
   const currentTab = tabTitles[activeKey] || tabTitles.dashboard;

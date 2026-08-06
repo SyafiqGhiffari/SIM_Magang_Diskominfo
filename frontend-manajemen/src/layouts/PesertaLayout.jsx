@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { CalendarCheck, Fingerprint, FileText } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import AlumniBanner from "../components/manajemen/peserta/AlumniBanner";
-import { logoutAdmin, getProfile } from "../services/authService";
+import { logoutAdmin, getMe } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
 import { clearAuthData, updateAuthUser, isMagangSelesai } from "../utils/authStorage";
 
@@ -70,7 +70,7 @@ const PesertaLayout = ({ children, searchValue = "", onSearchChange }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await getProfile();
+        const res = await getMe();
         const data = res.data.data;
         setProfile(data);
 

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useLanding } from "../../context/landingContext";
+import TeksKaya from "../../utils/teksKaya";
 
 const Footer = () => {
   const { config } = useLanding();
@@ -34,9 +35,9 @@ const Footer = () => {
                   </span>
                 </div>
               </div>
-              <p className="text-xs leading-relaxed text-slate-400">
-                {identitas.tagline_footer}
-              </p>
+              <div className="text-xs leading-relaxed text-slate-400">
+                <TeksKaya teks={identitas.tagline_footer} />
+              </div>
             {/* Social media icons */}
             <div className="flex items-center gap-3.5 pt-2">
               {sosial.instagram && (

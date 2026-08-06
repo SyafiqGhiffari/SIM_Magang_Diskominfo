@@ -88,6 +88,16 @@ const ManajemenShell = ({
     return shouldShowSkeleton;
   });
 
+  // Sebagian halaman memakai SATU Route yang sama untuk banyak sub-halaman
+  // (mis. /admin/landing/:bagian), sehingga shell TIDAK dibuat ulang saat pindah
+  // sub-halaman dan lazy initializer di atas tidak pernah jalan lagi. Perubahan
+  // path karena itu juga dideteksi saat render.
+  const [pathSebelumnya, setPathSebelumnya] = useState(location.pathname);
+  if (pathSebelumnya !== location.pathname) {
+    setPathSebelumnya(location.pathname);
+    setTabLoading(true);
+  }
+
   useEffect(() => {
     if (!tabLoading) return;
     const t = setTimeout(() => setTabLoading(false), 450);
@@ -111,7 +121,7 @@ const ManajemenShell = ({
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((p) => !p)}
       />
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
         <ManajemenTopbar
           currentTab={currentTab}
           searchValue={searchValue}

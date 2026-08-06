@@ -1,4 +1,5 @@
 import { useLanding } from "../../context/landingContext";
+import TeksKaya from "../../utils/teksKaya";
 
 const WhyChooseUs = () => {
   const { config } = useLanding();
@@ -34,7 +35,9 @@ const WhyChooseUs = () => {
                 {item.icon}
               </div>
               <h3 className="mt-6 text-base font-bold text-brand-dark">{item.title}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-500">{item.desc}</p>
+              <div className="mt-3 text-sm leading-relaxed text-slate-500">
+                <TeksKaya teks={item.desc} />
+              </div>
             </div>
           ))}
         </div>
