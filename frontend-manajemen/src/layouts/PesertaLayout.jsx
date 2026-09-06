@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { CalendarCheck, Fingerprint, FileText } from "lucide-react";
+import { CalendarCheck, Fingerprint, FileText, GraduationCap } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import AlumniBanner from "../components/manajemen/peserta/AlumniBanner";
 import { logoutAdmin, getMe } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
-import { clearAuthData, updateAuthUser, isMagangSelesai } from "../utils/authStorage";
+import { clearAuthData, updateAuthUser, isMagangSelesai, getUser } from "../utils/authStorage";
 
 const dashboardIcon = (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-[18px] h-[18px] shrink-0">
@@ -41,6 +41,12 @@ const buildNavItems = (readOnly) => [
       },
     ],
   },
+  {
+    key: "penilaian",
+    to: "/peserta/penilaian",
+    label: readOnly ? "Transkrip Nilai (Alumni)" : "Transkrip Nilai",
+    icon: <GraduationCap className="w-[18px] h-[18px] shrink-0" />,
+  },
 ];
 
 const tabTitles = {
@@ -48,12 +54,13 @@ const tabTitles = {
   akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
   "presensi-absen": { title: "Presensi Saya", desc: "Lakukan absen masuk/pulang dan pantau riwayat kehadiran" },
   "presensi-izin": { title: "Pengajuan Izin", desc: "Ajukan izin atau sakit untuk diverifikasi mentor" },
+  penilaian: { title: "Transkrip Nilai Magang", desc: "Lihat hasil evaluasi kinerja magang Anda dan unduh transkrip nilai resmi" },
 };
 
 const PesertaLayout = ({ children, searchValue = "", onSearchChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(() => getUser() || null);
   const [readOnly, setReadOnly] = useState(() => isMagangSelesai());
   const [isDark, setIsDark] = useState(() => localStorage.getItem("admin_theme") === "dark");
 
@@ -108,7 +115,8 @@ const PesertaLayout = ({ children, searchValue = "", onSearchChange }) => {
     location.pathname === "/peserta" ? "dashboard" :
     location.pathname.startsWith("/peserta/akun") ? "akun" :
     location.pathname.startsWith("/peserta/pengajuan-izin") ? "presensi-izin" :
-    location.pathname.startsWith("/peserta/presensi") ? "presensi-absen" : "dashboard";
+    location.pathname.startsWith("/peserta/presensi") ? "presensi-absen" :
+    location.pathname.startsWith("/peserta/penilaian") ? "penilaian" : "dashboard";
 
   const currentTab = tabTitles[activeKey] || tabTitles.dashboard;
 

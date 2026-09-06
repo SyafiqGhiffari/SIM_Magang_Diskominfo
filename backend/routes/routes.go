@@ -38,6 +38,10 @@ func SetupRoutes(router *gin.Engine) {
 			middlewares.AuthMiddleware("pendaftaran"),
 			controllers.LogoutPendaftaran,
 		)
+		pendaftaran.POST("/ping",
+			middlewares.AuthMiddleware("pendaftaran"),
+			controllers.PingPendaftaran,
+		)
 
 		// Request reset password (kirim link ke email)
 		pendaftaran.POST("/forgot-password", controllers.RequestForgotPassword)
@@ -144,7 +148,15 @@ func SetupRoutes(router *gin.Engine) {
 			chat.POST("/saran/:id", controllers.BukaSaranFAQ)
 			// Nilai jawaban bot dengan jempol naik/turun
 			chat.POST("/faq/:id/feedback", controllers.KirimFeedbackFAQ)
+			// Peserta kirim lampiran — grup sudah "/chat", jadi cukup "/lampiran"
+			chat.POST("/lampiran", controllers.PesertaKirimLampiran)
 		}
+
+		// Denyut keberadaan — bukan bagian dari chat, dipakai untuk status online
+		pendaftaran.PUT("/denyut",
+			middlewares.AuthMiddleware("pendaftaran"),
+			controllers.PesertaDenyut,
+		)
 	}
 
 	// Auth Web Manajemen
@@ -155,6 +167,10 @@ func SetupRoutes(router *gin.Engine) {
 		manajemen.POST("/logout",
 			middlewares.AuthMiddleware("manajemen"),
 			controllers.LogoutManajemen,
+		)
+		manajemen.POST("/ping",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.PingManajemen,
 		)
 
 		manajemen.PUT("/ganti-password",
@@ -232,18 +248,29 @@ func SetupRoutes(router *gin.Engine) {
 			},
 		)
 
+		manajemen.GET("/template-rapor/aktif",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.GetTemplateRaporAktif,
+		)
+
 		// Route khusus Mentor
 		mentor := manajemen.Group("/mentor")
 		mentor.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("mentor"))
 		{
+			mentor.GET("/antrean/hitungan", controllers.GetHitunganAntreanMentor)
 			mentor.GET("/presensi", controllers.GetPresensiMentor)
 			mentor.GET("/presensi/statistik", controllers.GetStatistikPresensiMentor)
 			mentor.PUT("/presensi/:id", controllers.UpdatePresensiMentor)
 			mentor.GET("/pengajuan-izin", controllers.GetPengajuanIzinMentor)
 			mentor.PUT("/pengajuan-izin/:id", controllers.ProsesPengajuanIzinMentor)
+
+			// ── PENILAIAN PESERTA BIMBINGAN ──
+			mentor.GET("/penilaian", controllers.GetPesertaBimbinganPenilaian)
+			mentor.GET("/penilaian/:peserta_id", controllers.GetDetailPenilaianPeserta)
+			mentor.POST("/penilaian/:peserta_id", controllers.SimpanPenilaianPeserta)
 		}
 
-		// ── Route khusus Peserta (presensi & pengajuan izin) ──
+		// ── Route khusus Peserta (presensi, pengajuan izin, transkrip nilai) ──
 		peserta := manajemen.Group("/peserta")
 		peserta.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("peserta"))
 		{
@@ -251,6 +278,7 @@ func SetupRoutes(router *gin.Engine) {
 			peserta.GET("/presensi/hari-ini", controllers.GetStatusPresensiHariIni)
 			peserta.GET("/presensi/riwayat", controllers.GetRiwayatPresensiSaya)
 			peserta.GET("/pengajuan-izin", controllers.GetPengajuanIzinSaya)
+			peserta.GET("/penilaian", controllers.GetNilaiSaya)
 
 			// AKSI TULIS: hanya untuk peserta yang masih aktif magang
 			aktif := peserta.Group("", middlewares.MagangAktifMiddleware())
@@ -277,9 +305,28 @@ func SetupRoutes(router *gin.Engine) {
 		admin := manajemen.Group("/admin")
 		admin.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("admin"))
 		{
-			// ── RINGKASAN DASHBOARD ADMIN ──
+			// ── RINGKASAN DASHBOARD & ANTREAN ADMIN ──
 			// Seluruh angka dashboard dihitung di sisi server dalam satu request.
 			admin.GET("/dashboard/ringkasan", controllers.GetRingkasanDashboardAdmin)
+			admin.GET("/antrean/hitungan", controllers.AdminHitunganAntrean)
+
+			// ── PENGATURAN & REKAP PENILAIAN MAGANG ──
+			admin.GET("/pengaturan-penilaian", controllers.GetPengaturanPenilaian)
+			admin.PUT("/pengaturan-penilaian", controllers.UpdatePengaturanPenilaian)
+			admin.GET("/penilaian", controllers.GetAllRekapPenilaianAdmin)
+			admin.GET("/penilaian/:peserta_id", controllers.GetDetailPenilaianPeserta)
+
+			// ── TEMPLATE RAPOR / TRANSKRIP NILAI ──
+			admin.GET("/template-rapor", controllers.GetAllTemplateRapor)
+			admin.GET("/template-rapor/aktif", controllers.GetTemplateRaporAktif)
+			admin.GET("/template-rapor/:id", controllers.GetTemplateRapor)
+			admin.POST("/template-rapor", controllers.CreateTemplateRapor)
+			admin.PUT("/template-rapor/:id", controllers.UpdateTemplateRapor)
+			admin.DELETE("/template-rapor/:id", controllers.DeleteTemplateRapor)
+			admin.PUT("/template-rapor/:id/default", controllers.SetDefaultTemplateRapor)
+			admin.POST("/template-rapor/:id/duplikat", controllers.DuplikatTemplateRapor)
+			admin.POST("/template-rapor/:id/upload/:jenis", controllers.UploadFileTemplateRapor)
+			admin.DELETE("/template-rapor/:id/upload/:jenis", controllers.DeleteFileTemplateRapor)
 
 			// ── KELOLA AKUN MANAJEMEN (hanya admin) ──
 			admin.GET("/akun", controllers.GetAllUserManajemen)
@@ -423,6 +470,10 @@ func SetupRoutes(router *gin.Engine) {
 			admin.POST("/chat/session/:id/reply", controllers.AdminReplyChatSession)
 			// Tutup sesi
 			admin.PUT("/chat/session/:id/close", controllers.AdminCloseChatSession)
+			admin.POST("/chat/session/:id/lampiran", controllers.AdminKirimLampiran)
+			admin.PUT("/chat/session/:id/sematkan", controllers.AdminSematkanSesi)
+			admin.PUT("/chat/session/:id/tandai-belum-dibaca", controllers.AdminTandaiBelumDibaca)
+			admin.DELETE("/chat/pesan/:id", controllers.AdminHapusPesan)
 
 			// ── FAQ CRUD ──
 			admin.GET("/faq", controllers.AdminGetFAQ)
@@ -442,7 +493,11 @@ func SetupRoutes(router *gin.Engine) {
 			// Sengaja memakai prefix terpisah agar tidak bentrok dengan /faq/:id
 			admin.GET("/pertanyaan-faq", controllers.AdminGetPertanyaanFaq)
 			admin.PUT("/pertanyaan-faq/:id", controllers.AdminUpdatePertanyaanFaq)
+			admin.POST("/pertanyaan-faq/:id/balas", controllers.AdminBalasPertanyaanFaq)
 			admin.DELETE("/pertanyaan-faq/:id", controllers.AdminDeletePertanyaanFaq)
+
+			// Hitungan ringan untuk lencana sidebar
+			admin.GET("/bantuan/hitungan", controllers.AdminHitunganBantuan)
 		}
 	}
 }

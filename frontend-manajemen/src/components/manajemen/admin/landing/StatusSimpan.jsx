@@ -56,27 +56,27 @@ const StatusSimpan = ({ status = "idle", isDark, menempel = true }) => {
   return (
     <div
       className={`${
-        menempel ? "-mx-6 -mb-6 mt-2" : ""
-      } flex items-center gap-3 border-t px-6 py-4 transition-colors duration-300 ${
+        menempel ? "-mx-3 -mb-3 mt-1.5 sm:-mx-6 sm:-mb-6 sm:mt-2" : ""
+      } flex items-center gap-2 sm:gap-3 border-t px-3 py-2 sm:px-6 sm:py-4 transition-colors duration-300 ${
         isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-100 bg-slate-50/60"
       }`}
     >
       <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300 ${
+        className={`flex h-6 w-6 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-md sm:rounded-xl transition-all duration-300 ${
           isDark ? s.bgGelap : s.bg
         } ${s.warna}`}
       >
         <Ikon
-          className={`h-4 w-4 ${s.putar ? "animate-spin" : ""}`}
+          className={`h-3 w-3 sm:h-4 sm:w-4 ${s.putar ? "animate-spin" : ""}`}
           strokeWidth={2.6}
         />
       </span>
 
       <div className="min-w-0">
-        <p className={`text-[12.5px] font-bold leading-tight ${s.warna}`}>{s.teks}</p>
+        <p className={`text-[10px] sm:text-[12.5px] font-bold leading-tight ${s.warna}`}>{s.teks}</p>
         <p
-          className={`mt-0.5 truncate text-[11px] font-medium ${
-            isDark ? "text-slate-500" : "text-slate-400"
+          className={`mt-0.5 truncate text-[8.5px] sm:text-[11px] font-medium ${
+            isDark ? "text-slate-400" : "text-slate-400"
           }`}
         >
           {s.ket}
@@ -96,7 +96,7 @@ const StatusSimpan = ({ status = "idle", isDark, menempel = true }) => {
         />
         <span
           className={`text-[10px] font-black uppercase tracking-widest ${
-            isDark ? "text-slate-600" : "text-slate-300"
+            isDark ? "text-slate-500" : "text-slate-300"
           }`}
         >
           Auto save

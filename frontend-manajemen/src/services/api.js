@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getToken, clearAuthData, updateAuthUser } from "../utils/authStorage";
+import { sessionExpiredDialog } from "../utils/swal";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api",
@@ -13,12 +14,23 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let isHandlingSessionExpired = false;
+
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
+  async (err) => {
     if (err.response?.status === 401) {
-      clearAuthData();
-      window.location.href = "/login";
+      const alreadyOnLogin = window.location.pathname === "/login";
+
+      if (!alreadyOnLogin && !isHandlingSessionExpired) {
+        isHandlingSessionExpired = true;
+        const msg = err.response?.data?.message;
+        await sessionExpiredDialog(msg ? { text: msg } : undefined);
+        clearAuthData();
+        window.location.href = "/login";
+      } else if (alreadyOnLogin) {
+        clearAuthData();
+      }
     }
 
     // Masa magang sudah berakhir: sinkronkan status lokal supaya UI langsung

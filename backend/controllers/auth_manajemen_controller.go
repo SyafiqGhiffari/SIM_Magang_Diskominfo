@@ -14,6 +14,7 @@ import (
 	"sim-magang-backend/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 type RegisterManajemenInput struct {
@@ -113,14 +114,24 @@ func LoginManajemen(c *gin.Context) {
 		return
 	}
 
-	token, err := services.GenerateToken(user.ID, user.Email, user.Role, "manajemen", "")
+	newSessionID := uuid.NewString()
+	now := time.Now()
+	clientIP := c.ClientIP()
+
+	token, err := services.GenerateToken(user.ID, user.Email, user.Role, "manajemen", newSessionID)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat token")
 		return
 	}
 
-	// Set status online saat login berhasil
-	config.DB.Model(&user).Update("is_online", true)
+	// Simpan sesi aktif, timestamp aktivitas, IP, dan status online
+	config.DB.Model(&user).Updates(map[string]interface{}{
+		"current_session_id": newSessionID,
+		"last_activity_at":   &now,
+		"last_login_at":      &now,
+		"last_login_ip":      clientIP,
+		"is_online":          true,
+	})
 
 	utils.SuccessResponse(c, http.StatusOK, "Login manajemen berhasil", gin.H{
 		"token": token,
@@ -135,7 +146,7 @@ func LoginManajemen(c *gin.Context) {
 	})
 }
 
-// LogoutManajemen mengubah status admin menjadi offline
+// LogoutManajemen mengubah status admin menjadi offline dan menghapus session ID
 func LogoutManajemen(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -145,10 +156,33 @@ func LogoutManajemen(c *gin.Context) {
 		return
 	}
 
-	// Set status offline saat logout
-	config.DB.Model(&user).Update("is_online", false)
+	// Set status offline dan kosongkan sesi
+	config.DB.Model(&user).Updates(map[string]interface{}{
+		"is_online":          false,
+		"current_session_id": "",
+	})
 
 	utils.SuccessResponse(c, http.StatusOK, "Logout manajemen berhasil", nil)
+}
+
+// PingManajemen memperbarui waktu aktivitas sesi (keep-alive) saat pengguna tetap aktif
+func PingManajemen(c *gin.Context) {
+	userIDFloat, exists := c.Get("user_id")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "User tidak terautentikasi")
+		return
+	}
+	userID := uint(userIDFloat.(float64))
+	now := time.Now()
+
+	config.DB.Model(&models.UserManajemen{}).Where("id = ?", userID).Updates(map[string]interface{}{
+		"last_activity_at": &now,
+		"is_online":        true,
+	})
+
+	utils.SuccessResponse(c, http.StatusOK, "Sesi berhasil diperpanjang", gin.H{
+		"last_activity_at": now,
+	})
 }
 
 type GantiPasswordManajemenInput struct {

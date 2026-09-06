@@ -459,3 +459,29 @@ func ProsesPengajuanIzinMentor(c *gin.Context) {
 		"jumlah_hari_tercatat": jumlahHari,
 	})
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MENTOR: Hitungan izin menunggu untuk lencana sidebar
+// GET /api/manajemen/mentor/antrean/hitungan
+// ─────────────────────────────────────────────────────────────────────────────
+
+func GetHitunganAntreanMentor(c *gin.Context) {
+	mentorID, ok := mentorIDDariToken(c)
+	if !ok {
+		return
+	}
+
+	var izinMenunggu int64
+	config.DB.Table("pengajuan_izins pi").
+		Joins("JOIN user_manajemens u ON u.id = pi.peserta_id").
+		Joins("LEFT JOIN pendaftaran_magangs p ON p.akun_peserta_id = pi.peserta_id").
+		Where("p.mentor_id = ? AND pi.status = ?", mentorID, "menunggu").
+		Count(&izinMenunggu)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"izin": izinMenunggu,
+		},
+	})
+}

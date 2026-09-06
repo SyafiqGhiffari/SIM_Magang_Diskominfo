@@ -39,3 +39,11 @@ export const bukaSaranFaq = (id) =>
 // Nilai jawaban bot: membantu (true) atau tidak (false)
 export const kirimFeedbackFaq = (id, payload) =>
   api.post(`/pendaftaran/chat/faq/${id}/feedback`, payload);
+
+// Kirim lampiran (foto/video/dokumen) dari peserta
+export const kirimLampiranChat = (formData) =>
+  api.post("/pendaftaran/chat/lampiran", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+export const kirimDenyut = () => api.put("/pendaftaran/denyut");

@@ -6,6 +6,7 @@ const FotoMentorModal = ({
   isDragging, handleDragStart,
   cropFileInputRef, handleSimpanPerubahanFoto,
   fotoModalLoading,
+  isDark = false,
 }) => {
   if (!showFotoModal) return null;
 
@@ -16,7 +17,9 @@ const FotoMentorModal = ({
       onClick={() => !fotoModalLoading && setShowFotoModal(false)}
     >
       <div
-        className="relative max-w-sm w-full rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-[modalPop_0.25s_cubic-bezier(0.34,1.56,0.64,1)]"
+        className={`relative max-w-sm w-full rounded-3xl border shadow-2xl overflow-hidden animate-[modalPop_0.25s_cubic-bezier(0.34,1.56,0.64,1)] ${
+          isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200 bg-white"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -40,9 +43,11 @@ const FotoMentorModal = ({
         </div>
 
         {/* Crop Area */}
-        <div className="px-6 pt-7 pb-3 flex flex-col items-center bg-slate-50">
+        <div className={`px-6 pt-7 pb-3 flex flex-col items-center ${isDark ? "bg-[#1f242c]" : "bg-slate-50"}`}>
           <div
-            className={`relative h-56 w-56 rounded-full overflow-hidden shadow-[0_0_0_6px_rgba(0,165,236,0.12),0_8px_30px_rgba(0,0,0,0.25)] select-none ring-4 ring-white ${
+            className={`relative h-56 w-56 rounded-full overflow-hidden shadow-[0_0_0_6px_rgba(0,165,236,0.12),0_8px_30px_rgba(0,0,0,0.25)] select-none ring-4 ${
+              isDark ? "ring-slate-700" : "ring-white"
+            } ${
               !fotoModalLoading && isDragging ? "cursor-grabbing" : fotoModalLoading ? "cursor-default" : "cursor-grab"
             }`}
             onMouseDown={!fotoModalLoading ? handleDragStart : undefined}
@@ -97,12 +102,16 @@ const FotoMentorModal = ({
           </div>
 
           {!fotoModalLoading ? (
-            <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[10px] font-bold text-slate-500 shadow-sm">
+            <div className={`mt-3.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold shadow-sm ${
+              isDark ? "bg-white/10 text-slate-300" : "bg-white text-slate-500"
+            }`}>
               <Move className="w-3.5 h-3.5" />
               Seret foto untuk mengatur posisi
             </div>
           ) : (
-            <div className="mt-3.5 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3.5 py-1.5 text-[10px] font-bold text-slate-400 shadow-sm">
+            <div className={`mt-3.5 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[10px] font-bold shadow-sm ${
+              isDark ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-400"
+            }`}>
               <div className="h-3 w-3 rounded-full border-[1.5px] border-[#00A5EC] border-t-transparent animate-spin" />
               Mengunduh foto dari server...
             </div>
@@ -112,14 +121,16 @@ const FotoMentorModal = ({
         {/* Zoom control */}
         <div className={`px-6 pb-5 pt-3 transition-opacity duration-300 ${fotoModalLoading ? "opacity-30 pointer-events-none" : ""}`}>
           <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xs font-bold text-slate-500">Sesuaikan Ukuran</span>
+            <span className={`text-xs font-bold ${isDark ? "text-slate-400" : "text-slate-500"}`}>Sesuaikan Ukuran</span>
             <span className="text-xs font-extrabold text-white bg-[#004F9F] px-2 py-0.5 rounded-md">{cropZoom}%</span>
           </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setCropZoom((z) => Math.max(100, z - 10))}
-              className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer"
+              className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                isDark ? "bg-white/5 text-slate-300 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+              }`}
             >
               <Minus className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
@@ -129,13 +140,15 @@ const FotoMentorModal = ({
               max="300"
               value={cropZoom}
               onChange={(e) => setCropZoom(Number(e.target.value))}
-              className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-[#004F9F]"
-              style={{ background: `linear-gradient(to right, #004F9F ${(cropZoom - 100) / 2}%, #e2e8f0 ${(cropZoom - 100) / 2}%)` }}
+              className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-[#00A5EC]"
+              style={{ background: `linear-gradient(to right, #00A5EC ${(cropZoom - 100) / 2}%, ${isDark ? "#334155" : "#e2e8f0"} ${(cropZoom - 100) / 2}%)` }}
             />
             <button
               type="button"
               onClick={() => setCropZoom((z) => Math.min(300, z + 10))}
-              className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer"
+              className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                isDark ? "bg-white/5 text-slate-300 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+              }`}
             >
               <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
@@ -143,18 +156,24 @@ const FotoMentorModal = ({
         </div>
 
         {/* Action buttons */}
-        <div className={`flex gap-3 px-6 pb-6 pt-4 border-t border-slate-100 transition-opacity duration-300 ${fotoModalLoading ? "opacity-30 pointer-events-none" : ""}`}>
+        <div className={`flex gap-3 px-6 pb-6 pt-4 border-t transition-opacity duration-300 ${
+          isDark ? "border-white/10" : "border-slate-100"
+        } ${fotoModalLoading ? "opacity-30 pointer-events-none" : ""}`}>
           <button
             type="button"
             onClick={() => cropFileInputRef.current?.click()}
-            className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-xs font-bold text-[#0B1442] hover:bg-slate-50 hover:-translate-y-0.5 active:scale-95 active:translate-y-0 transition-all duration-200 cursor-pointer"
+            className={`flex-1 rounded-lg border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer ${
+              isDark
+                ? "border-white/10 text-slate-200 hover:bg-white/10"
+                : "border-slate-300 text-[#0B1442] hover:bg-slate-50"
+            }`}
           >
             Pilih Foto Lain
           </button>
           <button
             type="button"
             onClick={handleSimpanPerubahanFoto}
-            className="flex-1 rounded-lg bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-4 py-2.5 text-xs font-bold text-white shadow-lg hover:from-[#101F5C] hover:to-[#004F9F] hover:shadow-xl hover:-translate-y-0.5 active:scale-95 active:translate-y-0 transition-all duration-200 cursor-pointer"
+            className="flex-1 rounded-lg bg-gradient-to-r from-[#0B1442] to-[#00A5EC] px-4 py-2.5 text-xs font-bold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95 transition-all duration-200 cursor-pointer"
           >
             Simpan Perubahan
           </button>

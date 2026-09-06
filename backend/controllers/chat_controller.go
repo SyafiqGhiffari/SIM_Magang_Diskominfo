@@ -16,6 +16,7 @@ import (
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
 	"sim-magang-backend/services"
+	emailtemplates "sim-magang-backend/services/email_templates"
 	"sim-magang-backend/utils"
 
 	"github.com/gin-gonic/gin"
@@ -537,14 +538,40 @@ func GetChatMessages(c *gin.Context) {
 	config.DB.Model(&session).Update("unread_user_count", 0)
 
 	var messages []models.ChatMessage
-	config.DB.Where("session_id = ?", session.ID).
+	config.DB.Preload("ReplyTo").
+		Where("session_id = ?", session.ID).
 		Order("created_at asc").
 		Find(&messages)
 
+	// Isi pesan yang dihapus tidak ikut dikirim agar tidak bisa dibaca lewat
+	// alat pengembang peramban.
+	for i := range messages {
+		if messages[i].DihapusPada != nil {
+			messages[i].Content = ""
+			messages[i].FilePath = ""
+			messages[i].FileNama = ""
+		}
+		if messages[i].ReplyTo != nil && messages[i].ReplyTo.DihapusPada != nil {
+			messages[i].ReplyTo.Content = ""
+			messages[i].ReplyTo.FileNama = ""
+		}
+	}
+
+	// Ambil riwayat penilaian peserta untuk pesan dalam sesi ini
+	var feedbacks []models.FaqFeedback
+	config.DB.Where("user_pendaftaran_id = ? AND session_id = ?", userID, session.ID).Find(&feedbacks)
+	nilaiMap := make(map[uint]bool)
+	for _, f := range feedbacks {
+		if f.MessageID != nil {
+			nilaiMap[*f.MessageID] = f.Membantu
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"session_id": session.ID,
-		"data":       messages,
+		"success":      true,
+		"session_id":   session.ID,
+		"data":         messages,
+		"user_ratings": nilaiMap,
 	})
 }
 
@@ -609,6 +636,7 @@ func SendChatMessage(c *gin.Context) {
 			SessionID:   session.ID,
 			SenderType:  "bot",
 			Content:     faq.Answer,
+			FaqID:       &faq.ID,
 			IsReadAdmin: true,
 			IsReadUser:  false,
 		}
@@ -669,7 +697,7 @@ func SendChatMessage(c *gin.Context) {
 			fmt.Sprintf("%s: \"%s\" — bot hanya menawarkan saran, mungkin perlu FAQ baru.",
 				namaPengirim, potongTeks(body.Content, 80)),
 			"chat_sessions", &sesiID,
-			fmt.Sprintf("/admin?chat=%d", sesiID),
+			fmt.Sprintf("/admin/bantuan?chat=%d", sesiID),
 			"normal", true,
 		)
 
@@ -692,7 +720,7 @@ func SendChatMessage(c *gin.Context) {
 			fmt.Sprintf("%s: \"%s\" — belum terjawab otomatis, butuh balasan admin.",
 				namaPengirim, potongTeks(body.Content, 80)),
 			"chat_sessions", &sesiID,
-			fmt.Sprintf("/admin?chat=%d", sesiID),
+			fmt.Sprintf("/admin/bantuan?chat=%d", sesiID),
 			"tinggi", true,
 		)
 	} else {
@@ -702,7 +730,7 @@ func SendChatMessage(c *gin.Context) {
 			fmt.Sprintf("%s: \"%s\" — sudah dijawab otomatis oleh FAQ.",
 				namaPengirim, potongTeks(body.Content, 80)),
 			"chat_sessions", &sesiID,
-			fmt.Sprintf("/admin?chat=%d", sesiID),
+			fmt.Sprintf("/admin/bantuan?chat=%d", sesiID),
 			"rendah", true,
 		)
 	}
@@ -1052,10 +1080,14 @@ func UseQuickAction(c *gin.Context) {
 		SessionID:   session.ID,
 		SenderType:  "bot",
 		Content:     isiBalasan,
+		FaqID:       &faq.ID,
 		IsReadAdmin: true,
 		IsReadUser:  false,
 	}
 	config.DB.Create(&botMsg)
+
+	// Tambah hitung tayang FAQ yang bersangkutan
+	config.DB.Model(&faq).UpdateColumn("view_count", gorm.Expr("view_count + 1"))
 
 	// Update sesi
 	pembaruan := map[string]interface{}{"last_message_at": now}
@@ -1073,7 +1105,7 @@ func UseQuickAction(c *gin.Context) {
 			fmt.Sprintf("Pintasan \"%s\" ditekan oleh peserta. Mohon segera dibalas.",
 				potongTeks(faq.Question, 60)),
 			"chat_sessions", &sesiID,
-			fmt.Sprintf("/admin?chat=%d", sesiID),
+			fmt.Sprintf("/admin/bantuan?chat=%d", sesiID),
 			"tinggi", false,
 		)
 	}
@@ -1082,6 +1114,7 @@ func UseQuickAction(c *gin.Context) {
 		"success":       true,
 		"user_msg":      userMsg,
 		"bot_reply":     botMsg,
+		"faq_id":        faq.ID,
 		"action_type":   tipeAksi,
 		"action_target": faq.ActionTarget,
 	})
@@ -1144,16 +1177,65 @@ func rakitJawabanStatus(status string, p *models.PendaftaranMagang, pengantar st
 // ─────────────────────────────────────────────────────────────────────────────
 
 func AdminGetChatSessions(c *gin.Context) {
-	type SessionWithUser struct {
-		models.ChatSession
-		Nama  string `json:"nama"`
-		Email string `json:"email"`
-	}
-
 	var sessions []models.ChatSession
 	config.DB.Preload("UserPendaftaran").
-		Order("last_message_at desc").
+		// Sematan selalu di atas, sisanya menurut pesan terakhir
+		Order("is_pinned_admin desc, last_message_at desc").
 		Find(&sessions)
+
+	if len(sessions) == 0 {
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": []interface{}{}})
+		return
+	}
+
+	idSesi := make([]uint, 0, len(sessions))
+	for _, s := range sessions {
+		idSesi = append(idSesi, s.ID)
+	}
+
+	// ── Pesan terakhir tiap sesi, satu query untuk semuanya ──
+	type barisPesanTerakhir struct {
+		SessionID  uint
+		Content    string
+		SenderType string
+		Tipe       string
+		FileNama   string
+		IsReadUser bool
+	}
+	var pesanTerakhir []barisPesanTerakhir
+	config.DB.Raw(`
+		SELECT m.session_id, m.content, m.sender_type, m.tipe, m.file_nama, m.is_read_user
+		FROM chat_messages m
+		INNER JOIN (
+			SELECT session_id, MAX(id) AS id
+			FROM chat_messages
+			WHERE session_id IN ?
+			GROUP BY session_id
+		) t ON t.id = m.id
+	`, idSesi).Scan(&pesanTerakhir)
+
+	petaPesan := make(map[uint]barisPesanTerakhir, len(pesanTerakhir))
+	for _, p := range pesanTerakhir {
+		petaPesan[p.SessionID] = p
+	}
+
+	// ── Sesi yang punya pertanyaan gagal dijawab bot, satu query ──
+	type barisTakTerjawab struct {
+		SessionID uint
+		Jumlah    int
+	}
+	var takTerjawab []barisTakTerjawab
+	config.DB.Raw(`
+		SELECT session_id, COUNT(*) AS jumlah
+		FROM faq_pertanyaan
+		WHERE status = 'baru' AND session_id IN ?
+		GROUP BY session_id
+	`, idSesi).Scan(&takTerjawab)
+
+	petaTakTerjawab := make(map[uint]bool, len(takTerjawab))
+	for _, t := range takTerjawab {
+		petaTakTerjawab[t.SessionID] = t.Jumlah > 0
+	}
 
 	type SessionResp struct {
 		ID               uint       `json:"id"`
@@ -1164,33 +1246,89 @@ func AdminGetChatSessions(c *gin.Context) {
 		UserID           uint       `json:"user_id"`
 		UserNama         string     `json:"user_nama"`
 		UserEmail        string     `json:"user_email"`
+		UserFoto         string     `json:"user_foto"`
+		UserInstitusi    string     `json:"user_institusi"`
+		UserBidang       string     `json:"user_bidang"`
 		LastMessage      string     `json:"last_message"`
+		LastSender       string     `json:"last_sender"`
+		LastTipe         string     `json:"last_tipe"`
+		LastDibaca       bool       `json:"last_dibaca"`
+		PerluJawaban     bool       `json:"perlu_jawaban"`
+		IsPinnedAdmin    bool       `json:"is_pinned_admin"`
+		DitandaiBelumDibaca bool    `json:"ditandai_belum_dibaca"`
+		UserOnline     bool       `json:"user_online"`
+		UserLastActive *time.Time `json:"user_last_active"`
 	}
 
-	var result []SessionResp
+	// ── Bidang & institusi peserta, satu query ──
+	type barisProfil struct {
+		AkunPesertaID uint
+		Institusi     string
+		Bidang        string
+	}
+	var profil []barisProfil
+	config.DB.Raw(`
+		SELECT p.user_pendaftaran_id AS akun_peserta_id,
+		       COALESCE(NULLIF(p.asal_kampus, ''), p.asal_sekolah, '') AS institusi,
+		       COALESCE(p.posisi_bidang, '') AS bidang
+		FROM pendaftaran_magangs p
+		WHERE p.user_pendaftaran_id IN (
+			SELECT user_pendaftaran_id FROM chat_sessions WHERE id IN ?
+		)
+	`, idSesi).Scan(&profil)
+
+	petaProfil := make(map[uint]barisProfil, len(profil))
+	for _, p := range profil {
+		petaProfil[p.AkunPesertaID] = p
+	}
+
+	result := make([]SessionResp, 0, len(sessions))
 	for _, s := range sessions {
-		// Ambil pesan terakhir
-		var lastMsg models.ChatMessage
-		config.DB.Where("session_id = ?", s.ID).
-			Order("created_at desc").
-			Limit(1).
-			Find(&lastMsg)
+		pesan := petaPesan[s.ID]
+		pro := petaProfil[s.UserPendaftaran.ID]
+
+		// Pratinjau lampiran ditulis sebagai keterangan, bukan nama berkas
+		// mentah, supaya barisnya tetap ringkas dan mudah dibaca.
+		// Ikon ditangani frontend lewat komponen, bukan emoji, agar tampilannya
+		// seragam di semua sistem operasi.
+		pratinjau := pesan.Content
+		switch pesan.Tipe {
+		case "gambar":
+			pratinjau = "Foto"
+		case "video":
+			pratinjau = "Video"
+		case "berkas":
+			pratinjau = pesan.FileNama
+		}
+
+		// Dianggap online bila denyut terakhirnya kurang dari dua menit lalu.
+		// Ambangnya dua kali selang denyut agar satu kali gagal kirim tidak
+		// langsung membuat peserta tampak offline.
+		online := s.UserPendaftaran.LastActiveAt != nil &&
+			time.Since(*s.UserPendaftaran.LastActiveAt) < 2*time.Minute
 
 		result = append(result, SessionResp{
-			ID:               s.ID,
-			Status:           s.Status,
-			LastMessageAt:    s.LastMessageAt,
-			UnreadAdminCount: s.UnreadAdminCount,
-			CreatedAt:        s.CreatedAt,
-			UserID:           s.UserPendaftaran.ID,
-			UserNama:         s.UserPendaftaran.Nama,
-			UserEmail:        s.UserPendaftaran.Email,
-			LastMessage:      lastMsg.Content,
+			ID:                  s.ID,
+			Status:              s.Status,
+			LastMessageAt:       s.LastMessageAt,
+			UnreadAdminCount:    s.UnreadAdminCount,
+			CreatedAt:           s.CreatedAt,
+			UserID:              s.UserPendaftaran.ID,
+			UserNama:            s.UserPendaftaran.Nama,
+			UserEmail:           s.UserPendaftaran.Email,
+			UserFoto:            s.UserPendaftaran.FotoProfil,
+			UserInstitusi:       pro.Institusi,
+			UserBidang:          pro.Bidang,
+			LastMessage:         pratinjau,
+			LastSender:          pesan.SenderType,
+			LastTipe:            pesan.Tipe,
+			LastDibaca:          pesan.IsReadUser,
+			PerluJawaban:        petaTakTerjawab[s.ID],
+			IsPinnedAdmin:       s.IsPinnedAdmin,
+			DitandaiBelumDibaca: s.AdminMarkedUnread,
+			UserOnline:     online,
+			UserLastActive: s.UserPendaftaran.LastActiveAt,
 		})
-	}
-
-	if result == nil {
-		result = []SessionResp{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
@@ -1204,20 +1342,37 @@ func AdminGetChatSessions(c *gin.Context) {
 func AdminGetSessionMessages(c *gin.Context) {
 	sessionID := c.Param("id")
 
-	// Mark semua pesan user sebagai sudah dibaca admin
 	config.DB.Model(&models.ChatMessage{}).
 		Where("session_id = ? AND sender_type = 'user' AND is_read_admin = false", sessionID).
 		Update("is_read_admin", true)
 
-	// Reset unread count
+	// Membuka percakapan membatalkan penandaan manual "belum dibaca"
 	config.DB.Model(&models.ChatSession{}).
 		Where("id = ?", sessionID).
-		Update("unread_admin_count", 0)
+		Updates(map[string]interface{}{
+			"unread_admin_count":  0,
+			"admin_marked_unread": false,
+		})
 
 	var messages []models.ChatMessage
-	config.DB.Where("session_id = ?", sessionID).
+	config.DB.Preload("ReplyTo").
+		Where("session_id = ?", sessionID).
 		Order("created_at asc").
 		Find(&messages)
+
+	// Isi pesan yang dihapus tidak ikut dikirim ke frontend agar tidak bisa
+	// dibaca lewat alat pengembang peramban.
+	for i := range messages {
+		if messages[i].DihapusPada != nil {
+			messages[i].Content = ""
+			messages[i].FilePath = ""
+			messages[i].FileNama = ""
+		}
+		if messages[i].ReplyTo != nil && messages[i].ReplyTo.DihapusPada != nil {
+			messages[i].ReplyTo.Content = ""
+			messages[i].ReplyTo.FileNama = ""
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": messages})
 }
@@ -1231,7 +1386,8 @@ func AdminReplyChatSession(c *gin.Context) {
 	sessionID := c.Param("id")
 
 	var body struct {
-		Content string `json:"content" binding:"required"`
+		Content   string `json:"content" binding:"required"`
+		ReplyToID *uint  `json:"reply_to_id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Isi balasan tidak boleh kosong"})
@@ -1249,10 +1405,13 @@ func AdminReplyChatSession(c *gin.Context) {
 		SessionID:   session.ID,
 		SenderType:  "admin",
 		Content:     strings.TrimSpace(body.Content),
+		Tipe:        "teks",
+		ReplyToID:   body.ReplyToID,
 		IsReadAdmin: true,
 		IsReadUser:  false,
 	}
 	config.DB.Create(&msg)
+	config.DB.Preload("ReplyTo").First(&msg, msg.ID)
 
 	config.DB.Model(&session).Updates(map[string]interface{}{
 		"last_message_at":   now,
@@ -1319,6 +1478,7 @@ func BukaSaranFAQ(c *gin.Context) {
 		SessionID:   session.ID,
 		SenderType:  "bot",
 		Content:     faq.Answer,
+		FaqID:       &faq.ID,
 		IsReadAdmin: true,
 		IsReadUser:  false,
 	}
@@ -2066,7 +2226,7 @@ func KirimPertanyaanPublik(c *gin.Context) {
 		"Pertanyaan baru dari calon peserta",
 		fmt.Sprintf("%s (%s): \"%s\"", nama, email, potongTeks(pertanyaan, 80)),
 		"faq_pertanyaan", &refID,
-		"/admin/pertanyaan",
+		"/admin/bantuan?tab=pertanyaan",
 		"normal", true,
 	)
 
@@ -3028,4 +3188,100 @@ func AdminContohImporCSV(c *gin.Context) {
 	c.Header("Content-Disposition", `attachment; filename="contoh-impor-faq.csv"`)
 	c.Header("Access-Control-Expose-Headers", "Content-Disposition")
 	c.Data(http.StatusOK, "text/csv; charset=utf-8", buf.Bytes())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN: Hitungan ringan untuk lencana sidebar
+// GET /api/manajemen/admin/bantuan/hitungan
+//
+// Sengaja dipisah dari endpoint dashboard yang menjalankan belasan query,
+// karena endpoint ini dipanggil berkala setiap 30 detik oleh sidebar.
+// ─────────────────────────────────────────────────────────────────────────────
+
+func AdminHitunganBantuan(c *gin.Context) {
+	var chatBelumDibalas, pertanyaanBaru int64
+
+	config.DB.Model(&models.ChatSession{}).
+		Where("status = ? AND unread_admin_count > 0", "open").
+		Where("EXISTS (SELECT 1 FROM chat_messages m WHERE m.session_id = chat_sessions.id)").
+		Count(&chatBelumDibalas)
+
+	config.DB.Model(&models.FaqPertanyaan{}).
+		Where("status = ?", "baru").
+		Count(&pertanyaanBaru)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"chat":       chatBelumDibalas,
+			"pertanyaan": pertanyaanBaru,
+			"total":      chatBelumDibalas + pertanyaanBaru,
+		},
+	})
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN: Balas pertanyaan publik lewat email
+// POST /api/manajemen/admin/pertanyaan-faq/:id/balas
+// ─────────────────────────────────────────────────────────────────────────────
+
+func AdminBalasPertanyaanFaq(c *gin.Context) {
+	var entri models.FaqPertanyaan
+	if err := config.DB.First(&entri, c.Param("id")).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "Pertanyaan tidak ditemukan"})
+		return
+	}
+
+	// Pertanyaan dari chat punya session_id — orangnya sedang menunggu di dasbor,
+	// jadi harus dibalas lewat chat, bukan email.
+	if entri.SessionID != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Pertanyaan ini berasal dari chat. Silakan balas melalui tab Percakapan.",
+		})
+		return
+	}
+
+	var body struct {
+		Jawaban string `json:"jawaban"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Format permintaan tidak valid"})
+		return
+	}
+
+	jawaban := strings.TrimSpace(body.Jawaban)
+	if len([]rune(jawaban)) < 10 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Jawaban minimal 10 karakter"})
+		return
+	}
+	if len([]rune(jawaban)) > 3000 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Jawaban terlalu panjang (maksimal 3000 karakter)"})
+		return
+	}
+
+	isi := emailtemplates.BalasanPertanyaanTemplate(entri.Nama, entri.Pertanyaan, jawaban)
+	if err := services.SendEmail(entri.Email, "Balasan Pertanyaan Anda — SIM Magang Diskominfo", isi); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal mengirim email. Periksa koneksi atau pengaturan SMTP.",
+		})
+		return
+	}
+
+	// Jejak balasan disimpan agar admin lain tahu ini sudah ditangani, oleh siapa,
+	// dan apa jawabannya.
+	adminID := uint(c.GetFloat64("user_id"))
+	sekarang := time.Now()
+	config.DB.Model(&entri).Updates(map[string]interface{}{
+		"status":        "selesai",
+		"catatan_admin": jawaban,
+		"diproses_oleh": adminID,
+		"diproses_pada": sekarang,
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Balasan berhasil dikirim ke " + entri.Email,
+	})
 }

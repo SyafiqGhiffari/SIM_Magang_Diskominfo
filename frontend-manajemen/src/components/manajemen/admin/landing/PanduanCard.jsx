@@ -8,39 +8,39 @@ const PanduanCard = ({ tab, isDark }) => {
   return (
     <aside>
       <div
-        className={`overflow-hidden rounded-2xl border shadow-sm transition-colors duration-300 ${
-          isDark ? "border-white/10 bg-[#0f172a]" : "border-slate-200 bg-white"
+        className={`overflow-hidden rounded-xl sm:rounded-2xl border shadow-sm transition-colors duration-300 ${
+          isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200 bg-white"
         }`}
       >
         {/* Kepala kartu */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-5 py-4">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-3 py-2.5 sm:px-5 sm:py-4">
           <div className="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[#00A5EC] opacity-20 blur-2xl" />
-          <div className="relative flex items-center gap-2.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10">
-              <BookOpen className="h-4 w-4 text-[#00A5EC]" />
+          <div className="relative flex items-center gap-2 sm:gap-2.5">
+            <span className="flex h-6.5 w-6.5 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg sm:rounded-xl border border-white/15 bg-white/10">
+              <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 text-[#00A5EC]" />
             </span>
             <div className="min-w-0">
-              <p className="text-[9.5px] font-black uppercase tracking-widest text-white/50">
+              <p className="text-[7.5px] sm:text-[9.5px] font-black uppercase tracking-widest text-white/50">
                 Panduan Penulisan
               </p>
-              <h3 className="truncate text-[12.5px] font-black text-white">{data.judul}</h3>
+              <h3 className="truncate text-[10.5px] sm:text-[12.5px] font-black text-white">{data.judul}</h3>
             </div>
           </div>
         </div>
 
         {/* Daftar poin */}
-        <ul className="space-y-2.5 px-5 py-4">
+        <ul className="space-y-1.5 sm:space-y-2.5 px-3 py-2.5 sm:px-5 sm:py-4">
           {data.poin.map((p, i) => (
-            <li key={i} className="flex items-start gap-2.5">
+            <li key={i} className="flex items-start gap-1.5 sm:gap-2.5">
               <span
-                className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
+                className={`mt-0.5 flex h-3 w-3 sm:h-4 sm:w-4 shrink-0 items-center justify-center rounded-full ${
                   isDark ? "bg-[#00A5EC]/15 text-[#00A5EC]" : "bg-blue-50 text-[#004F9F]"
                 }`}
               >
-                <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+                <Check className="h-1.5 w-1.5 sm:h-2.5 sm:w-2.5" strokeWidth={3.5} />
               </span>
               <p
-                className={`text-[11.5px] leading-relaxed ${
+                className={`text-[9.5px] sm:text-[11.5px] leading-snug sm:leading-relaxed ${
                   isDark ? "text-slate-400" : "text-slate-600"
                 }`}
               >
@@ -52,16 +52,16 @@ const PanduanCard = ({ tab, isDark }) => {
 
         {/* Contoh penulisan */}
         {data.contoh && (
-          <div className="px-5 pb-4">
+          <div className="px-3 pb-2.5 sm:px-5 sm:pb-4">
             <div
-              className={`rounded-xl border p-3 ${
-                isDark ? "border-white/10 bg-white/[0.03]" : "border-slate-200 bg-slate-50"
+              className={`rounded-lg sm:rounded-xl border p-2 sm:p-3 ${
+                isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-200 bg-slate-50"
               }`}
             >
-              <div className="mb-1.5 flex items-center gap-1.5">
-                <Lightbulb className="h-3 w-3 text-amber-500" />
+              <div className="mb-1 flex items-center gap-1">
+                <Lightbulb className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-amber-500" />
                 <span
-                  className={`text-[9.5px] font-black uppercase tracking-widest ${
+                  className={`text-[7.5px] sm:text-[9.5px] font-black uppercase tracking-widest ${
                     isDark ? "text-slate-500" : "text-slate-400"
                   }`}
                 >
@@ -69,7 +69,7 @@ const PanduanCard = ({ tab, isDark }) => {
                 </span>
               </div>
               <p
-                className={`whitespace-pre-line text-[11px] italic leading-relaxed ${
+                className={`whitespace-pre-line text-[9px] sm:text-[11px] italic leading-snug sm:leading-relaxed ${
                   isDark ? "text-slate-300" : "text-slate-700"
                 }`}
               >
@@ -81,17 +81,17 @@ const PanduanCard = ({ tab, isDark }) => {
 
         {/* Catatan penting */}
         {data.catatan && (
-          <div className="px-5 pb-5">
+          <div className="px-3 pb-3 sm:px-5 sm:pb-5">
             <div
-              className={`flex items-start gap-2 rounded-xl border p-3 ${
+              className={`flex items-start gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border p-2 sm:p-3 ${
                 isDark
-                  ? "border-amber-500/20 bg-amber-500/10"
-                  : "border-amber-200 bg-amber-50"
+                  ? "border-amber-900/30 bg-amber-950/30 text-amber-300"
+                  : "border-amber-200 bg-amber-50 text-amber-800"
               }`}
             >
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+              <AlertTriangle className="mt-0.5 h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 text-amber-500" />
               <p
-                className={`text-[10.5px] leading-relaxed ${
+                className={`text-[8.5px] sm:text-[10.5px] leading-snug sm:leading-relaxed ${
                   isDark ? "text-amber-200/80" : "text-amber-800"
                 }`}
               >

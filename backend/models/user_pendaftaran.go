@@ -13,6 +13,9 @@ type UserPendaftaran struct {
 	FotoProfil        string     `gorm:"type:varchar(255)" json:"foto_profil"`
 	CurrentSessionID string      `gorm:"type:varchar(64)" json:"-"`
 	SessionIssuedAt  *time.Time  `json:"-"`
+	LastActivityAt   *time.Time  `gorm:"index" json:"last_activity_at,omitempty"`
+	LastLoginAt      *time.Time  `json:"last_login_at,omitempty"`
+	LastLoginIP      string      `gorm:"type:varchar(45)" json:"last_login_ip,omitempty"`
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 	
@@ -29,7 +32,9 @@ type UserPendaftaran struct {
 	ResetPasswordAttempt   int        `gorm:"default:0" json:"-"`
 	ResetPasswordRequestedAt *time.Time `json:"-"`
 
-
+	// Diperbarui berkala selama peserta membuka dasbor. Dipakai untuk
+	// menentukan status online dan "terakhir dilihat".
+	LastActiveAt *time.Time `gorm:"index" json:"last_active_at"`
 }
 
 func (UserPendaftaran) TableName() string {

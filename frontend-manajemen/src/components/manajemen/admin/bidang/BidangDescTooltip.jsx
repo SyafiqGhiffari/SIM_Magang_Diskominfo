@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-const BidangDescTooltip = ({ text }) => {
+const BidangDescTooltip = ({ text, isDark }) => {
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const wrapperRef = useRef(null);
@@ -24,30 +24,36 @@ const BidangDescTooltip = ({ text }) => {
   };
 
   if (!text) {
-    return <p className="text-[11px] text-slate-500 truncate">-</p>;
+    return <p className={`text-[11px] truncate ${isDark ? "text-slate-500" : "text-slate-400"}`}>-</p>;
   }
 
   return (
     <div
       ref={wrapperRef}
-      className="max-w-full"
+      className="max-w-full cursor-help"
       onMouseEnter={handleEnter}
       onMouseLeave={() => setVisible(false)}
     >
-      <p className="text-[11px] text-slate-500 truncate">{text}</p>
+      <p className={`text-[11px] line-clamp-2 leading-relaxed break-words ${isDark ? "text-slate-400" : "text-slate-500"}`}>{text}</p>
 
       {visible &&
-      createPortal(
-        <div
-          style={{ position: "absolute", top: position.top, left: position.left, zIndex: 9999, transform: "translateY(-100%)" }}
-          className="pointer-events-none"
-        >
-          <div className="w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-3 text-[11px] leading-relaxed text-slate-600 shadow-xl animate-[fadeslide_0.15s_ease-out]">
-            {text}
-          </div>
-        </div>,
-        document.body
-      )}
+        createPortal(
+          <div
+            style={{ position: "absolute", top: position.top, left: position.left, zIndex: 9999, transform: "translateY(-100%)" }}
+            className="pointer-events-none"
+          >
+            <div
+              className={`w-64 max-w-[calc(100vw-2rem)] rounded-xl border p-3 text-[11px] leading-relaxed shadow-xl animate-[fadeslide_0.15s_ease-out] ${
+                isDark
+                  ? "border-white/10 bg-[#161b22] text-slate-300 shadow-black/50"
+                  : "border-slate-200 bg-white text-slate-600 shadow-slate-200"
+              }`}
+            >
+              {text}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

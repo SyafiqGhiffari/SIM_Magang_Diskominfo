@@ -3,7 +3,6 @@ import { Bold, Italic, Underline, List, ListOrdered, Eye, PenLine, Eraser } from
 import TeksKaya from "../../../../utils/teksKaya";
 
 // Tinggi satu baris teks (text-sm + leading-relaxed = 14px x 1.625).
-// Dipakai agar tinggi area pratinjau persis sama dengan textarea.
 const TINGGI_BARIS = 22.50;
 
 const TOMBOL_INLINE = [
@@ -14,10 +13,9 @@ const TOMBOL_INLINE = [
 
 /**
  * Editor jawaban chatbot dengan format ringan.
- * Nilainya tetap string biasa (markdown-ringan), bukan HTML, sehingga kolom
- * `answer` di database dan seluruh endpoint backend tidak perlu diubah.
+ * Mendukung tema gelap (Dark Mode) dan tampilan mobile.
  */
-const EditorJawaban = ({ nilai, onUbah, placeholder, rows = 6 }) => {
+const EditorJawaban = ({ nilai, onUbah, placeholder, rows = 6, isDark = false }) => {
   const areaRef = useRef(null);
   const [pratinjau, setPratinjau] = useState(false);
 
@@ -95,7 +93,6 @@ const EditorJawaban = ({ nilai, onUbah, placeholder, rows = 6 }) => {
   };
 
   const handleKeyDown = (e) => {
-    // Pintasan papan ketik ala pengolah kata
     if (e.ctrlKey || e.metaKey) {
       const k = e.key.toLowerCase();
       if (k === "b") { e.preventDefault(); bungkus("**", "teks tebal"); return; }
@@ -103,7 +100,6 @@ const EditorJawaban = ({ nilai, onUbah, placeholder, rows = 6 }) => {
       if (k === "u") { e.preventDefault(); bungkus("__", "garis bawah"); return; }
     }
 
-    // Enter di dalam daftar -> lanjutkan penanda secara otomatis
     if (e.key === "Enter" && !e.shiftKey) {
       const el = areaRef.current;
       const isi = nilai || "";
@@ -117,7 +113,6 @@ const EditorJawaban = ({ nilai, onUbah, placeholder, rows = 6 }) => {
 
       e.preventDefault();
 
-      // Baris kosong -> keluar dari daftar
       const isiBaris = (butir ? butir[3] : nomor[3]).trim();
       if (!isiBaris) {
         const hasil = isi.slice(0, mulai) + isi.slice(a);
@@ -133,66 +128,94 @@ const EditorJawaban = ({ nilai, onUbah, placeholder, rows = 6 }) => {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 transition-all duration-200 focus-within:border-[#004F9F] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#00A5EC]/15 hover:border-slate-300">
+    <div className={`overflow-hidden rounded-xl border transition-all duration-200 ${
+      isDark
+        ? "border-white/10 bg-white/5 focus-within:border-[#00A5EC] focus-within:bg-[#161b22] focus-within:ring-4 focus-within:ring-[#00A5EC]/15"
+        : "border-slate-200 bg-slate-50/70 focus-within:border-[#004F9F] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#00A5EC]/15 hover:border-slate-300"
+    }`}>
       {/* Bilah alat */}
-      <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white/70 px-2 py-1.5">
-        {TOMBOL_INLINE.map(({ kunci, ikon: Ikon, tanda, judul, contoh }) => (
+      <div className={`flex items-center justify-between gap-1 border-b px-2 py-1 sm:py-1.5 ${
+        isDark ? "border-white/5 bg-white/[0.03]" : "border-slate-200 bg-white/70"
+      }`}>
+        <div className="flex items-center gap-0.5 sm:gap-1 min-w-0">
+          {TOMBOL_INLINE.map(({ kunci, ikon: Ikon, tanda, judul, contoh }) => (
+            <button
+              key={kunci}
+              type="button"
+              title={judul}
+              disabled={pratinjau}
+              onClick={() => bungkus(tanda, contoh)}
+              className={`flex h-6.5 w-6.5 sm:h-7 sm:w-7 items-center justify-center rounded-lg transition-all duration-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer ${
+                isDark
+                  ? "text-slate-400 hover:bg-white/10 hover:text-sky-400"
+                  : "text-slate-500 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-[#004F9F]"
+              }`}
+            >
+              <Ikon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            </button>
+          ))}
+
+          <span className={`mx-0.5 sm:mx-1 h-3.5 sm:h-4 w-px ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+
           <button
-            key={kunci}
             type="button"
-            title={judul}
+            title="Daftar butir"
             disabled={pratinjau}
-            onClick={() => bungkus(tanda, contoh)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-[#004F9F] active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 cursor-pointer"
+            onClick={() => awaliBaris("ul")}
+            className={`flex h-6.5 w-6.5 sm:h-7 sm:w-7 items-center justify-center rounded-lg transition-all duration-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer ${
+              isDark
+                ? "text-slate-400 hover:bg-white/10 hover:text-sky-400"
+                : "text-slate-500 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-[#004F9F]"
+            }`}
           >
-            <Ikon className="h-3.5 w-3.5" />
+            <List className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           </button>
-        ))}
+          <button
+            type="button"
+            title="Daftar bernomor"
+            disabled={pratinjau}
+            onClick={() => awaliBaris("ol")}
+            className={`flex h-6.5 w-6.5 sm:h-7 sm:w-7 items-center justify-center rounded-lg transition-all duration-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer ${
+              isDark
+                ? "text-slate-400 hover:bg-white/10 hover:text-sky-400"
+                : "text-slate-500 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-[#004F9F]"
+            }`}
+          >
+            <ListOrdered className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          </button>
 
-        <span className="mx-1 h-4 w-px bg-slate-200" />
+          <span className={`mx-0.5 sm:mx-1 h-3.5 sm:h-4 w-px ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
 
-        <button
-          type="button"
-          title="Daftar butir"
-          disabled={pratinjau}
-          onClick={() => awaliBaris("ul")}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-[#004F9F] active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 cursor-pointer"
-        >
-          <List className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          title="Daftar bernomor"
-          disabled={pratinjau}
-          onClick={() => awaliBaris("ol")}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-[#004F9F] active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 cursor-pointer"
-        >
-          <ListOrdered className="h-3.5 w-3.5" />
-        </button>
-
-        <span className="mx-1 h-4 w-px bg-slate-200" />
-
-        <button
-          type="button"
-          title="Hapus semua format"
-          disabled={pratinjau}
-          onClick={hapusFormat}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-red-500 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 cursor-pointer"
-        >
-          <Eraser className="h-3.5 w-3.5" />
-        </button>
+          <button
+            type="button"
+            title="Hapus semua format"
+            disabled={pratinjau}
+            onClick={hapusFormat}
+            className={`flex h-6.5 w-6.5 sm:h-7 sm:w-7 items-center justify-center rounded-lg transition-all duration-200 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer ${
+              isDark
+                ? "text-slate-400 hover:bg-red-500/10 hover:text-red-400"
+                : "text-slate-500 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-red-500"
+            }`}
+          >
+            <Eraser className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          </button>
+        </div>
 
         <button
           type="button"
           onClick={() => setPratinjau((p) => !p)}
-          className={`ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10.5px] font-bold transition-all duration-200 active:scale-95 cursor-pointer ${
+          className={`shrink-0 inline-flex items-center gap-1 sm:gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 sm:py-1 text-[10px] sm:text-[10.5px] font-bold transition-all duration-200 active:scale-95 cursor-pointer ${
             pratinjau
-              ? "bg-[#0B1442] text-white shadow-sm"
+              ? isDark
+                ? "bg-[#00A5EC] text-white shadow-sm"
+                : "bg-[#0B1442] text-white shadow-sm"
+              : isDark
+              ? "text-slate-400 hover:bg-white/10 hover:text-white"
               : "text-slate-500 hover:bg-slate-100 hover:text-[#004F9F]"
           }`}
         >
           {pratinjau ? <PenLine className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-          {pratinjau ? "Sunting" : "Pratinjau"}
+          <span>{pratinjau ? "Sunting" : "Pratinjau"}</span>
         </button>
       </div>
 
@@ -200,13 +223,15 @@ const EditorJawaban = ({ nilai, onUbah, placeholder, rows = 6 }) => {
       <div style={{ height: TINGGI_BARIS * rows + 24 }}>
         {pratinjau ? (
           <div
-            className="h-full overflow-y-auto overscroll-contain px-4 py-3 text-sm font-medium leading-relaxed text-slate-700"
+            className={`h-full overflow-y-auto overscroll-contain px-3 py-2.5 sm:px-4 sm:py-3 text-[11.5px] sm:text-sm font-medium leading-relaxed ${
+              isDark ? "text-slate-200" : "text-slate-700"
+            }`}
             style={{ scrollbarWidth: "thin" }}
           >
             {nilai?.trim() ? (
               <TeksKaya teks={nilai} />
             ) : (
-              <p className="text-sm italic text-slate-400">Belum ada isi jawaban untuk ditampilkan.</p>
+              <p className="text-[11.5px] sm:text-sm italic text-slate-400">Belum ada isi jawaban untuk ditampilkan.</p>
             )}
           </div>
         ) : (
@@ -217,26 +242,39 @@ const EditorJawaban = ({ nilai, onUbah, placeholder, rows = 6 }) => {
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             required
-            className="block h-full w-full resize-none bg-transparent px-4 py-3 text-sm font-medium leading-relaxed text-slate-700 outline-none"
+            className={`block h-full w-full resize-none bg-transparent px-3 py-2.5 sm:px-4 sm:py-3 text-[11.5px] sm:text-sm font-medium leading-relaxed outline-none placeholder:text-[11px] sm:placeholder:text-sm ${
+              isDark ? "text-slate-100 placeholder-slate-500" : "text-slate-700 placeholder-slate-400"
+            }`}
             style={{ scrollbarWidth: "thin" }}
           />
         )}
       </div>
 
       {/* Keterangan bawah */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white/70 px-3 py-1.5">
-        <p className="text-[10px] text-slate-400">
-          <span className="font-bold text-slate-500">**tebal**</span>
-          <span className="mx-1.5">·</span>
-          <span className="font-bold text-slate-500">*miring*</span>
-          <span className="mx-1.5">·</span>
-          <span className="font-bold text-slate-500">__garis bawah__</span>
-          <span className="mx-1.5">·</span>
-          <span className="font-bold text-slate-500">- poin</span>
-          <span className="mx-1.5">·</span>
-          <span className="font-bold text-slate-500">1. nomor</span>
+      <div className={`flex items-center justify-between gap-1.5 border-t px-2.5 py-1 sm:px-3 sm:py-1.5 ${
+        isDark ? "border-white/5 bg-white/[0.02]" : "border-slate-200 bg-white/70"
+      }`}>
+        <p className="text-[9px] sm:text-[10px] text-slate-400 truncate min-w-0">
+          <span className="inline sm:hidden">
+            <span className={`font-bold ${isDark ? "text-slate-300" : "text-slate-500"}`}>**tebal**</span>
+            <span className="mx-1">·</span>
+            <span className={`font-bold ${isDark ? "text-slate-300" : "text-slate-500"}`}>*miring*</span>
+            <span className="mx-1">·</span>
+            <span className={`font-bold ${isDark ? "text-slate-300" : "text-slate-500"}`}>__garis bawah__</span>
+          </span>
+          <span className="hidden sm:inline">
+            <span className={`font-bold ${isDark ? "text-slate-300" : "text-slate-500"}`}>**tebal**</span>
+            <span className="mx-1.5">·</span>
+            <span className={`font-bold ${isDark ? "text-slate-300" : "text-slate-500"}`}>*miring*</span>
+            <span className="mx-1.5">·</span>
+            <span className={`font-bold ${isDark ? "text-slate-300" : "text-slate-500"}`}>__garis bawah__</span>
+            <span className="mx-1.5">·</span>
+            <span className={`font-bold ${isDark ? "text-slate-300" : "text-slate-500"}`}>- poin</span>
+            <span className="mx-1.5">·</span>
+            <span className={`font-bold ${isDark ? "text-slate-300" : "text-slate-500"}`}>1. nomor</span>
+          </span>
         </p>
-        <p className="text-[10px] font-bold text-slate-400">{(nilai || "").length} karakter</p>
+        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 shrink-0">{(nilai || "").length} karakter</p>
       </div>
     </div>
   );

@@ -5,11 +5,12 @@ import { getRingkasanDashboard } from "../../services/adminService";
 import { getMe } from "../../services/authService";
 import { getFileUrl } from "../../utils/fileUrl";
 import { toastError } from "../../utils/swal";
+import { useManajemenTheme } from "../../context/useManajemenTheme";
 import {
   ClipboardCheck, FilePen, FileSignature, UserPlus, UserCog, Award,
   MessagesSquare, Inbox, CheckCircle2, ChevronRight, CalendarCheck,
   Users, GraduationCap, TrendingUp, AlertTriangle,
-  CalendarClock, Layers, ArrowUpRight, Zap,
+  CalendarClock, Layers, ArrowUpRight, Zap, CalendarOff,
 } from "lucide-react";
 
 const salam = () => {
@@ -30,17 +31,15 @@ const tanggalPendek = (t) => {
 };
 
 /* ══════════ Kartu antrean pekerjaan ══════════ */
-const KartuTindakan = ({ icon: Icon, judul, jumlah, catatan, warna, tunda, onClick }) => {
+const KartuTindakan = ({ icon: Icon, judul, jumlah, catatan, warna, tunda, isDark, onClick }) => {
   const ada = jumlah > 0;
   return (
     <button
       type="button"
       onClick={onClick}
       style={{ animationDelay: `${tunda}ms` }}
-      className={`group relative w-full overflow-hidden rounded-2xl border p-4 text-left shadow-sm transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] cursor-pointer hover:-translate-y-1 hover:shadow-lg ${
-        ada
-          ? `border-slate-200/80 bg-gradient-to-br ${warna.light} to-white`
-          : "border-slate-200/80 bg-white"
+      className={`group relative overflow-hidden rounded-xl border p-2.5 sm:p-4 text-left shadow-sm transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-0.5 hover:shadow-md ${
+        isDark ? "border-white/5 bg-white/[0.02] hover:bg-white/5" : "border-slate-200/60 bg-white hover:border-slate-300/80"
       }`}
     >
       {ada && (
@@ -49,77 +48,103 @@ const KartuTindakan = ({ icon: Icon, judul, jumlah, catatan, warna, tunda, onCli
         />
       )}
 
-      <div className="relative flex items-center gap-3.5">
+      <div className="relative flex items-center gap-2.5 sm:gap-3.5">
         <span
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6 ${
-            ada ? `${warna.bg} ${warna.text}` : "bg-slate-100 text-slate-300"
+          className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6 ${
+            ada
+              ? isDark
+                ? (warna.darkBg || "bg-white/10 text-white")
+                : (warna.bg || "bg-slate-100 text-slate-600")
+              : isDark
+                ? "bg-white/[0.04] text-slate-500 ring-1 ring-white/5"
+                : "bg-slate-100/80 text-slate-400 ring-1 ring-slate-200/60"
           }`}
         >
-          <Icon className="h-[18px] w-[18px]" strokeWidth={2.2} />
+          <Icon className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={2.2} />
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[12.5px] font-bold leading-snug text-slate-700">{judul}</p>
+          <p className={`line-clamp-2 text-[11px] sm:text-[12.5px] font-bold leading-snug ${
+            ada
+              ? isDark ? "text-slate-200" : "text-slate-700"
+              : isDark ? "text-slate-400" : "text-slate-600"
+          }`}>
+            {judul}
+          </p>
           {catatan ? (
-            <p className="mt-0.5 flex items-center gap-1 text-[10.5px] font-bold text-rose-600">
-              <span className="relative flex h-1.5 w-1.5">
+            <p className="mt-0.5 flex items-center gap-1 text-[9px] sm:text-[10.5px] font-bold text-rose-500">
+              <span className="relative flex h-1.5 w-1.5 shrink-0">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-500" />
               </span>
-              {catatan}
+              <span className="truncate">{catatan}</span>
             </p>
           ) : (
-            <p className="mt-0.5 text-[10.5px] font-medium text-slate-400">
+            <p className={`mt-0.5 text-[9px] sm:text-[10.5px] font-medium truncate ${isDark ? "text-slate-500" : "text-slate-400"}`}>
               {ada ? "Menunggu diproses" : "Tidak ada antrean"}
             </p>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-0.5">
           <span
-            className={`text-2xl font-black tabular-nums tracking-tight ${
-              ada ? "text-[#0B1442]" : "text-slate-200"
+            className={`text-lg sm:text-2xl font-black tabular-nums tracking-tight ${
+              ada
+                ? isDark ? "text-slate-100" : "text-[#0B1442]"
+                : isDark ? "text-slate-700" : "text-slate-200"
             }`}
           >
             {n(jumlah)}
           </span>
           <ChevronRight
-            className={`h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 ${
-              ada ? "text-slate-400" : "text-slate-200"
+            className={`h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-300 group-hover:translate-x-1 ${
+              ada ? "text-slate-400" : isDark ? "text-slate-700" : "text-slate-200"
             }`}
           />
         </div>
       </div>
 
       <div
-        className={`absolute bottom-0 left-0 h-1 w-full origin-left scale-x-0 bg-gradient-to-r ${warna.grad} transition-transform duration-500 group-hover:scale-x-100`}
+        className={`absolute bottom-0 left-0 h-1 w-full origin-left scale-x-0 transition-transform duration-500 group-hover:scale-x-100 ${
+          ada ? `bg-gradient-to-r ${warna.grad}` : isDark ? "bg-white/10" : "bg-slate-200"
+        }`}
       />
     </button>
   );
 };
 
 /* ══════════ Kartu angka ringkas ══════════ */
-const KartuAngka = ({ icon: Icon, label, nilai, caption, warna, tunda }) => (
+// Di mobile ketiga kartu ini kini SEJAJAR (grid-cols-3), bukan bertumpuk —
+// ukuran teks & padding diperkecil khusus di bawah breakpoint sm supaya
+// tetap muat. Di sm ke atas, tampilannya kembali seperti semula.
+const KartuAngka = ({ icon: Icon, label, nilai, caption, warna, tunda, isDark }) => (
   <div
     style={{ animationDelay: `${tunda}ms` }}
-    className={`group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br ${warna.light} to-white p-5 shadow-sm transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-1 hover:shadow-lg`}
+    className={`group relative overflow-hidden rounded-2xl border p-2 sm:p-5 shadow-sm transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-1 hover:shadow-lg ${isDark
+      ? "border-white/10 bg-[#161b22]"
+      : `border-slate-200/80 bg-gradient-to-br ${warna.light} to-white`
+      }`}
   >
     <div
       className={`absolute -right-12 -top-12 h-36 w-36 rounded-full bg-gradient-to-br ${warna.grad} opacity-[0.3] blur-xl transition-all duration-300 group-hover:opacity-[0.42] group-hover:scale-125`}
     />
-    <div className="relative flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <p className="truncate text-xs font-bold tracking-wide text-slate-600">{label}</p>
-        <h3 className="mt-1.5 text-[32px] font-black leading-none tracking-tight text-[#0B1442]">
-          {n(nilai)}
-        </h3>
-        <p className="mt-2 text-[10.5px] font-medium leading-snug text-slate-500">{caption}</p>
+    <div className="relative">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0 flex-1">
+          <p className={`line-clamp-2 min-h-[22px] sm:min-h-0 leading-tight text-[9px] sm:text-xs font-bold tracking-wide ${isDark ? "text-slate-400" : "text-slate-600"}`}>{label}</p>
+          <h3 className={`mt-1 sm:mt-1.5 text-xl sm:text-[32px] font-black leading-none tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+            {n(nilai)}
+          </h3>
+        </div>
+        <span
+          className={`flex h-5 w-5 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-md sm:rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 ${
+            isDark ? (warna.darkBg || "bg-white/10 text-slate-200") : `${warna.bg} ${warna.text}`
+          }`}
+        >
+          <Icon className="h-[11px] w-[11px] sm:h-[17px] sm:w-[17px]" strokeWidth={2} />
+        </span>
       </div>
-      <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 ${warna.bg} ${warna.text}`}
-      >
-        <Icon className="h-[17px] w-[17px]" strokeWidth={2} />
-      </span>
+      <p className={`mt-1.5 sm:mt-2 truncate sm:whitespace-normal text-[8px] sm:text-[10.5px] font-medium leading-tight sm:leading-snug ${isDark ? "text-slate-500" : "text-slate-500"}`}>{caption}</p>
     </div>
     <div
       className={`absolute bottom-0 left-0 h-1.5 w-full origin-left scale-x-0 bg-gradient-to-r ${warna.grad} transition-transform duration-500 group-hover:scale-x-100`}
@@ -128,48 +153,112 @@ const KartuAngka = ({ icon: Icon, label, nilai, caption, warna, tunda }) => (
 );
 
 /* ══════════ Judul seksi ══════════ */
-const JudulSeksi = ({ icon: Icon, judul, sub, aksi }) => (
-  <div className="mb-5 flex items-center justify-between gap-3">
-    <div className="flex items-center gap-3">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
-        <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+const JudulSeksi = ({ icon: Icon, judul, sub, aksi, isDark }) => (
+  <div className="mb-4 sm:mb-5 flex items-start sm:items-center justify-between gap-2 sm:gap-3">
+    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+      <span className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
+        <Icon className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={2} />
       </span>
-      <div className="min-w-0">
-        <h3 className="text-sm font-black tracking-tight text-[#0B1442]">{judul}</h3>
-        {sub && <p className="mt-0.5 text-[11px] font-medium text-slate-400">{sub}</p>}
+      <div className="min-w-0 flex-1">
+        <h3 className={`text-xs sm:text-sm font-black tracking-tight line-clamp-2 leading-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{judul}</h3>
+        {sub && <p className={`mt-0.5 text-[9px] sm:text-[11px] font-medium line-clamp-2 leading-tight ${isDark ? "text-slate-500" : "text-slate-400"}`}>{sub}</p>}
       </div>
     </div>
-    {aksi}
+    {aksi && <div className="shrink-0 pt-0.5 sm:pt-0">{aksi}</div>}
   </div>
 );
 
-const KartuKosong = ({ pesan }) => (
+const KartuKosong = ({ pesan, isDark }) => (
   <div className="flex flex-col items-center gap-2 py-10 text-center">
-    <span className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-300">
+    <span className={`relative flex h-12 w-12 items-center justify-center rounded-2xl ${isDark ? "bg-white/5 text-slate-600" : "bg-slate-50 text-slate-300"}`}>
       <Inbox className="h-5 w-5" />
-      <span className="absolute inset-0 animate-ping rounded-2xl border-2 border-slate-200 opacity-40" />
+      <span className={`absolute inset-0 animate-ping rounded-2xl border-2 opacity-40 ${isDark ? "border-white/10" : "border-slate-200"}`} />
     </span>
-    <p className="text-[11.5px] font-medium text-slate-400">{pesan}</p>
+    <p className={`text-[11.5px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>{pesan}</p>
   </div>
 );
 
 /* ══════════ Palet kartu antrean ══════════ */
 const W = {
-  amber:   { grad: "from-amber-500 to-amber-700",     light: "from-amber-100/70",   bg: "bg-amber-50",   text: "text-amber-600" },
-  sky:     { grad: "from-sky-500 to-sky-700",         light: "from-sky-100/70",     bg: "bg-sky-50",     text: "text-sky-600" },
-  violet:  { grad: "from-violet-500 to-violet-700",   light: "from-violet-100/70",  bg: "bg-violet-50",  text: "text-violet-600" },
-  biru:    { grad: "from-[#004F9F] to-[#0B1442]",     light: "from-blue-100/70",    bg: "bg-blue-50",    text: "text-blue-600" },
-  rose:    { grad: "from-rose-500 to-rose-700",       light: "from-rose-100/70",    bg: "bg-rose-50",    text: "text-rose-600" },
-  teal:    { grad: "from-teal-500 to-teal-700",       light: "from-teal-100/70",    bg: "bg-teal-50",    text: "text-teal-600" },
-  indigo:  { grad: "from-indigo-500 to-indigo-700",   light: "from-indigo-100/70",  bg: "bg-indigo-50",  text: "text-indigo-600" },
-  slate:   { grad: "from-slate-500 to-slate-700",     light: "from-slate-100/70",   bg: "bg-slate-100",  text: "text-slate-500" },
+  amber: {
+    grad: "from-amber-500 to-amber-700",
+    light: "from-amber-100/70",
+    bg: "bg-amber-100/90 text-amber-600 ring-1 ring-amber-500/25 shadow-sm shadow-amber-500/10",
+    bgMuted: "bg-amber-50/80 text-amber-500/60 ring-1 ring-amber-400/20",
+    darkBg: "bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/30",
+    darkBgMuted: "bg-amber-500/10 text-amber-400/50",
+  },
+  sky: {
+    grad: "from-sky-500 to-sky-700",
+    light: "from-sky-100/70",
+    bg: "bg-sky-100/90 text-sky-600 ring-1 ring-sky-500/25 shadow-sm shadow-sky-500/10",
+    bgMuted: "bg-sky-50/80 text-sky-500/60 ring-1 ring-sky-400/20",
+    darkBg: "bg-sky-500/20 text-sky-300 ring-1 ring-sky-400/30",
+    darkBgMuted: "bg-sky-500/10 text-sky-400/50",
+  },
+  violet: {
+    grad: "from-violet-500 to-violet-700",
+    light: "from-violet-100/70",
+    bg: "bg-violet-100/90 text-violet-600 ring-1 ring-violet-500/25 shadow-sm shadow-violet-500/10",
+    bgMuted: "bg-violet-50/80 text-violet-500/60 ring-1 ring-violet-400/20",
+    darkBg: "bg-purple-500/20 text-purple-300 ring-1 ring-purple-400/30",
+    darkBgMuted: "bg-purple-500/10 text-purple-400/50",
+  },
+  biru: {
+    grad: "from-[#004F9F] to-[#0B1442]",
+    light: "from-blue-100/70",
+    bg: "bg-blue-100/90 text-blue-600 ring-1 ring-blue-500/25 shadow-sm shadow-blue-500/10",
+    bgMuted: "bg-blue-50/80 text-blue-500/60 ring-1 ring-blue-400/20",
+    darkBg: "bg-blue-500/20 text-sky-300 ring-1 ring-blue-400/30",
+    darkBgMuted: "bg-blue-500/10 text-sky-400/50",
+  },
+  rose: {
+    grad: "from-rose-500 to-rose-700",
+    light: "from-rose-100/70",
+    bg: "bg-rose-100/90 text-rose-600 ring-1 ring-rose-500/25 shadow-sm shadow-rose-500/10",
+    bgMuted: "bg-rose-50/80 text-rose-500/60 ring-1 ring-rose-400/20",
+    darkBg: "bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/30",
+    darkBgMuted: "bg-rose-500/10 text-rose-400/50",
+  },
+  teal: {
+    grad: "from-teal-500 to-teal-700",
+    light: "from-teal-100/70",
+    bg: "bg-teal-100/90 text-teal-600 ring-1 ring-teal-500/25 shadow-sm shadow-teal-500/10",
+    bgMuted: "bg-teal-50/80 text-teal-500/60 ring-1 ring-teal-400/20",
+    darkBg: "bg-teal-500/20 text-teal-300 ring-1 ring-teal-400/30",
+    darkBgMuted: "bg-teal-500/10 text-teal-400/50",
+  },
+  indigo: {
+    grad: "from-indigo-500 to-indigo-700",
+    light: "from-indigo-100/70",
+    bg: "bg-indigo-100/90 text-indigo-600 ring-1 ring-indigo-500/25 shadow-sm shadow-indigo-500/10",
+    bgMuted: "bg-indigo-50/80 text-indigo-500/60 ring-1 ring-indigo-400/20",
+    darkBg: "bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-400/30",
+    darkBgMuted: "bg-indigo-500/10 text-indigo-400/50",
+  },
+  emerald: {
+    grad: "from-emerald-500 to-emerald-700",
+    light: "from-emerald-100/70",
+    bg: "bg-emerald-100/90 text-emerald-600 ring-1 ring-emerald-500/25 shadow-sm shadow-emerald-500/10",
+    bgMuted: "bg-emerald-50/80 text-emerald-500/60 ring-1 ring-emerald-400/20",
+    darkBg: "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30",
+    darkBgMuted: "bg-emerald-500/10 text-emerald-400/50",
+  },
+  slate: {
+    grad: "from-slate-500 to-slate-700",
+    light: "from-slate-100/70",
+    bg: "bg-slate-200/90 text-slate-700 ring-1 ring-slate-400/30 shadow-sm shadow-slate-500/10",
+    bgMuted: "bg-slate-100/80 text-slate-500/60 ring-1 ring-slate-300/20",
+    darkBg: "bg-slate-700/50 text-slate-300 ring-1 ring-slate-600/50",
+    darkBgMuted: "bg-slate-800/40 text-slate-400/50",
+  },
 };
 
 /* ══════════ Palet kartu statistik — samakan dengan PesertaStats.jsx ══════════ */
 const WS = {
-  biru:    { grad: "from-[#004F9F] to-[#0B1442]",     light: "from-blue-300",    bg: "bg-blue-50",    text: "text-blue-600" },
-  slate:   { grad: "from-slate-500 to-slate-700",     light: "from-slate-200",   bg: "bg-slate-100",  text: "text-slate-500" },
-  emerald: { grad: "from-emerald-500 to-emerald-700", light: "from-emerald-300", bg: "bg-emerald-50", text: "text-emerald-600" },
+  biru: { grad: "from-[#004F9F] to-[#0B1442]", light: "from-blue-300", bg: "bg-blue-50", text: "text-blue-600", darkBg: "bg-blue-950/60 text-sky-400" },
+  slate: { grad: "from-slate-500 to-slate-700", light: "from-slate-200", bg: "bg-slate-100", text: "text-slate-500", darkBg: "bg-slate-800 text-slate-300" },
+  emerald: { grad: "from-emerald-500 to-emerald-700", light: "from-emerald-300", bg: "bg-emerald-50", text: "text-emerald-600", darkBg: "bg-emerald-950/60 text-emerald-400" },
 };
 
 /* ══════════ Avatar profil admin ══════════ */
@@ -192,10 +281,10 @@ const AvatarProfil = ({ nama, foto }) => {
           src={url}
           alt={nama}
           onError={() => setGagal(true)}
-          className="relative h-14 w-14 rounded-2xl border border-white/20 object-cover shadow-lg transition-transform duration-300 group-hover:scale-105"
+          className="relative h-11 w-11 sm:h-14 sm:w-14 rounded-2xl border border-white/20 object-cover shadow-lg transition-transform duration-300 group-hover:scale-105"
         />
       ) : (
-        <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-base font-black text-white shadow-lg backdrop-blur-md transition-transform duration-300 group-hover:scale-105">
+        <span className="relative flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-sm sm:text-base font-black text-white shadow-lg backdrop-blur-md transition-transform duration-300 group-hover:scale-105">
           {inisial}
         </span>
       )}
@@ -207,31 +296,50 @@ const AvatarProfil = ({ nama, foto }) => {
 };
 
 /* ══════════ Avatar kecil untuk daftar mentor ══════════ */
-const AvatarMentor = ({ nama, foto }) => {
+const AvatarMentor = ({ nama, foto, isOnline }) => {
   const [gagal, setGagal] = useState(false);
+  const { isDark } = useManajemenTheme();
   const url = foto ? getFileUrl(foto) : null;
   const inisial = (nama || "?").trim().charAt(0).toUpperCase();
 
-  if (url && !gagal) {
+  const renderContent = () => {
+    if (url && !gagal) {
+      return (
+        <img
+          src={url}
+          alt={nama}
+          onError={() => setGagal(true)}
+          className="h-7 w-7 sm:h-9 sm:w-9 shrink-0 rounded-full object-cover shadow-sm ring-2 ring-white"
+        />
+      );
+    }
     return (
-      <img
-        src={url}
-        alt={nama}
-        onError={() => setGagal(true)}
-        className="h-9 w-9 shrink-0 rounded-full object-cover shadow-sm ring-2 ring-white transition-transform duration-300 group-hover:scale-110"
-      />
+      <span className="flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-[9px] sm:text-[11px] font-black text-white shadow-sm ring-2 ring-white">
+        {inisial}
+      </span>
     );
-  }
+  };
 
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-[11px] font-black text-white shadow-sm ring-2 ring-white transition-transform duration-300 group-hover:scale-110">
-      {inisial}
+    <span className="relative inline-flex shrink-0 transition-transform duration-300 group-hover:scale-110">
+      {renderContent()}
+      {isOnline !== undefined && (
+        <span
+          className={`absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 sm:h-3 sm:w-3 items-center justify-center rounded-full border-2 ${isDark ? "border-[#161b22]" : "border-white"
+            } ${isOnline ? "bg-emerald-400" : "bg-slate-400"}`}
+        >
+          {isOnline && (
+            <span className="absolute h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+          )}
+        </span>
+      )}
     </span>
   );
 };
 
 const DashboardPage = () => {
   const navigate = useNavigate();
+  const { isDark } = useManajemenTheme();
   const [data, setData] = useState(null);
   const [profil, setProfil] = useState(null);
   const [memuat, setMemuat] = useState(true);
@@ -291,38 +399,54 @@ const DashboardPage = () => {
       }
     };
     ambil();
-  }, []);
+
+    // Polling background update setiap 15 detik (mengganti status online tanpa reload)
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        getRingkasanDashboard({ bulan: periode })
+          .then((r) => {
+            setData((lama) => (lama ? { ...lama, ...r.data.data } : r.data.data));
+          })
+          .catch((err) => {
+            console.error("Gagal memperbarui data dashboard secara otomatis:", err);
+          });
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [periode]);
 
   const antrean = data?.antrean || {};
   const presensi = data?.presensi || {};
   const program = data?.program || {};
+  const akanSelesai = program.akan_selesai || [];
   const tren = data?.tren || {};
 
-  const daftarTindakan = [
-    { icon: ClipboardCheck, judul: "Menunggu verifikasi", jumlah: antrean.menunggu_verifikasi,
+  const daftarTindakanTersedia = [
+    {
+      icon: ClipboardCheck, judul: "Menunggu verifikasi", jumlah: antrean.menunggu_verifikasi,
       catatan: antrean.menunggu_lebih_3_hari > 0 ? `${antrean.menunggu_lebih_3_hari} lewat 3 hari` : "",
-      warna: W.amber, tujuan: "/admin/pendaftaran" },
-    { icon: FilePen, judul: "Menunggu revisi pendaftar", jumlah: antrean.perlu_revisi, warna: W.sky, tujuan: "/admin/pendaftaran" },
+      warna: W.amber, tujuan: "/admin/pendaftaran?status=menunggu"
+    },
+    { icon: FilePen, judul: "Menunggu revisi pendaftar", jumlah: antrean.perlu_revisi, warna: W.sky, tujuan: "/admin/pendaftaran?status=revisi" },
     { icon: FileSignature, judul: "Surat belum diterbitkan", jumlah: antrean.surat_belum_terbit, warna: W.violet, tujuan: "/admin/surat-penerimaan" },
-    { icon: UserPlus, judul: "Akun peserta belum dibuat", jumlah: antrean.akun_belum_dibuat, warna: W.biru, tujuan: "/admin/peserta" },
+    { icon: UserPlus, judul: "Akun peserta belum dibuat", jumlah: antrean.akun_belum_dibuat, warna: W.biru, tujuan: "/admin/pendaftaran?status=diterima" },
     { icon: UserCog, judul: "Peserta belum punya mentor", jumlah: antrean.belum_punya_mentor, warna: W.rose, tujuan: "/admin/peserta" },
     { icon: Award, judul: "Sertifikat belum terbit", jumlah: antrean.sertifikat_tertunda, warna: W.teal, tujuan: "/admin/sertifikat" },
-    { icon: MessagesSquare, judul: "Pesan belum dibalas", jumlah: antrean.chat_belum_dibalas, warna: W.indigo, tujuan: "/admin/pendaftaran" },
-    { icon: Inbox, judul: "Pertanyaan baru masuk", jumlah: antrean.pertanyaan_baru, warna: W.slate, tujuan: "/admin/pertanyaan" },
+    { icon: MessagesSquare, judul: "Pesan belum dibalas", jumlah: antrean.chat_belum_dibalas, warna: W.indigo, tujuan: "/admin/bantuan?tab=chat" },
+    { icon: Inbox, judul: "Pertanyaan baru masuk", jumlah: antrean.pertanyaan_baru, warna: W.emerald, tujuan: "/admin/bantuan?tab=pertanyaan" },
   ];
+
+  // Urutkan agar yang ada antreannya (jumlah > 0) otomatis naik ke atas
+  const daftarTindakan = [...daftarTindakanTersedia].sort((a, b) => {
+    const aAda = (a.jumlah || 0) > 0 ? 1 : 0;
+    const bAda = (b.jumlah || 0) > 0 ? 1 : 0;
+    return bAda - aAda;
+  });
 
   // Antrean paling mendesak — urutan array sudah mencerminkan prioritas kerja
   const tugasPrioritas = daftarTindakan.find((t) => (t.jumlah || 0) > 0) || null;
 
-  const segmen = [
-    { label: "Hadir", nilai: presensi.hadir || 0, bar: "bg-gradient-to-b from-emerald-400 to-emerald-600", dot: "bg-emerald-500", teks: "text-emerald-600" },
-    { label: "Terlambat", nilai: presensi.terlambat || 0, bar: "bg-gradient-to-b from-amber-400 to-amber-600", dot: "bg-amber-500", teks: "text-amber-600" },
-    { label: "Izin", nilai: presensi.izin || 0, bar: "bg-gradient-to-b from-sky-400 to-sky-600", dot: "bg-sky-500", teks: "text-sky-600" },
-    { label: "Sakit", nilai: presensi.sakit || 0, bar: "bg-gradient-to-b from-violet-400 to-violet-600", dot: "bg-violet-500", teks: "text-violet-600" },
-    { label: "Alfa", nilai: presensi.alfa || 0, bar: "bg-gradient-to-b from-rose-400 to-rose-600", dot: "bg-rose-500", teks: "text-rose-600" },
-    { label: "Belum absen", nilai: presensi.belum_presensi || 0, bar: "bg-slate-300", dot: "bg-slate-300", teks: "text-slate-500" },
-  ];
-  const totalSegmen = segmen.reduce((a, b) => a + b.nilai, 0);
 
   const daftarTren = tren.pendaftaran || [];
 
@@ -331,6 +455,107 @@ const DashboardPage = () => {
   const trenKini = daftarTren.at(-1)?.jumlah || 0;
   const trenLalu = daftarTren.at(-2)?.jumlah || 0;
   const trenSelisih = trenKini - trenLalu;
+
+  const renderKehadiranRendah = () => {
+    const listPeserta = program.peserta_bermasalah || [];
+    return (
+      <section className={`rounded-2xl border p-4 sm:p-5 shadow-sm ${isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"}`}>
+        <JudulSeksi
+          icon={AlertTriangle}
+          judul="Kehadiran Rendah"
+          sub="Di bawah 75% dalam 30 hari"
+          isDark={isDark}
+          aksi={
+            listPeserta.length > 0 ? (
+              <span className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10.5px] font-black animate-[popIn_0.35s_ease-out_both] ${isDark ? "bg-rose-500/15 text-rose-400" : "bg-rose-50 text-rose-600"}`}>
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-500" />
+                </span>
+                {n(listPeserta.length)}
+              </span>
+            ) : null
+          }
+        />
+
+        {listPeserta.length === 0 ? (
+          <div className={`flex items-center gap-3 rounded-xl border p-3.5 ${isDark ? "border-emerald-500/20 bg-emerald-500/[0.06]" : "border-emerald-100 bg-gradient-to-r from-emerald-50/70 to-white"}`}>
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-100 text-emerald-600"}`}>
+              <CheckCircle2 className="h-[18px] w-[18px]" strokeWidth={2.2} />
+            </span>
+            <span className="min-w-0">
+              <span className={`block text-[12px] font-bold ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+                Kehadiran terjaga
+              </span>
+              <span className={`mt-0.5 block text-[10px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                Semua peserta di atas 75%
+              </span>
+            </span>
+          </div>
+        ) : (
+          <>
+            <div className="scroll-halus max-h-[170px] lg:max-h-[194px] space-y-2 overflow-y-auto pr-1 pt-1.5 pb-1.5">
+              {listPeserta.map((p, i) => {
+                const pct = p.persen || 0;
+                const parah = pct < 50;
+                const gaya = parah
+                  ? { bar: "from-rose-500 to-rose-600", pill: isDark ? "bg-rose-500/15 text-rose-400" : "bg-rose-50 text-rose-600", tepi: isDark ? "hover:border-rose-500/30" : "hover:border-rose-200" }
+                  : { bar: "from-amber-500 to-amber-600", pill: isDark ? "bg-amber-500/15 text-amber-400" : "bg-amber-50 text-amber-600", tepi: isDark ? "hover:border-amber-500/30" : "hover:border-amber-200" };
+
+                return (
+                  <div
+                    key={p.peserta_id}
+                    style={{ animationDelay: `${i * 55}ms` }}
+                    className={`group rounded-xl border p-3 transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-0.5 hover:shadow-sm ${isDark ? "border-white/5 bg-white/[0.03]" : "border-slate-100 bg-gradient-to-r from-slate-50/60 to-white"
+                      } ${gaya.tepi}`}
+                  >
+                    <div className="mb-2 flex items-center gap-2.5">
+                      <div className="scale-[0.85] sm:scale-100 transition-transform">
+                        <AvatarMentor
+                          key={p.foto_profil || p.peserta_id}
+                          nama={p.nama}
+                          foto={p.foto_profil}
+                          isOnline={p.is_online}
+                        />
+                      </div>
+                      <span className="min-w-0 flex-1">
+                        <span className={`block text-[11px] sm:text-[12.5px] font-bold transition-colors duration-200 ${isDark ? "text-slate-300 group-hover:text-slate-100" : "text-slate-700 group-hover:text-[#0B1442]"}`}>
+                          {p.nama}
+                        </span>
+                        <span className={`mt-0.5 block text-[8.5px] sm:text-[9.5px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                          Hadir {n(p.hadir)} dari {n(p.total)} hari
+                        </span>
+                      </span>
+                      <span
+                        className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] sm:text-[11px] font-black tabular-nums transition-transform duration-300 group-hover:scale-105 ${gaya.pill}`}
+                      >
+                        {pct}%
+                      </span>
+                    </div>
+
+                    <div className={`h-1.5 w-full overflow-hidden rounded-full ${isDark ? "bg-white/5" : "bg-slate-100"}`}>
+                      <div
+                        className={`h-full origin-left rounded-full bg-gradient-to-r ${gaya.bar} animate-[barSlide_0.8s_ease-out_both]`}
+                        style={{ width: `${Math.max(pct, 2)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/admin/presensi/rekap")}
+              className={`group mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-4 py-2.5 text-[11px] font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
+            >
+              Buka rekap kehadiran
+              <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </button>
+          </>
+        )}
+      </section>
+    );
+  };
 
   // Deret yang bisa dinyalakan/dimatikan lewat filter
   const deretTren = [
@@ -390,7 +615,7 @@ const DashboardPage = () => {
             strokeWidth={1}
             stroke="currentColor"
             aria-hidden="true"
-            className="pointer-events-none absolute -right-6 top-1/2 h-44 w-44 -translate-y-1/2 rotate-12 text-sky-400 opacity-[0.045]"
+            className="pointer-events-none absolute -right-2 sm:-right-6 top-1/2 h-28 w-28 sm:h-44 sm:w-44 -translate-y-1/2 rotate-12 text-sky-400 opacity-[0.045]"
           >
             <path
               strokeLinecap="round"
@@ -400,52 +625,87 @@ const DashboardPage = () => {
           </svg>
 
           {/* ── Baris atas: identitas + tombol prioritas ── */}
-          <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 px-6 pt-6 pb-5">
-            <div className="flex items-center gap-4">
+          <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 px-4 sm:px-6 pt-4 sm:pt-6 pb-2.5 sm:pb-3.5">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
               <AvatarProfil nama={profil?.nama} foto={profil?.foto_profil} />
-              <div className="min-w-0">
-                <h2 className="text-[22px] font-black leading-tight tracking-tight">
-                  <span className="font-medium text-white/55">{salam()}, </span>
+              <div className="min-w-0 flex-1">
+                {/* Salam dan nama dipisah jadi dua baris tetap, bukan satu
+                    kalimat mengalir — supaya nama tidak terpenggal di
+                    tengah saat layar sempit. */}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] sm:text-xs font-medium text-white/55">{salam()}</p>
+
+                  {/* Mobile Badge - Next to Selamat Malam */}
+                  <div className="flex sm:hidden shrink-0">
+                    {!memuat && data && (
+                      tugasPrioritas ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(tugasPrioritas.tujuan)}
+                          className="group flex cursor-pointer items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 backdrop-blur-md transition-all duration-300 hover:bg-amber-400/20 active:scale-95"
+                        >
+                          <Zap className="h-2.5 w-2.5 text-amber-300" strokeWidth={2} />
+                          <span className="text-[9px] font-bold text-amber-200">
+                            {n(tugasPrioritas.jumlah)} prioritas
+                          </span>
+                        </button>
+                      ) : (
+                        <span className="flex items-center gap-1 rounded-md border border-emerald-400/20 bg-emerald-400/10 px-1.5 py-0.5 backdrop-blur-md">
+                          <CheckCircle2 className="h-2.5 w-2.5 text-emerald-300" strokeWidth={2} />
+                          <span className="text-[9px] font-bold text-emerald-200">
+                            Semua tertangani
+                          </span>
+                        </span>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                <h2 className="mt-0 text-[15px] sm:text-[22px] font-black leading-tight tracking-tight truncate">
                   {profil?.nama || "Admin"}
                 </h2>
-                <p className="mt-1.5">
-                  <span className="rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-bold text-[#7DD3FC]">
+
+                <p className="mt-0.5">
+                  <span className="rounded-md bg-white/10 px-2 py-0.5 text-[9px] sm:text-[11px] font-bold text-[#7DD3FC]">
                     {profil?.jabatan || "Administrator"}
                   </span>
                 </p>
               </div>
             </div>
 
-            {!memuat && data && (
-              tugasPrioritas ? (
-                <button
-                  type="button"
-                  onClick={() => navigate(tugasPrioritas.tujuan)}
-                  className="group flex cursor-pointer items-center gap-3 rounded-xl border border-white/15 bg-white/5 py-2.5 pl-3.5 pr-3 text-left backdrop-blur-md transition-all duration-300 animate-[popIn_0.4s_ease-out_both] hover:-translate-y-0.5 hover:border-[#00A5EC]/50 hover:bg-white/10 hover:shadow-lg active:scale-95"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-[#0B1442] shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
-                    <Zap className="h-4 w-4" strokeWidth={2.5} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[9.5px] font-bold uppercase tracking-widest text-white/40">
-                      Prioritas hari ini
+            {/* Desktop Badge / Button */}
+            <div className="hidden sm:flex">
+              {!memuat && data && (
+                tugasPrioritas ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(tugasPrioritas.tujuan)}
+                    className="group flex cursor-pointer items-center gap-3 rounded-xl border border-white/15 bg-white/5 py-2.5 pl-3.5 pr-3 text-left backdrop-blur-md transition-all duration-300 animate-[popIn_0.4s_ease-out_both] hover:-translate-y-0.5 hover:border-[#00A5EC]/50 hover:bg-white/10 hover:shadow-lg active:scale-95"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-[#0B1442] shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                      <Zap className="h-4 w-4" strokeWidth={2.5} />
                     </span>
-                    <span className="mt-0.5 block truncate text-[12.5px] font-bold text-white">
-                      {tugasPrioritas.judul}
-                      <span className="ml-1.5 text-amber-300">({n(tugasPrioritas.jumlah)})</span>
+                    <span className="min-w-0">
+                      <span className="block text-[9.5px] font-bold uppercase tracking-widest text-white/40">
+                        Prioritas hari ini
+                      </span>
+                      <span className="mt-0.5 block truncate text-[12.5px] font-bold text-white">
+                        {tugasPrioritas.judul}
+                        <span className="ml-1.5 text-amber-300">({n(tugasPrioritas.jumlah)})</span>
+                      </span>
                     </span>
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 shrink-0 text-white/40 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#00A5EC]" />
-                </button>
-              ) : (
-                <div className="flex items-center gap-2.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-2.5 backdrop-blur-md animate-[popIn_0.4s_ease-out_both]">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-300" strokeWidth={2.4} />
-                  <span className="text-[12.5px] font-bold text-emerald-200">
-                    Seluruh pekerjaan telah tertangani
-                  </span>
-                </div>
-              )
-            )}
+                    <ArrowUpRight className="h-4 w-4 shrink-0 text-white/40 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#00A5EC]" />
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-2.5 backdrop-blur-md animate-[popIn_0.4s_ease-out_both]">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-300" strokeWidth={2.4} />
+                    <span className="text-[12.5px] font-bold text-emerald-200">
+                      Seluruh pekerjaan telah tertangani
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
           </div>
 
           {/* ── Baris bawah: ringkasan cepat ── */}
@@ -476,17 +736,17 @@ const DashboardPage = () => {
                 <div
                   key={s.label}
                   style={{ animationDelay: `${i * 80}ms` }}
-                  className="group px-6 py-4 transition-colors duration-300 animate-[fadeslide_0.5s_ease-out_both] hover:bg-white/5"
+                  className="group px-2 sm:px-6 py-2.5 sm:py-4 transition-colors duration-300 animate-[fadeslide_0.5s_ease-out_both] hover:bg-white/5"
                 >
-                  <p className="text-[9.5px] font-bold uppercase tracking-widest text-white/40">
+                  <p className="text-[7.5px] sm:text-[9.5px] font-bold uppercase tracking-wider sm:tracking-widest text-white/40 leading-tight sm:leading-normal">
                     {s.label}
                   </p>
                   <p
-                    className={`mt-1 origin-left text-[26px] font-black leading-none tabular-nums tracking-tight transition-transform duration-300 group-hover:scale-105 ${s.aksen}`}
+                    className={`mt-0.5 sm:mt-1 origin-left text-base sm:text-[26px] font-black leading-none tabular-nums tracking-tight transition-transform duration-300 group-hover:scale-105 ${s.aksen}`}
                   >
                     {s.nilai}
                   </p>
-                  <p className="mt-1.5 text-[10.5px] font-medium text-white/45">{s.ket}</p>
+                  <p className="mt-1 sm:mt-1.5 text-[8.5px] sm:text-[10.5px] font-medium text-white/45 leading-tight sm:leading-normal">{s.ket}</p>
                 </div>
               ))}
             </div>
@@ -505,18 +765,24 @@ const DashboardPage = () => {
         ) : (
           <>
             {/* ══════════ Dua kolom: antrean + statistik (kiri) | presensi (kanan) ══════════ */}
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
               {/* ── Kolom kiri ── */}
-              <div className="space-y-5 lg:col-span-3">
+              <div className="space-y-5 lg:col-span-2">
                 {/* Antrean pekerjaan */}
-                <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                <section className={`rounded-2xl border p-4 sm:p-5 shadow-sm ${isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"}`}>
                   <JudulSeksi
                     icon={ClipboardCheck}
                     judul="Perlu Tindakan Anda"
-                    sub="Klik salah satu untuk langsung menuju halamannya"
+                    sub={
+                      <>
+                        <span className="hidden sm:inline">Klik salah satu untuk langsung menuju halamannya</span>
+                        <span className="sm:hidden">Pilih tugas untuk memproses</span>
+                      </>
+                    }
+                    isDark={isDark}
                     aksi={
                       antrean.total > 0 ? (
-                        <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1.5 text-[10.5px] font-black text-rose-600 animate-[popIn_0.35s_ease-out_both]">
+                        <span className={`flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 text-[9px] sm:text-[10.5px] font-black animate-[popIn_0.35s_ease-out_both] ${isDark ? "bg-rose-500/15 text-rose-400" : "bg-rose-50 text-rose-600"}`}>
                           <span className="relative flex h-1.5 w-1.5">
                             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
                             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-500" />
@@ -524,15 +790,19 @@ const DashboardPage = () => {
                           {n(antrean.total)} menunggu
                         </span>
                       ) : (
-                        <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[10.5px] font-black text-emerald-600">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span className={`flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 text-[8.5px] sm:text-[10.5px] font-black ${isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"}`}>
+                          <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                           Tidak ada tunggakan
                         </span>
                       )
                     }
                   />
 
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  {/* Di mobile tinggi dibatasi dengan gulir internal — pola
+                      yang sama dipakai di seksi Kuota Bidang & Beban Mentor
+                      pada dashboard ini — supaya halaman tidak memanjang
+                      sampai 8 kartu penuh. Di sm ke atas kembali tampil utuh. */}
+                  <div className="scroll-halus grid max-h-[195px] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:max-h-none sm:overflow-visible sm:pr-0 xl:grid-cols-2">
                     {daftarTindakan.map((t, i) => (
                       <KartuTindakan
                         key={t.judul}
@@ -542,6 +812,7 @@ const DashboardPage = () => {
                         catatan={t.catatan}
                         warna={t.warna}
                         tunda={i * 45}
+                        isDark={isDark}
                         onClick={() => navigate(t.tujuan)}
                       />
                     ))}
@@ -549,189 +820,218 @@ const DashboardPage = () => {
                 </section>
 
                 {/* Ringkasan program */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   <KartuAngka icon={Users} label="Peserta Aktif" nilai={program.peserta_aktif}
-                    caption="Sedang menjalani magang" warna={WS.biru} tunda={0} />
+                    caption={
+                      <>
+                        <span className="hidden sm:inline">Sedang menjalani magang</span>
+                        <span className="sm:hidden">Sedang magang</span>
+                      </>
+                    } warna={WS.biru} tunda={0} isDark={isDark} />
                   <KartuAngka icon={GraduationCap} label="Alumni Magang" nilai={program.peserta_alumni}
-                    caption="Sudah menyelesaikan magang" warna={WS.slate} tunda={70} />
+                    caption={
+                      <>
+                        <span className="hidden sm:inline">Sudah menyelesaikan magang</span>
+                        <span className="sm:hidden">Telah selesai</span>
+                      </>
+                    } warna={WS.slate} tunda={70} isDark={isDark} />
                   <KartuAngka icon={UserCog} label="Mentor Aktif" nilai={program.jumlah_mentor}
-                    caption="Siap membimbing peserta" warna={WS.emerald} tunda={140} />
+                    caption={
+                      <>
+                        <span className="hidden sm:inline">Siap membimbing peserta</span>
+                        <span className="sm:hidden">Siap mentor</span>
+                      </>
+                    } warna={WS.emerald} tunda={140} isDark={isDark} />
                 </div>
               </div>
 
-              {/* ── Kolom kanan: presensi hari ini ── */}
-              <section className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-2">
-                <JudulSeksi
-                  icon={CalendarCheck}
-                  judul="Presensi Hari Ini"
-                  sub={presensi.hari_kerja ? "Kehadiran peserta aktif" : "Di luar hari kerja"}
-                  aksi={
-                    presensi.hari_kerja ? (
-                      <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1.5 text-[10.5px] font-black text-emerald-600">
-                        Hari Kerja
-                      </span>
-                    ) : (
-                      <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-[10.5px] font-black capitalize text-slate-500">
-                        {presensi.alasan || "Libur"}
-                      </span>
-                    )
-                  }
-                />
 
-                {presensi.hari_kerja ? (
-                  <div className="flex flex-1 flex-col">
-                    {/* Angka utama + cincin kemajuan */}
-                    <div className="flex items-center justify-between gap-4 rounded-xl bg-gradient-to-br from-slate-50 to-white px-4 py-4">
-                      <div className="min-w-0">
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-[34px] font-black leading-none tracking-tight text-[#0B1442] tabular-nums">
-                            {n(presensi.sudah_presensi)}
+              {/* ── Kolom kanan: presensi hari ini & kehadiran rendah ── */}
+              <div className="space-y-5 lg:col-span-1 lg:grid lg:grid-cols-1 lg:gap-0 lg:space-y-0">
+                {/* ── Presensi hari ini ── */}
+                <section className={`flex flex-col rounded-2xl border p-4 sm:p-5 shadow-sm ${isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"}`}>
+                  <JudulSeksi
+                    icon={CalendarCheck}
+                    judul="Presensi Hari Ini"
+                    sub={presensi.hari_kerja ? "Kehadiran peserta aktif" : "Di luar hari kerja"}
+                    isDark={isDark}
+                    aksi={
+                      presensi.hari_kerja ? (
+                        <span className={`flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 text-[9px] sm:text-[10.5px] font-black animate-[popIn_0.35s_ease-out_both] ${isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"}`}>
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
                           </span>
-                          <span className="text-base font-black text-slate-300">
-                            / {n(presensi.wajib_presensi)}
-                          </span>
+                          Hari Kerja
+                        </span>
+                      ) : (
+                        <span className={`flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 text-[8.5px] sm:text-[10.5px] font-black capitalize ${isDark ? "bg-red-500/10 text-red-400" : "bg-red-50 text-red-600"}`}>
+                          Libur
+                        </span>
+                      )
+                    }
+                  />
+
+                  {presensi.hari_kerja ? (
+                    <div className="flex flex-1 flex-col justify-between">
+                      <div className={`flex items-center justify-between gap-4 rounded-xl px-4 py-3 sm:py-3.5 mb-2 ${isDark ? "bg-white/[0.03]" : "bg-gradient-to-br from-slate-50 to-white"}`}>
+                        <div className="min-w-0">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className={`text-2xl sm:text-[30px] font-black leading-none tracking-tight tabular-nums ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                              {n(presensi.sudah_presensi)}
+                            </span>
+                            <span className={`text-sm sm:text-base font-black ${isDark ? "text-slate-700" : "text-slate-300"}`}>
+                              / {n(presensi.wajib_presensi)}
+                            </span>
+                          </div>
+                          <p className={`mt-1 text-[9px] sm:text-[10.5px] font-medium leading-snug ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                            Peserta sudah melakukan presensi
+                          </p>
                         </div>
-                        <p className="mt-1.5 text-[10.5px] font-medium leading-snug text-slate-400">
-                          Peserta sudah melakukan presensi
-                        </p>
-                      </div>
 
-                      {(() => {
-                        const wajib = presensi.wajib_presensi || 0;
-                        const sudah = presensi.sudah_presensi || 0;
-                        const pct = wajib > 0 ? Math.min(100, Math.round((sudah / wajib) * 100)) : 0;
-                        const r = 30;
-                        const keliling = 2 * Math.PI * r;
-                        const warna = pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#f43f5e";
-                        return (
-                          <div className="relative h-[76px] w-[76px] shrink-0">
-                            <svg viewBox="0 0 76 76" className="h-full w-full -rotate-90">
-                              <circle
-                                cx="38"
-                                cy="38"
-                                r={r}
-                                fill="none"
-                                stroke="#e2e8f0"
-                                strokeWidth="7"
-                              />
-                              <circle
-                                cx="38"
-                                cy="38"
-                                r={r}
-                                fill="none"
-                                stroke={warna}
-                                strokeWidth="7"
-                                strokeLinecap="round"
-                                strokeDasharray={keliling}
-                                strokeDashoffset={keliling - (keliling * pct) / 100}
-                                style={{ transition: "stroke-dashoffset 1s ease-out" }}
-                              />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                              <span
-                                className="text-lg font-black leading-none tabular-nums"
-                                style={{ color: warna }}
-                              >
-                                {pct}
-                                <span className="text-[10px]">%</span>
-                              </span>
-                              <span className="mt-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-400">
-                                Hadir
+                        {(() => {
+                          const wajib = presensi.wajib_presensi || 0;
+                          const sudah = presensi.sudah_presensi || 0;
+                          const pct = wajib > 0 ? Math.min(100, Math.round((sudah / wajib) * 100)) : 0;
+                          const r = 30;
+                          const keliling = 2 * Math.PI * r;
+                          const warna = pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#f43f5e";
+                          return (
+                            <div className="relative h-[56px] w-[56px] sm:h-[68px] sm:w-[68px] shrink-0">
+                              <svg viewBox="0 0 76 76" className="h-full w-full -rotate-90">
+                                <circle
+                                  cx="38"
+                                  cy="38"
+                                  r={r}
+                                  fill="none"
+                                  stroke={isDark ? "#2a313c" : "#e2e8f0"}
+                                  strokeWidth="6"
+                                />
+                                <circle
+                                  cx="38"
+                                  cy="38"
+                                  r={r}
+                                  fill="none"
+                                  stroke={warna}
+                                  strokeWidth="6"
+                                  strokeLinecap="round"
+                                  strokeDasharray={keliling}
+                                  strokeDashoffset={keliling - (pct / 100) * keliling}
+                                  className="transition-all duration-500"
+                                />
+                              </svg>
+                              <span className={`absolute inset-0 flex items-center justify-center text-[10px] sm:text-[11.5px] font-black ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                                {pct}%
                               </span>
                             </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Batang vertikal tunggal + label di sisinya */}
-                    <div className="mt-4 flex flex-1 gap-4">
-                      <div className="flex w-3 shrink-0 flex-col overflow-hidden rounded-full bg-slate-100">
-                        {totalSegmen > 0 &&
-                          segmen.map(
-                            (s) =>
-                              s.nilai > 0 && (
-                                <div
-                                  key={s.label}
-                                  title={`${s.label}: ${s.nilai}`}
-                                  className={`${s.bar} w-full origin-top animate-[barGrow_0.8s_ease-out_both] transition-opacity duration-300 hover:opacity-80`}
-                                  style={{ height: `${(s.nilai / totalSegmen) * 100}%` }}
-                                />
-                              )
-                          )}
+                          );
+                        })()}
                       </div>
 
-                      <ul className="flex flex-1 flex-col justify-around">
-                        {segmen.map((s, i) => {
-                          const ada = s.nilai > 0;
-                          const persen =
-                            totalSegmen > 0 ? Math.round((s.nilai / totalSegmen) * 100) : 0;
-                          return (
-                            <li
-                              key={s.label}
-                              style={{ animationDelay: `${i * 55}ms` }}
-                              className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors duration-200 animate-[fadeslide_0.4s_ease-out_both] hover:bg-slate-50"
-                            >
-                              <span
-                                className={`h-2.5 w-2.5 shrink-0 rounded-full transition-transform duration-300 group-hover:scale-125 ${
-                                  ada ? s.dot : "bg-slate-200"
-                                }`}
-                              />
-                              <span
-                                className={`flex-1 truncate text-[11.5px] font-bold ${
-                                  ada ? "text-slate-600" : "text-slate-400"
-                                }`}
+                      <div className="flex-1 flex flex-col justify-between my-0.5">
+                        <ul className="flex-1 flex flex-col justify-between divide-y divide-dashed divide-slate-100 dark:divide-white/5">
+                          {[
+                            { key: "hadir", label: "Hadir Tepat Waktu", nilai: presensi.hadir, dot: "bg-emerald-500", teks: "text-emerald-500" },
+                            { key: "terlambat", label: "Terlambat Absen", nilai: presensi.terlambat, dot: "bg-amber-500", teks: "text-amber-500" },
+                            { key: "izin", label: "Izin", nilai: presensi.izin, dot: "bg-sky-500", teks: "text-sky-500" },
+                            { key: "sakit", label: "Sakit", nilai: presensi.sakit, dot: "bg-violet-500", teks: "text-violet-500" },
+                            { key: "alfa", label: "Alfa / Tanpa Keterangan", nilai: presensi.alfa, dot: "bg-rose-500", teks: "text-rose-500" },
+                            { key: "belum_presensi", label: "Belum Melakukan Absen", nilai: presensi.belum_presensi, dot: "bg-rose-500", teks: "text-rose-500" },
+                          ].map((s) => {
+                            const wajib = presensi.wajib_presensi || 0;
+                            const persen = wajib > 0 ? Math.round((s.nilai / wajib) * 100) : 0;
+                            const ada = s.nilai > 0;
+                            return (
+                              <li
+                                key={s.key}
+                                className={`flex-1 flex items-center gap-2 py-1.5 transition-colors duration-250 ${ada ? "group" : ""}`}
                               >
-                                {s.label}
-                              </span>
-                              {ada && (
-                                <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[9.5px] font-bold text-slate-500 tabular-nums">
-                                  {persen}%
+                                <span
+                                  className={`h-2.5 w-2.5 shrink-0 rounded-full transition-transform duration-300 group-hover:scale-125 ${
+                                    ada ? s.dot : isDark ? "bg-white/10" : "bg-slate-200"
+                                  }`}
+                                />
+                                <span
+                                  className={`flex-1 truncate text-[10.5px] sm:text-[11.5px] font-bold ${
+                                    ada ? (isDark ? "text-slate-300" : "text-slate-600") : isDark ? "text-slate-600" : "text-slate-400"
+                                  }`}
+                                >
+                                  {s.label}
                                 </span>
-                              )}
-                              <span
-                                className={`w-6 text-right text-lg font-black tabular-nums ${
-                                  ada ? s.teks : "text-slate-200"
-                                }`}
-                              >
-                                {n(s.nilai)}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
+                                {ada && (
+                                  <span className={`rounded-md px-1.5 py-0.5 text-[8px] sm:text-[9.5px] font-bold tabular-nums ${isDark ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-500"}`}>
+                                    {persen}%
+                                  </span>
+                                )}
+                                <span
+                                  className={`w-6 text-right text-sm sm:text-base font-black tabular-nums ${
+                                    ada ? s.teks : isDark ? "text-slate-700" : "text-slate-200"
+                                  }`}
+                                >
+                                  {n(s.nilai)}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
 
-                    <button
-                      type="button"
-                      onClick={() => navigate("/admin/presensi")}
-                      className="group mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-bold text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md active:scale-95"
-                    >
-                      Lihat data presensi lengkap
-                      <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-1 items-center justify-center">
-                    <KartuKosong pesan="Tidak ada kewajiban presensi hari ini." />
-                  </div>
-                )}
-              </section>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/admin/presensi")}
+                        className={`group mt-2.5 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-4 py-2 sm:py-2.5 text-[10px] sm:text-[11px] font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
+                      >
+                        Lihat data presensi lengkap
+                        <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col flex-1 items-center justify-center py-8 text-center animate-[popIn_0.3s_ease-out]">
+                      <span className={`relative flex h-12 w-12 items-center justify-center rounded-2xl ${
+                        isDark ? "bg-red-500/10 text-red-400" : "bg-red-50 text-red-600"
+                      }`}>
+                        <CalendarOff className="h-5 w-5" />
+                        <span className={`absolute inset-0 animate-ping rounded-2xl border-2 opacity-30 ${isDark ? "border-red-500/20" : "border-red-200"}`} />
+                      </span>
+                      {presensi.alasan ? (
+                        <>
+                          <p className={`mt-3.5 text-xs sm:text-sm font-black px-4 leading-relaxed ${isDark ? "text-red-400" : "text-red-700"}`}>
+                            {presensi.alasan}
+                          </p>
+                          <p className={`mt-1.5 text-[10.5px] sm:text-xs font-semibold px-4 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                            Tidak ada kewajiban presensi hari ini.
+                          </p>
+                        </>
+                      ) : (
+                        <p className={`mt-3.5 text-[11.5px] font-semibold px-4 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                          Tidak ada kewajiban presensi hari ini.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </section>
+
+                {/* ── Kehadiran rendah (Mobile only) ── */}
+                <div className="block lg:hidden">
+                  {renderKehadiranRendah()}
+                </div>
+              </div>
             </div>
 
             {/* ══════════ Kuota bidang, beban mentor & kehadiran rendah ══════════ */}
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-8">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 xl:grid-cols-[3.3fr_3.8fr_2.6fr]">
               {/* ── Kuota tiap bidang ── */}
-              <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm xl:col-span-3">
+              <section className={`rounded-2xl border p-4 sm:p-5 shadow-sm ${isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"}`}>
                 <JudulSeksi
                   icon={Layers}
-                  judul="Kuota Tiap Bidang"
+                  judul="Kuota Setiap Bidang"
                   sub="Terisi peserta yang masih aktif"
+                  isDark={isDark}
                   aksi={(() => {
                     const totalKuota = kuotaBidang.reduce((a, b) => a + (b.kuota || 0), 0);
                     const totalIsi = kuotaBidang.reduce((a, b) => a + (b.terisi || 0), 0);
                     return totalKuota > 0 ? (
-                      <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-[10.5px] font-black text-slate-600 tabular-nums">
+                      <span className={`shrink-0 rounded-full px-3 py-1.5 text-[9px] sm:text-[10.5px] font-black tabular-nums ${isDark ? "bg-white/5 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
                         {n(totalIsi)} / {n(totalKuota)} kursi
                       </span>
                     ) : null;
@@ -739,9 +1039,9 @@ const DashboardPage = () => {
                 />
 
                 {kuotaBidang.length === 0 ? (
-                  <KartuKosong pesan="Belum ada bidang yang aktif." />
+                  <KartuKosong pesan="Belum ada bidang yang aktif." isDark={isDark} />
                 ) : (
-                  <div className="scroll-halus max-h-[340px] space-y-2.5 overflow-y-auto pr-1">
+                  <div className="scroll-halus max-h-[245px] lg:max-h-[260px] space-y-2.5 overflow-y-auto pr-1 pt-1.5 pb-1.5">
                     {kuotaBidang.map((b, i) => {
                       const kuota = b.kuota || 0;
                       const terisi = b.terisi || 0;
@@ -751,48 +1051,46 @@ const DashboardPage = () => {
                       const hampir = !penuh && persen >= 80;
 
                       const gaya = penuh
-                        ? { bar: "from-rose-500 to-rose-600", pill: "bg-rose-50 text-rose-600", tepi: "hover:border-rose-200" }
+                        ? { bar: "from-rose-500 to-rose-600", pill: isDark ? "bg-rose-500/15 text-rose-400" : "bg-rose-50 text-rose-600", tepi: isDark ? "hover:border-rose-500/30" : "hover:border-rose-200" }
                         : hampir
-                        ? { bar: "from-amber-500 to-amber-600", pill: "bg-amber-50 text-amber-600", tepi: "hover:border-amber-200" }
-                        : { bar: "from-[#004F9F] to-[#00A5EC]", pill: "bg-blue-50 text-blue-600", tepi: "hover:border-blue-200" };
+                          ? { bar: "from-amber-500 to-amber-600", pill: isDark ? "bg-amber-500/15 text-amber-400" : "bg-amber-50 text-amber-600", tepi: isDark ? "hover:border-amber-500/30" : "hover:border-amber-200" }
+                          : { bar: "from-[#004F9F] to-[#00A5EC]", pill: isDark ? "bg-sky-500/15 text-sky-400" : "bg-blue-50 text-blue-600", tepi: isDark ? "hover:border-sky-500/30" : "hover:border-blue-200" };
 
                       return (
                         <div
                           key={b.nama}
                           style={{ animationDelay: `${i * 55}ms` }}
-                          className={`group rounded-xl border border-slate-100 bg-gradient-to-r from-slate-50/60 to-white p-3.5 transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-0.5 hover:shadow-sm ${gaya.tepi}`}
+                          className={`group rounded-xl border p-3.5 transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-0.5 hover:shadow-sm ${isDark ? "border-white/5 bg-white/[0.03]" : "border-slate-100 bg-gradient-to-r from-slate-50/60 to-white"
+                            } ${gaya.tepi}`}
                         >
-                          <div className="mb-2.5 flex items-center gap-2.5">
+                          <div className="mb-2 flex items-center gap-2.5">
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[12.5px] font-bold text-slate-700 transition-colors duration-200 group-hover:text-[#0B1442]">
+                              <span className={`block truncate text-[11px] sm:text-[12.5px] font-bold transition-colors duration-200 ${isDark ? "text-slate-300 group-hover:text-slate-100" : "text-slate-700 group-hover:text-[#0B1442]"}`}>
                                 {b.nama}
                               </span>
-                              <span className="mt-0.5 block text-[10px] font-medium text-slate-400">
+                              <span className={`mt-0.5 block text-[9px] sm:text-[10px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                                 {kuota === 0
                                   ? "Kuota belum ditentukan"
                                   : penuh
-                                  ? "Kuota sudah penuh"
-                                  : `Tersisa ${n(sisa)} kursi`}
+                                    ? "Kuota sudah penuh"
+                                    : `Tersisa ${n(sisa)} kursi`}
                               </span>
                             </span>
 
-                            <span
-                              className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-black tabular-nums transition-transform duration-300 group-hover:scale-105 ${gaya.pill}`}
-                            >
-                              {kuota > 0 ? `${persen}%` : "∞"}
-                            </span>
-
-                            <span className="w-14 shrink-0 text-right text-[15px] font-black tabular-nums text-[#0B1442]">
+                            <span className={`shrink-0 text-right text-sm sm:text-[15px] font-black tabular-nums ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
                               {n(terisi)}
-                              <span className="text-[11px] text-slate-300"> / {kuota > 0 ? n(kuota) : "∞"}</span>
+                              <span className={isDark ? "text-slate-700" : "text-slate-300"}> / {kuota > 0 ? n(kuota) : "∞"}</span>
                             </span>
                           </div>
 
-                          <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                          <div className={`relative h-4 w-full overflow-hidden rounded-full ${isDark ? "bg-white/5" : "bg-slate-100"} flex items-center justify-end pr-2.5`}>
                             <div
-                              className={`h-full origin-left rounded-full bg-gradient-to-r ${gaya.bar} animate-[barSlide_0.8s_ease-out_both]`}
+                              className={`h-full absolute left-0 top-0 rounded-full bg-gradient-to-r ${gaya.bar} origin-left animate-[barSlide_0.8s_ease-out_both]`}
                               style={{ width: `${kuota > 0 ? persen : 0}%` }}
                             />
+                            <span className="relative z-10 text-[7.5px] sm:text-[8.5px] font-bold text-white mix-blend-difference">
+                              {kuota > 0 ? `${persen}%` : "∞"}
+                            </span>
                           </div>
                         </div>
                       );
@@ -802,11 +1100,12 @@ const DashboardPage = () => {
               </section>
 
               {/* ── Beban bimbingan mentor ── */}
-              <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm xl:col-span-3">
+              <section className={`rounded-2xl border p-4 sm:p-5 shadow-sm ${isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"}`}>
                 <JudulSeksi
                   icon={UserCog}
                   judul="Beban Bimbingan Mentor"
                   sub="Jumlah peserta aktif per mentor"
+                  isDark={isDark}
                   aksi={(() => {
                     const berlebih = bebanMentor.filter(
                       (m) => m.kapasitas > 0 && m.bimbingan > m.kapasitas
@@ -814,7 +1113,7 @@ const DashboardPage = () => {
 
                     if (berlebih > 0) {
                       return (
-                        <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1.5 text-[10.5px] font-black text-rose-600 animate-[popIn_0.35s_ease-out_both]">
+                        <span className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[10.5px] font-black animate-[popIn_0.35s_ease-out_both] ${isDark ? "bg-rose-500/15 text-rose-400" : "bg-rose-50 text-rose-600"}`}>
                           <AlertTriangle className="h-3 w-3" />
                           {n(berlebih)} mentor kelebihan
                         </span>
@@ -828,7 +1127,7 @@ const DashboardPage = () => {
                     if (totalKapasitas === 0) return null;
 
                     return (
-                      <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1.5 text-[10.5px] font-black text-emerald-600 tabular-nums">
+                      <span className={`shrink-0 rounded-full px-3 py-1.5 text-[9px] sm:text-[10.5px] font-black tabular-nums ${isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"}`}>
                         {n(sisa)} slot tersedia
                       </span>
                     );
@@ -836,9 +1135,9 @@ const DashboardPage = () => {
                 />
 
                 {bebanMentor.length === 0 ? (
-                  <KartuKosong pesan="Belum ada mentor yang aktif." />
+                  <KartuKosong pesan="Belum ada mentor yang aktif." isDark={isDark} />
                 ) : (
-                  <div className="scroll-halus max-h-[340px] space-y-2.5 overflow-y-auto pr-1">
+                  <div className="scroll-halus max-h-[233px] lg:max-h-[260px] space-y-2.5 overflow-y-auto pr-1 pt-1.5 pb-1.5">
                     {bebanMentor.map((m, i) => {
                       const kap = m.kapasitas || 0;
                       const isi = m.bimbingan || 0;
@@ -847,173 +1146,85 @@ const DashboardPage = () => {
                       const padat = !berlebih && persen >= 80;
 
                       const gaya = berlebih
-                        ? { bar: "from-rose-500 to-rose-600", pill: "bg-rose-50 text-rose-600", ket: `Kelebihan ${n(isi - kap)} peserta` }
+                        ? { bar: "from-rose-500 to-rose-600", pill: isDark ? "bg-rose-500/15 text-rose-400" : "bg-rose-50 text-rose-600", ket: `Kelebihan ${n(isi - kap)} peserta` }
                         : padat
-                        ? { bar: "from-amber-500 to-amber-600", pill: "bg-amber-50 text-amber-600", ket: "Beban hampir penuh" }
-                        : { bar: "from-emerald-500 to-emerald-600", pill: "bg-emerald-50 text-emerald-600", ket: kap > 0 ? `Bisa menerima ${n(kap - isi)} lagi` : "Kapasitas belum diatur" };
+                          ? { bar: "from-amber-500 to-amber-600", pill: isDark ? "bg-amber-500/15 text-amber-400" : "bg-amber-50 text-amber-600", ket: "Beban hampir penuh" }
+                          : { bar: "from-emerald-500 to-emerald-600", pill: isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600", ket: kap > 0 ? `Bisa menerima ${n(kap - isi)} lagi` : "Kapasitas belum diatur" };
 
                       return (
                         <div
                           key={m.id}
                           style={{ animationDelay: `${i * 55}ms` }}
-                          className="group rounded-xl border border-slate-100 bg-gradient-to-r from-slate-50/60 to-white p-3.5 transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-sm"
+                          className={`group rounded-xl border p-3.5 transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-0.5 hover:shadow-sm ${isDark ? "border-white/5 bg-white/[0.03] hover:border-white/10" : "border-slate-100 bg-gradient-to-r from-slate-50/60 to-white hover:border-slate-200"
+                            }`}
                         >
-                          <div className="mb-2.5 flex items-center gap-3">
-                            <AvatarMentor key={m.foto_profil || m.id} nama={m.nama} foto={m.foto_profil} />
+                          <div className="mb-2 flex items-center gap-2.5 sm:gap-3">
+                            <AvatarMentor key={m.foto_profil || m.id} nama={m.nama} foto={m.foto_profil} isOnline={m.is_online} />
 
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[12.5px] font-bold text-slate-700 transition-colors duration-200 group-hover:text-[#0B1442]">
+                              <span className={`block truncate text-[11px] sm:text-[12.5px] font-bold transition-colors duration-200 ${isDark ? "text-slate-300 group-hover:text-slate-100" : "text-slate-700 group-hover:text-[#0B1442]"}`}>
                                 {m.nama}
                               </span>
-                              <span className="mt-0.5 block truncate text-[10px] font-medium text-slate-400">
+                              <span className={`mt-0.5 block truncate text-[9px] sm:text-[10px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                                 {m.bidang || "Bidang belum ditentukan"}
                               </span>
                             </span>
 
-                            <span
-                              className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-black tabular-nums transition-transform duration-300 group-hover:scale-105 ${gaya.pill}`}
-                            >
-                              {berlebih && <AlertTriangle className="h-3 w-3" />}
+                            <span className={`shrink-0 text-right text-sm sm:text-[15px] font-black tabular-nums ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                              {berlebih && <AlertTriangle className="mb-0.5 mr-1 inline-block h-3 w-3 text-rose-500" />}
                               {n(isi)}
-                              <span className="opacity-50">/ {kap > 0 ? n(kap) : "—"}</span>
+                              <span className={isDark ? "text-slate-700" : "text-slate-300"}> / {kap > 0 ? n(kap) : "—"}</span>
                             </span>
                           </div>
 
-                          <div className="mb-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                          <p className={`mb-1.5 text-[9px] sm:text-[10px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>{gaya.ket}</p>
+
+                          <div className={`relative h-4 w-full overflow-hidden rounded-full ${isDark ? "bg-white/5" : "bg-slate-100"} flex items-center justify-end pr-2.5`}>
                             <div
-                              className={`h-full origin-left rounded-full bg-gradient-to-r ${gaya.bar} animate-[barSlide_0.8s_ease-out_both]`}
+                              className={`h-full absolute left-0 top-0 rounded-full bg-gradient-to-r ${gaya.bar} origin-left animate-[barSlide_0.8s_ease-out_both]`}
                               style={{ width: `${kap > 0 ? persen : 0}%` }}
                             />
+                            <span className="relative z-10 text-[7.5px] sm:text-[8.5px] font-bold text-white mix-blend-difference">
+                              {kap > 0 ? `${persen}%` : "∞"}
+                            </span>
                           </div>
-
-                          <p className="text-[10px] font-medium text-slate-400">{gaya.ket}</p>
                         </div>
                       );
-                  })}
-                </div>
-              )}
-
-              {(program.akan_selesai || []).length >= 8 && (
-                <p className="mt-3 text-center text-[10.5px] font-medium text-slate-400">
-                  Menampilkan 8 peserta terdekat. Lihat seluruhnya di halaman Kelola Peserta.
-                </p>
-              )}
-            </section>
-            {/* ── Kehadiran rendah ── */}
-              <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm md:col-span-2 xl:col-span-2">
-                <div className="mb-5 flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
-                      <AlertTriangle className="h-[18px] w-[18px]" strokeWidth={2} />
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="truncate text-sm font-black tracking-tight text-[#0B1442]">
-                        Kehadiran Rendah
-                      </h3>
-                      <p className="mt-0.5 truncate text-[11px] font-medium text-slate-400">
-                        Di bawah 75% dalam 30 hari
-                      </p>
-                    </div>
+                    })}
                   </div>
+                )}
 
-                  {(program.peserta_bermasalah || []).length > 0 && (
-                    <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1.5 text-[10.5px] font-black text-rose-600 animate-[popIn_0.35s_ease-out_both]">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-500" />
-                      </span>
-                      {n((program.peserta_bermasalah || []).length)}
-                    </span>
-                  )}
-                </div>
-
-                {(program.peserta_bermasalah || []).length === 0 ? (
-                  <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-gradient-to-r from-emerald-50/70 to-white p-3.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-                      <CheckCircle2 className="h-[18px] w-[18px]" strokeWidth={2.2} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[12px] font-bold text-slate-700">
-                        Kehadiran terjaga
-                      </span>
-                      <span className="mt-0.5 block text-[10px] font-medium text-slate-400">
-                        Semua peserta di atas 75%
-                      </span>
-                    </span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="scroll-halus max-h-[320px] space-y-2 overflow-y-auto pr-1">
-                      {(program.peserta_bermasalah || []).map((p, i) => {
-                        const pct = p.persen || 0;
-                        const parah = pct < 50;
-                        const gaya = parah
-                          ? { bar: "from-rose-500 to-rose-600", pill: "bg-rose-50 text-rose-600", tepi: "hover:border-rose-200" }
-                          : { bar: "from-amber-500 to-amber-600", pill: "bg-amber-50 text-amber-600", tepi: "hover:border-amber-200" };
-
-                        return (
-                          <div
-                            key={p.peserta_id}
-                            style={{ animationDelay: `${i * 55}ms` }}
-                            className={`group rounded-xl border border-slate-100 bg-gradient-to-r from-slate-50/60 to-white p-3 transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-0.5 hover:shadow-sm ${gaya.tepi}`}
-                          >
-                            <div className="mb-2 flex items-center gap-2.5">
-                              <AvatarMentor
-                                key={p.foto_profil || p.peserta_id}
-                                nama={p.nama}
-                                foto={p.foto_profil}
-                              />
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-[12px] font-bold text-slate-700 transition-colors duration-200 group-hover:text-[#0B1442]">
-                                  {p.nama}
-                                </span>
-                                <span className="mt-0.5 block text-[9.5px] font-medium text-slate-400">
-                                  Hadir {n(p.hadir)} dari {n(p.total)} hari
-                                </span>
-                              </span>
-                              <span
-                                className={`shrink-0 rounded-lg px-2 py-1 text-[11px] font-black tabular-nums transition-transform duration-300 group-hover:scale-105 ${gaya.pill}`}
-                              >
-                                {pct}%
-                              </span>
-                            </div>
-
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                              <div
-                                className={`h-full origin-left rounded-full bg-gradient-to-r ${gaya.bar} animate-[barSlide_0.8s_ease-out_both]`}
-                                style={{ width: `${Math.max(pct, 2)}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => navigate("/admin/presensi/rekap")}
-                      className="group mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-bold text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md active:scale-95"
-                    >
-                      Buka rekap kehadiran
-                      <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                    </button>
-                  </>
+                {akanSelesai.length >= 8 && (
+                  <p className={`mt-3 text-center text-[10.5px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                    Menampilkan 8 peserta terdekat. Lihat seluruhnya di halaman Kelola Peserta.
+                  </p>
                 )}
               </section>
+
+              {/* ── Kehadiran rendah (Desktop only) ── */}
+              <div className="hidden lg:grid lg:grid-cols-1">
+                {renderKehadiranRendah()}
+              </div>
             </div>
 
             {/* ══════════ Peserta akan selesai ══════════ */}
-            <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <section className={`rounded-2xl border p-4 sm:p-5 shadow-sm ${isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"}`}>
               <JudulSeksi
                 icon={CalendarClock}
                 judul="Selesai Dalam 30 Hari"
-                sub="Siapkan penerbitan sertifikat lebih awal"
+                sub={
+                  <>
+                    <span className="hidden sm:inline">Siapkan penerbitan sertifikat lebih awal</span>
+                    <span className="inline sm:hidden">Siapkan sertifikat lebih awal</span>
+                  </>
+                }
+                isDark={isDark}
                 aksi={(() => {
-                  const daftar = program.akan_selesai || [];
+                  const daftar = akanSelesai;
 
                   if (daftar.length === 0) {
                     return (
-                      <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-[10.5px] font-black text-slate-500">
+                      <span className={`shrink-0 rounded-full px-3 py-1.5 text-[9px] sm:text-[10.5px] font-black ${isDark ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-500"}`}>
                         Tidak ada jadwal
                       </span>
                     );
@@ -1022,101 +1233,105 @@ const DashboardPage = () => {
                   const mendesak = daftar.filter((p) => (p.sisa_hari ?? 0) <= 7).length;
 
                   return (
-                    <span className="flex shrink-0 items-center gap-2">
+                    <span className="flex items-center gap-2">
                       {mendesak > 0 && (
-                        <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-[10.5px] font-black text-amber-600 animate-[popIn_0.35s_ease-out_both]">
+                        <span className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] sm:text-[10.5px] font-black animate-[popIn_0.35s_ease-out_both] ${isDark ? "bg-amber-500/15 text-amber-400" : "bg-amber-50 text-amber-600"}`}>
                           <span className="relative flex h-1.5 w-1.5">
                             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
                             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-500" />
                           </span>
-                          {n(mendesak)} minggu ini
+                          <span className="hidden sm:inline">{n(mendesak)} selesai minggu ini</span>
+                          <span className="inline sm:hidden">{n(mendesak)} minggu ini</span>
                         </span>
                       )}
-                      <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[10.5px] font-black text-slate-600 tabular-nums">
-                        {n(daftar.length)} peserta
+                      <span className={`hidden sm:inline-flex rounded-full px-3 py-1.5 text-[10.5px] font-black tabular-nums ${isDark ? "bg-white/5 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
+                        Total {n(daftar.length)} peserta
                       </span>
                     </span>
                   );
                 })()}
               />
 
-              {(program.akan_selesai || []).length === 0 ? (
-                <div className="flex items-center gap-3.5 rounded-xl border border-emerald-100 bg-gradient-to-r from-emerald-50/70 to-white p-4">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-                    <CheckCircle2 className="h-5 w-5" strokeWidth={2.2} />
+              {akanSelesai.length === 0 ? (
+                <div className={`flex items-center gap-3 rounded-xl border p-3 sm:p-4 ${isDark ? "border-emerald-500/20 bg-emerald-500/[0.06]" : "border-emerald-100 bg-gradient-to-r from-emerald-50/70 to-white"}`}>
+                  <span className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl ${isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-100 text-emerald-600"}`}>
+                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.2} />
                   </span>
                   <span>
-                    <span className="block text-[12.5px] font-bold text-slate-700">
+                    <span className={`block text-[11px] sm:text-[12.5px] font-bold ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                       Tidak ada peserta yang selesai bulan ini
                     </span>
-                    <span className="mt-0.5 block text-[10.5px] font-medium text-slate-400">
+                    <span className={`mt-0.5 block text-[9px] sm:text-[10.5px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                       Belum ada sertifikat yang perlu disiapkan dalam 30 hari ke depan
                     </span>
                   </span>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-                  {(program.akan_selesai || []).map((p, i) => {
-                    const sisa = p.sisa_hari ?? 0;
-                    const mendesak = sisa <= 3;
-                    const dekat = !mendesak && sisa <= 7;
-                    const gaya = mendesak
-                      ? { blob: "from-rose-500 to-rose-700", pill: "bg-rose-50 text-rose-600", tepi: "hover:border-rose-200", bar: "from-rose-500 to-rose-600" }
-                      : dekat
-                      ? { blob: "from-amber-500 to-amber-700", pill: "bg-amber-50 text-amber-600", tepi: "hover:border-amber-200", bar: "from-amber-500 to-amber-600" }
-                      : { blob: "from-[#004F9F] to-[#0B1442]", pill: "bg-blue-50 text-blue-600", tepi: "hover:border-blue-200", bar: "from-[#004F9F] to-[#00A5EC]" };
+                <div className="scroll-halus max-h-[179px] sm:max-h-[239px] overflow-y-auto pr-1 pt-1.5 sm:pt-1.5 pb-1">
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+                    {akanSelesai.map((p, i) => {
+                      const sisa = p.sisa_hari ?? 0;
+                      const mendesak = sisa <= 3;
+                      const dekat = !mendesak && sisa <= 7;
+                      const gaya = mendesak
+                        ? { blob: "from-rose-500 to-rose-700", pill: isDark ? "bg-rose-500/15 text-rose-400" : "bg-rose-50 text-rose-600", tepi: isDark ? "hover:border-rose-500/30" : "hover:border-rose-200", bar: "from-rose-500 to-rose-600" }
+                        : dekat
+                          ? { blob: "from-amber-500 to-amber-700", pill: isDark ? "bg-amber-500/15 text-amber-400" : "bg-amber-50 text-amber-600", tepi: isDark ? "hover:border-amber-500/30" : "hover:border-amber-200", bar: "from-amber-500 to-amber-600" }
+                          : { blob: "from-[#004F9F] to-[#0B1442]", pill: isDark ? "bg-sky-500/15 text-sky-400" : "bg-blue-50 text-blue-600", tepi: isDark ? "hover:border-sky-500/30" : "hover:border-blue-200", bar: "from-[#004F9F] to-[#00A5EC]" };
 
-                    // Semakin dekat tanggal selesai, batang makin penuh
-                    const kemajuan = Math.min(100, Math.max(4, Math.round(((30 - sisa) / 30) * 100)));
+                      // Semakin dekat tanggal selesai, batang makin penuh
+                      const kemajuan = Math.min(100, Math.max(4, Math.round(((30 - sisa) / 30) * 100)));
 
-                    return (
-                      <div
-                        key={`${p.peserta_id}-${p.tanggal_selesai}`}
-                        style={{ animationDelay: `${i * 55}ms` }}
-                        className={`group relative overflow-hidden rounded-xl border border-slate-100 bg-gradient-to-br from-slate-50/60 to-white p-3.5 transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-1 hover:shadow-md ${gaya.tepi}`}
-                      >
+                      return (
                         <div
-                          className={`absolute -right-10 -top-10 h-24 w-24 rounded-full bg-gradient-to-br ${gaya.blob} opacity-[0.12] blur-xl transition-all duration-300 group-hover:opacity-[0.25] group-hover:scale-125`}
-                        />
-
-                        <div className="relative mb-2.5 flex items-start gap-2.5">
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[12.5px] font-bold text-slate-700 transition-colors duration-200 group-hover:text-[#0B1442]">
-                              {p.nama}
-                            </span>
-                            <span className="mt-0.5 block truncate text-[10px] font-medium text-slate-400">
-                              {p.bidang || "Bidang belum ditentukan"}
-                            </span>
-                          </span>
-
-                          <span
-                            className={`shrink-0 rounded-lg px-2 py-1 text-center text-[10px] font-black leading-tight transition-transform duration-300 group-hover:scale-105 ${gaya.pill}`}
-                          >
-                            {sisa <= 0 ? (
-                              "Hari ini"
-                            ) : (
-                              <>
-                                <span className="block text-sm tabular-nums">{n(sisa)}</span>
-                                <span className="block opacity-70">hari</span>
-                              </>
-                            )}
-                          </span>
-                        </div>
-
-                        <div className="relative mb-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                          key={`${p.peserta_id}-${p.tanggal_selesai}`}
+                          style={{ animationDelay: `${i * 55}ms` }}
+                          className={`group relative overflow-hidden rounded-xl border p-2.5 sm:p-3.5 transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-1 hover:shadow-md ${isDark ? "border-white/5 bg-white/[0.03]" : "border-slate-100 bg-gradient-to-br from-slate-50/60 to-white"
+                            } ${gaya.tepi}`}
+                        >
                           <div
-                            className={`h-full origin-left rounded-full bg-gradient-to-r ${gaya.bar} animate-[barSlide_0.8s_ease-out_both]`}
-                            style={{ width: `${kemajuan}%` }}
+                            className={`absolute -right-10 -top-10 h-24 w-24 rounded-full bg-gradient-to-br ${gaya.blob} opacity-[0.12] blur-xl transition-all duration-300 group-hover:opacity-[0.25] group-hover:scale-125`}
                           />
-                        </div>
 
-                        <p className="relative flex items-center gap-1 text-[10px] font-medium text-slate-400">
-                          <CalendarCheck className="h-3 w-3" />
-                          Berakhir {tanggalPendek(p.tanggal_selesai)}
-                        </p>
-                      </div>
-                    );
-                  })}
+                          <div className="relative mb-2 sm:mb-2.5 flex items-start gap-2">
+                            <span className="min-w-0 flex-1">
+                              <span className={`block truncate text-[10.5px] sm:text-[12.5px] font-bold transition-colors duration-200 ${isDark ? "text-slate-300 group-hover:text-slate-100" : "text-slate-700 group-hover:text-[#0B1442]"}`}>
+                                {p.nama}
+                              </span>
+                              <span className={`mt-0.5 block truncate text-[8px] sm:text-[10px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                                {p.bidang || "Bidang belum ditentukan"}
+                              </span>
+                            </span>
+
+                            <span
+                              className={`shrink-0 rounded-lg px-1.5 py-0.5 sm:px-2 sm:py-1 text-center text-[8px] sm:text-[10px] font-black leading-tight transition-transform duration-300 group-hover:scale-105 ${gaya.pill}`}
+                            >
+                              {sisa <= 0 ? (
+                                "Hari ini"
+                              ) : (
+                                <>
+                                  <span className="block text-[10px] sm:text-sm tabular-nums">{n(sisa)}</span>
+                                  <span className="block text-[7px] sm:text-[9.5px] opacity-70">hari</span>
+                                </>
+                              )}
+                            </span>
+                          </div>
+
+                          <div className={`relative mb-1.5 h-1 sm:h-1.5 w-full overflow-hidden rounded-full ${isDark ? "bg-white/5" : "bg-slate-100"}`}>
+                            <div
+                              className={`h-full origin-left rounded-full bg-gradient-to-r ${gaya.bar} animate-[barSlide_0.8s_ease-out_both]`}
+                              style={{ width: `${kemajuan}%` }}
+                            />
+                          </div>
+
+                          <p className={`relative flex items-center gap-1 text-[8px] sm:text-[10px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                            <CalendarCheck className="h-2 w-2 sm:h-3 sm:w-3" />
+                            Berakhir {tanggalPendek(p.tanggal_selesai)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </section>
@@ -1124,23 +1339,25 @@ const DashboardPage = () => {
             {/* ══════════ Tren ══════════ */}
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
               {/* ── Tren pendaftaran ── */}
-              <section className="flex flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-2">
+              <section className={`flex flex-col rounded-2xl border p-3 sm:p-5 shadow-sm lg:col-span-2 ${isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"}`}>
                 <JudulSeksi
                   icon={TrendingUp}
                   judul="Tren Pendaftaran"
                   sub="Formulir masuk beserta hasil seleksinya"
+                  isDark={isDark}
                   aksi={
-                    <div className="flex shrink-0 items-center gap-1 rounded-xl bg-slate-100 p-1">
+                    <div className={`flex shrink-0 items-center gap-0.5 sm:gap-1 rounded-lg sm:rounded-xl p-0.5 sm:p-1 ${isDark ? "bg-white/5" : "bg-slate-100"}`}>
                       {[3, 6, 12].map((b) => (
                         <button
                           key={b}
                           type="button"
                           onClick={() => gantiPeriode(b)}
-                          className={`cursor-pointer rounded-lg px-2.5 py-1.5 text-[10.5px] font-black transition-all duration-200 ${
-                            periode === b
-                              ? "bg-white text-[#0B1442] shadow-sm"
-                              : "text-slate-500 hover:text-slate-700"
-                          }`}
+                          // 12 bulan disembunyikan di mobile — batangnya
+                          // akan terlalu rapat untuk disentuh di layar sempit.
+                          className={`cursor-pointer rounded-md sm:rounded-lg px-2 sm:px-2.5 py-1 sm:py-1.5 text-[9px] sm:text-[10.5px] font-black transition-all duration-200 ${b === 12 ? "hidden sm:block" : ""} ${periode === b
+                            ? isDark ? "bg-white/10 text-slate-100 shadow-sm" : "bg-white text-[#0B1442] shadow-sm"
+                            : isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-500 hover:text-slate-700"
+                            }`}
                         >
                           {b} bln
                         </button>
@@ -1150,7 +1367,7 @@ const DashboardPage = () => {
                 />
 
                 {/* Filter deret */}
-                <div className="mb-4 flex flex-wrap items-center gap-2">
+                <div className="mb-3 sm:mb-4 flex flex-wrap items-center gap-1.5 sm:gap-2">
                   {deretTren.map((d) => {
                     const nyala = deretAktif.includes(d.kunci);
                     return (
@@ -1158,16 +1375,14 @@ const DashboardPage = () => {
                         key={d.kunci}
                         type="button"
                         onClick={() => toggleDeret(d.kunci)}
-                        className={`group flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10.5px] font-bold transition-all duration-200 active:scale-95 ${
-                          nyala
-                            ? "border-slate-200 bg-white text-slate-700 shadow-sm"
-                            : "border-transparent bg-slate-50 text-slate-400 hover:bg-slate-100"
-                        }`}
+                        className={`group flex cursor-pointer items-center gap-1 sm:gap-1.5 rounded-full border px-2 sm:px-3 py-1 sm:py-1.5 text-[9px] sm:text-[10.5px] font-bold transition-all duration-200 active:scale-95 ${nyala
+                          ? isDark ? "border-white/10 bg-white/5 text-slate-200 shadow-sm" : "border-slate-200 bg-white text-slate-700 shadow-sm"
+                          : isDark ? "border-transparent bg-white/[0.02] text-slate-600 hover:bg-white/5" : "border-transparent bg-slate-50 text-slate-400 hover:bg-slate-100"
+                          }`}
                       >
                         <span
-                          className={`h-2.5 w-2.5 rounded-full transition-all duration-200 ${
-                            nyala ? d.dot : "bg-slate-300"
-                          } group-hover:scale-125`}
+                          className={`h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full transition-all duration-200 ${nyala ? d.dot : "bg-slate-300"
+                            } group-hover:scale-125`}
                         />
                         {d.label}
                       </button>
@@ -1177,25 +1392,24 @@ const DashboardPage = () => {
 
                 {/* Grafik */}
                 <div
-                  className={`relative min-h-[190px] flex-1 transition-all duration-300 ease-out ${
-                    memuatTren ? "scale-[0.98] opacity-40" : "scale-100 opacity-100"
-                  }`}
+                  className={`relative min-h-[140px] sm:min-h-[190px] flex-1 transition-all duration-300 ease-out ${memuatTren ? "scale-[0.98] opacity-40" : "scale-100 opacity-100"
+                    }`}
                   onMouseLeave={() => setKolomAktif(null)}
                 >
                   {/* Garis bantu */}
                   <div className="absolute inset-x-0 top-0 bottom-6 flex flex-col justify-between">
                     {Array.from({ length: jumlahGaris + 1 }, (_, k) => jumlahGaris - k).map((g) => (
                       <div key={g} className="flex items-center gap-2">
-                        <span className="w-6 shrink-0 text-right text-[9.5px] font-bold text-slate-400 tabular-nums">
+                        <span className={`w-5 sm:w-6 shrink-0 text-right text-[8px] sm:text-[9.5px] font-bold tabular-nums ${isDark ? "text-slate-600" : "text-slate-400"}`}>
                           {g * langkahSkala}
                         </span>
-                        <span className={`h-px flex-1 ${g === 0 ? "bg-slate-200" : "bg-slate-100"}`} />
+                        <span className={`h-px flex-1 ${isDark ? (g === 0 ? "bg-white/15" : "bg-white/5") : (g === 0 ? "bg-slate-200" : "bg-slate-100")}`} />
                       </div>
                     ))}
                   </div>
 
                   {/* Kolom */}
-                  <div className="absolute inset-y-0 left-0 right-0 flex items-stretch gap-1.5 pl-8">
+                  <div className="absolute inset-y-0 left-0 right-0 flex items-stretch gap-0.5 sm:gap-1.5 pl-6 sm:pl-8 overflow-hidden">
                     {daftarTren.map((b, i) => {
                       const kini = i === daftarTren.length - 1;
                       const tampilLabel = (daftarTren.length - 1 - i) % langkahLabel === 0;
@@ -1216,12 +1430,11 @@ const DashboardPage = () => {
                           key={i}
                           title={judulTip}
                           onMouseEnter={() => setKolomAktif(i)}
-                          className="group relative flex flex-1 flex-col"
+                          className="group relative flex flex-1 flex-col min-w-0"
                         >
                           <div
-                            className={`relative flex flex-1 items-end justify-center rounded-lg px-1 pb-px transition-colors duration-200 ${
-                              terpilih ? "bg-slate-50" : ""
-                            }`}
+                            className={`relative flex flex-1 items-end justify-center rounded-lg px-0.5 sm:px-1 pb-px transition-colors duration-200 ${terpilih ? (isDark ? "bg-white/5" : "bg-slate-50") : ""
+                              }`}
                           >
                             {deretTren.map((d) => {
                               const aktif = deretAktif.includes(d.kunci);
@@ -1231,22 +1444,20 @@ const DashboardPage = () => {
                               return (
                                 <div
                                   key={d.kunci}
-                                  className={`flex h-full items-end justify-center transition-all duration-300 ease-out ${
-                                    aktif ? "mx-[2px] w-3 opacity-100" : "mx-0 w-0 opacity-0"
-                                  }`}
+                                  className={`flex h-full items-end justify-center transition-all duration-300 ease-out ${aktif ? "w-full max-w-[12px] mx-[1px] sm:mx-[2px] opacity-100" : "w-0 mx-0 opacity-0"
+                                    }`}
                                 >
                                   <div
                                     style={{
                                       height: !grafikSiap
                                         ? "0%"
                                         : v > 0
-                                        ? `${Math.max(persen, 3)}%`
-                                        : "4px",
+                                          ? `${Math.max(persen, 3)}%`
+                                          : "4px",
                                       transitionDelay: grafikSiap ? `${i * 40}ms` : "0ms",
                                     }}
-                                    className={`w-full rounded-full transition-[height,background-color] duration-500 ease-out ${
-                                      v > 0 ? d.bar : "bg-slate-200"
-                                    } ${terpilih ? "opacity-100" : "opacity-90"}`}
+                                    className={`w-full rounded-full transition-[height,background-color] duration-500 ease-out ${v > 0 ? d.bar : isDark ? "bg-white/10" : "bg-slate-200"
+                                      } ${terpilih ? "opacity-100" : "opacity-90"}`}
                                   />
                                 </div>
                               );
@@ -1254,9 +1465,8 @@ const DashboardPage = () => {
                           </div>
 
                           <span
-                            className={`mt-1.5 h-4 truncate text-center text-[9.5px] font-bold transition-colors duration-200 ${
-                              terpilih || kini ? "text-[#0B1442]" : "text-slate-400"
-                            }`}
+                            className={`mt-1.5 h-3.5 sm:h-4 truncate text-center text-[8px] sm:text-[9.5px] font-bold transition-colors duration-200 ${terpilih || kini ? (isDark ? "text-slate-100" : "text-[#0B1442]") : isDark ? "text-slate-600" : "text-slate-400"
+                              }`}
                           >
                             {tampilLabel ? b.bulan : ""}
                           </span>
@@ -1267,13 +1477,13 @@ const DashboardPage = () => {
                 </div>
 
                 {/* Statistik ringkas */}
-                <div className="mt-4 grid grid-cols-2 gap-2.5 border-t border-slate-100 pt-4 sm:grid-cols-4">
+                <div className={`mt-3 sm:mt-4 grid grid-cols-[1.15fr_1.25fr_0.6fr] gap-2 border-t pt-3 sm:pt-4 sm:grid-cols-4 ${isDark ? "border-white/10" : "border-slate-100"}`}>
                   {[
                     {
                       label: "Total pendaftar",
                       nilai: n(trenTotal),
                       ket: `dalam ${periode} bulan`,
-                      warna: "text-[#0B1442]",
+                      warna: isDark ? "text-slate-100" : "text-[#0B1442]",
                     },
                     {
                       label: "Tingkat penerimaan",
@@ -1282,13 +1492,13 @@ const DashboardPage = () => {
                         (tren.total_diterima || 0) + (tren.total_ditolak || 0) > 0
                           ? `${n(tren.total_diterima)} dari ${n((tren.total_diterima || 0) + (tren.total_ditolak || 0))} diputuskan`
                           : "belum ada keputusan",
-                      warna: "text-emerald-600",
+                      warna: isDark ? "text-emerald-400" : "text-emerald-600",
                     },
                     {
                       label: "Ditolak",
                       nilai: n(tren.total_ditolak),
                       ket: `${n(tren.total_diproses)} masih diproses`,
-                      warna: "text-rose-600",
+                      warna: isDark ? "text-rose-400" : "text-rose-600",
                     },
                     {
                       label: "Bulan berjalan",
@@ -1297,35 +1507,37 @@ const DashboardPage = () => {
                         trenLalu === 0 && trenKini === 0
                           ? "belum ada"
                           : trenSelisih === 0
-                          ? "sama seperti lalu"
-                          : `${trenSelisih > 0 ? "naik" : "turun"} ${n(Math.abs(trenSelisih))}`,
+                            ? "sama seperti lalu"
+                            : `${trenSelisih > 0 ? "naik" : "turun"} ${n(Math.abs(trenSelisih))}`,
                       warna:
                         trenSelisih > 0
-                          ? "text-emerald-600"
+                          ? isDark ? "text-emerald-400" : "text-emerald-600"
                           : trenSelisih < 0
-                          ? "text-rose-600"
-                          : "text-slate-500",
+                            ? isDark ? "text-rose-400" : "text-rose-600"
+                            : isDark ? "text-slate-400" : "text-slate-500",
+                      hideOnMobile: true,
                     },
                   ].map((s, i) => (
                     <div
                       key={s.label}
                       style={{ animationDelay: `${i * 55}ms` }}
-                      className="group rounded-xl border border-slate-100 bg-gradient-to-b from-slate-50/60 to-white px-3 py-2.5 transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-sm"
+                      className={`group rounded-lg sm:rounded-xl border px-2 py-2 sm:px-3 sm:py-2.5 transition-all duration-300 animate-[fadeslide_0.4s_ease-out_both] hover:-translate-y-0.5 hover:shadow-sm ${s.hideOnMobile ? "hidden sm:block" : ""} ${isDark ? "border-white/5 bg-white/[0.03] hover:border-white/10" : "border-slate-100 bg-gradient-to-b from-slate-50/60 to-white hover:border-slate-200"
+                        }`}
                     >
-                      <p className="truncate text-[9.5px] font-bold uppercase tracking-wider text-slate-400">
+                      <p className={`truncate text-[9.5px] sm:text-[10px] font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
                         {s.label}
                       </p>
-                      <p className={`mt-1 text-xl font-black leading-none tabular-nums ${s.warna}`}>
+                      <p className={`mt-0.5 sm:mt-1 text-base sm:text-xl font-black leading-none tabular-nums ${s.warna}`}>
                         {s.nilai}
                       </p>
-                      <p className="mt-1 truncate text-[9.5px] font-medium text-slate-400">{s.ket}</p>
+                      <p className={`mt-0.5 sm:mt-1 truncate text-[8px] sm:text-[9.5px] font-medium ${isDark ? "text-slate-500" : "text-slate-500"}`}>{s.ket}</p>
                     </div>
                   ))}
                 </div>
               </section>
 
               {/* ── Kehadiran 30 hari ── */}
-              <section className="flex flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+              <section className={`flex flex-col rounded-2xl border p-3 sm:p-5 shadow-sm ${isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"}`}>
                 {(() => {
                   const pct = tren.persen_kehadiran || 0;
                   const total = tren.total_presensi || 0;
@@ -1333,10 +1545,10 @@ const DashboardPage = () => {
                   const baik = pct >= 80;
                   const sedang = pct >= 50 && pct < 80;
                   const gaya = baik
-                    ? { teks: "text-emerald-600", kotak: "from-emerald-50", bar: "bg-emerald-500", pill: "bg-emerald-50 text-emerald-600", ket: "Kehadiran terjaga baik" }
+                    ? { teks: isDark ? "text-emerald-400" : "text-emerald-600", kotak: isDark ? "from-emerald-500/10" : "from-emerald-50", bar: "bg-emerald-500", ket: "Kehadiran terjaga baik" }
                     : sedang
-                    ? { teks: "text-amber-600", kotak: "from-amber-50", bar: "bg-amber-500", pill: "bg-amber-50 text-amber-600", ket: "Kehadiran perlu diperhatikan" }
-                    : { teks: "text-rose-600", kotak: "from-rose-50", bar: "bg-rose-500", pill: "bg-rose-50 text-rose-600", ket: "Kehadiran jauh di bawah normal" };
+                      ? { teks: isDark ? "text-amber-400" : "text-amber-600", kotak: isDark ? "from-amber-500/10" : "from-amber-50", bar: "bg-amber-500", ket: "Kehadiran perlu diperhatikan" }
+                      : { teks: isDark ? "text-rose-400" : "text-rose-600", kotak: isDark ? "from-rose-500/10" : "from-rose-50", bar: "bg-rose-500", ket: "Kehadiran jauh di bawah normal" };
 
                   const rincian = [
                     ["Hadir tepat waktu", rekap.hadir, "bg-emerald-500", "text-emerald-600"],
@@ -1351,9 +1563,10 @@ const DashboardPage = () => {
                       <JudulSeksi
                         icon={CheckCircle2}
                         judul="Kehadiran 30 Hari"
+                        isDark={isDark}
                         aksi={
                           total > 0 ? (
-                            <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-[10.5px] font-black text-slate-600 tabular-nums">
+                            <span className={`shrink-0 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 text-[9px] sm:text-[10.5px] font-black tabular-nums ${isDark ? "bg-white/5 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
                               {n(total)} catatan
                             </span>
                           ) : null
@@ -1363,22 +1576,22 @@ const DashboardPage = () => {
                       {total > 0 ? (
                         <div className="flex flex-1 flex-col">
                           {/* Angka utama */}
-                          <div className={`rounded-xl bg-gradient-to-br ${gaya.kotak} to-white px-4 py-5 text-center`}>
-                            <p className={`text-[52px] font-black leading-none tracking-tight tabular-nums animate-[popIn_0.5s_ease-out_both] ${gaya.teks}`}>
+                          <div className={`rounded-xl bg-gradient-to-br ${gaya.kotak} ${isDark ? "to-transparent" : "to-white"} px-3 py-3 sm:px-4 sm:py-5 text-center`}>
+                            <p className={`text-3xl sm:text-[52px] font-black leading-none tracking-tight tabular-nums animate-[popIn_0.5s_ease-out_both] ${gaya.teks}`}>
                               {pct}
-                              <span className="text-2xl">%</span>
+                              <span className="text-base sm:text-2xl">%</span>
                             </p>
-                            <div className="mx-auto mt-3 h-2 w-3/4 overflow-hidden rounded-full bg-white/70">
+                            <div className={`mx-auto mt-2 sm:mt-3 h-1.5 sm:h-2 w-3/4 overflow-hidden rounded-full ${isDark ? "bg-white/10" : "bg-white/70"}`}>
                               <div
                                 className={`h-full origin-left rounded-full ${gaya.bar} animate-[barSlide_0.9s_ease-out_both]`}
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
-                            <p className="mt-2.5 text-[10.5px] font-bold text-slate-500">{gaya.ket}</p>
+                            <p className={`mt-2 sm:mt-2.5 text-[9px] sm:text-[10.5px] font-bold ${isDark ? "text-slate-400" : "text-slate-500"}`}>{gaya.ket}</p>
                           </div>
 
                           {/* Rincian dengan batang proporsi */}
-                          <div className="mt-4 flex flex-1 flex-col justify-around gap-1">
+                          <div className="mt-3 sm:mt-4 flex flex-1 flex-col justify-around gap-0.5 sm:gap-1">
                             {rincian.map(([label, nilai, bar, teks], i) => {
                               const v = nilai || 0;
                               const p = total > 0 ? (v / total) * 100 : 0;
@@ -1386,35 +1599,32 @@ const DashboardPage = () => {
                                 <div
                                   key={label}
                                   style={{ animationDelay: `${i * 55}ms` }}
-                                  className="group rounded-lg px-2 py-1.5 transition-colors duration-200 animate-[fadeslide_0.4s_ease-out_both] hover:bg-slate-50"
+                                  className={`group rounded-lg px-1.5 py-1 sm:px-2 sm:py-1.5 transition-colors duration-200 animate-[fadeslide_0.4s_ease-out_both] ${isDark ? "hover:bg-white/5" : "hover:bg-slate-50"}`}
                                 >
-                                  <div className="mb-1.5 flex items-center gap-2">
+                                  <div className="mb-1 sm:mb-1.5 flex items-center gap-1.5 sm:gap-2">
                                     <span
-                                      className={`h-2 w-2 shrink-0 rounded-full transition-transform duration-300 group-hover:scale-150 ${
-                                        v > 0 ? bar : "bg-slate-200"
-                                      }`}
+                                      className={`h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0 rounded-full transition-transform duration-300 group-hover:scale-150 ${v > 0 ? bar : isDark ? "bg-white/10" : "bg-slate-200"
+                                        }`}
                                     />
                                     <span
-                                      className={`flex-1 truncate text-[11px] font-bold ${
-                                        v > 0 ? "text-slate-600" : "text-slate-400"
-                                      }`}
+                                      className={`flex-1 truncate text-[10px] sm:text-[11px] font-bold ${v > 0 ? (isDark ? "text-slate-300" : "text-slate-600") : isDark ? "text-slate-600" : "text-slate-400"
+                                        }`}
                                     >
                                       {label}
                                     </span>
                                     {v > 0 && (
-                                      <span className="text-[9.5px] font-bold text-slate-400 tabular-nums">
+                                      <span className={`text-[8.5px] sm:text-[9.5px] font-bold tabular-nums ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                                         {Math.round(p)}%
                                       </span>
                                     )}
                                     <span
-                                      className={`w-7 text-right text-[13px] font-black tabular-nums ${
-                                        v > 0 ? teks : "text-slate-200"
-                                      }`}
+                                      className={`w-6 sm:w-7 text-right text-[11px] sm:text-[13px] font-black tabular-nums ${v > 0 ? teks : isDark ? "text-slate-700" : "text-slate-200"
+                                        }`}
                                     >
                                       {n(v)}
                                     </span>
                                   </div>
-                                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                  <div className={`h-1 sm:h-1.5 w-full overflow-hidden rounded-full ${isDark ? "bg-white/5" : "bg-slate-100"}`}>
                                     <div
                                       className={`h-full origin-left rounded-full ${bar} animate-[barSlide_0.8s_ease-out_both]`}
                                       style={{ width: `${p}%` }}
@@ -1427,7 +1637,7 @@ const DashboardPage = () => {
                         </div>
                       ) : (
                         <div className="flex flex-1 items-center justify-center">
-                          <KartuKosong pesan="Belum ada catatan presensi 30 hari terakhir." />
+                          <KartuKosong pesan="Belum ada catatan presensi 30 hari terakhir." isDark={isDark} />
                         </div>
                       )}
                     </>

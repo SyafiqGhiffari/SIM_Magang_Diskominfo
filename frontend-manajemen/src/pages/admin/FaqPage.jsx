@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
 import FaqStats from "../../components/manajemen/admin/faq/FaqStats";
 import FaqModal from "../../components/manajemen/admin/faq/FaqModal";
@@ -21,6 +21,7 @@ import { exportFaqToExcel } from "../../utils/exportFaqExcel";
 import { exportFaqToCsv } from "../../utils/exportFaqCsv";
 import { exportFaqToPdf } from "../../utils/exportFaqPdf";
 import { useManajemenTheme } from "../../context/useManajemenTheme";
+import TeksKaya, { TeksKayaInline } from "../../utils/teksKaya";
 import {
     HelpCircle, Plus, Filter as FilterIcon, Search, ChevronUp, ChevronDown, Inbox,
   Zap, MessageSquare, ArrowRight, Download, UserRound, ClipboardCheck, Upload,
@@ -100,7 +101,7 @@ const KotakCentang = ({ tercentang = false, sebagian = false, onUbah, judul }) =
   </label>
 );
 
-const SortableHeader = ({ column, columnSort, setColumnSort }) => {
+const SortableHeader = ({ column, columnSort, setColumnSort, isDark = false, className = "" }) => {
   const isActive = columnSort.key === column.key;
   const direction = isActive ? columnSort.direction : null;
 
@@ -111,17 +112,19 @@ const SortableHeader = ({ column, columnSort, setColumnSort }) => {
   };
 
   return (
-    <th className="px-6 py-3.5">
+    <th className={`px-3 sm:px-6 py-3 sm:py-3.5 ${className}`}>
       <button
         onClick={handleClick}
-        className={`group flex w-full items-center justify-between gap-3 text-[10.5px] font-black uppercase tracking-wider transition-colors duration-200 cursor-pointer ${
-          isActive ? "text-[#0B1442]" : "text-slate-400 hover:text-slate-600"
+        className={`group flex w-full items-center justify-between gap-2 sm:gap-3 text-[9.5px] sm:text-[10.5px] font-black uppercase tracking-wider transition-colors duration-200 cursor-pointer ${
+          isActive
+            ? isDark ? "text-sky-400" : "text-[#0B1442]"
+            : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
         }`}
       >
         <span>{column.label}</span>
         <span className="flex flex-col shrink-0 gap-[1px]">
-          <ChevronUp className={`w-3 h-3 transition-all duration-200 ${isActive && direction === "asc" ? "text-[#004F9F]" : "text-slate-300 group-hover:text-slate-400"}`} strokeWidth={3} />
-          <ChevronDown className={`w-3 h-3 -mt-1.5 transition-all duration-200 ${isActive && direction === "desc" ? "text-[#004F9F]" : "text-slate-300 group-hover:text-slate-400"}`} strokeWidth={3} />
+          <ChevronUp className={`w-2.5 h-2.5 sm:w-3 sm:h-3 transition-all duration-200 ${isActive && direction === "asc" ? (isDark ? "text-sky-400" : "text-[#004F9F]") : "text-slate-300 dark:text-slate-600 group-hover:text-slate-400"}`} strokeWidth={3} />
+          <ChevronDown className={`w-2.5 h-2.5 sm:w-3 sm:h-3 -mt-1 sm:-mt-1.5 transition-all duration-200 ${isActive && direction === "desc" ? (isDark ? "text-sky-400" : "text-[#004F9F]") : "text-slate-300 dark:text-slate-600 group-hover:text-slate-400"}`} strokeWidth={3} />
         </span>
       </button>
     </th>
@@ -142,6 +145,16 @@ const FaqPage = () => {
   const [columnSort, setColumnSort] = useState({ key: null, direction: null });
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(10);
+  const [expandedRows, setExpandedRows] = useState(new Set());
+
+  const toggleRow = (id) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const [statusList, setStatusList] = useState([]);
   const [jenisList, setJenisList] = useState([]);
@@ -456,8 +469,12 @@ const FaqPage = () => {
     setJenisList([]);
     setAppliedStatusList([]);
     setAppliedJenisList([]);
+    setSortBy("terbaru");
     setPage(0);
   };
+
+  const activeFilterCount = appliedStatusList.length + appliedJenisList.length;
+  const activeFilterCountMobile = activeFilterCount + (sortBy ? 1 : 0);
 
   const filtered = faqs
     .filter((f) => {
@@ -530,8 +547,6 @@ const FaqPage = () => {
     quick: faqTerpilih.filter((f) => f.is_quick_action).length,
   };
 
-  const activeFilterCount = (appliedStatusList.length > 0 ? 1 : 0) + (appliedJenisList.length > 0 ? 1 : 0);
-
   const sisaQuickAction = Math.max(
     0,
     qaMaks - qaAktif + (editMode && isQuickAction ? 1 : 0)
@@ -545,16 +560,17 @@ const FaqPage = () => {
 
   return (
     <AdminLayout searchValue={search} onSearchChange={(v) => { setSearch(v); setPage(0); }}>
-      <div className="space-y-6 animate-[fadeslide_0.35s_ease-out]">
+      <div className="space-y-4 sm:space-y-6 animate-[fadeslide_0.35s_ease-out]">
         <div>
-          <h2 className={`text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>FAQ &amp; Quick Action</h2>
-          <p className={`mt-1.5 text-xs max-w-2xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-            Kelola jawaban otomatis chatbot, isi halaman FAQ publik, dan tombol quick action di widget chat peserta.
+          <h2 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>FAQ &amp; Quick Action</h2>
+          <p className={`mt-1 sm:mt-1.5 text-[11px] sm:text-xs max-w-2xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+            <span className="inline sm:hidden">Kelola jawaban otomatis chatbot &amp; quick action.</span>
+            <span className="hidden sm:inline">Kelola jawaban otomatis chatbot, isi halaman FAQ publik, dan tombol quick action di widget chat peserta.</span>
           </p>
         </div>
 
         {memuat ? (
-          <div className="flex items-center justify-center py-24 text-slate-400 text-sm gap-2.5">
+          <div className="flex items-center justify-center py-20 sm:py-24 text-slate-400 text-xs sm:text-sm gap-2.5">
             <div className="h-4 w-4 rounded-full border-2 border-[#004F9F] border-t-transparent animate-spin" />
             Memuat data FAQ...
           </div>
@@ -569,129 +585,215 @@ const FaqPage = () => {
               totalPenilaian={statistik.penilaian}
               rasioMembantu={statistik.penilaian > 0 ? (statistik.membantu / statistik.penilaian) * 100 : 0}
               perluDiperbaiki={statistik.perlu}
+              isDark={isDark}
             />
 
-              <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-                {/* Header card */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 px-4 sm:px-6 pt-6 pb-5">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
-                      <HelpCircle className="w-5 h-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="text-base font-black text-[#0B1442]">Daftar FAQ</h3>
-                      <p className="mt-0.5 text-xs text-slate-400 max-w-xl leading-relaxed">
-                        Gunakan tombol filter untuk menyaring FAQ berdasarkan status dan jenis tampilannya.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Semua aksi kartu tabel: impor, ekspor, dan tambah FAQ */}
-                  <div className="flex flex-wrap items-center gap-2.5 shrink-0 sm:self-start">
-                    <button
-                      onClick={() => setBukaImpor(true)}
-                      className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 hover:shadow-md active:scale-95 cursor-pointer"
-                    >
-                      <Upload className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-translate-y-0.5" />
-                      Impor CSV
-                    </button>
-
-                    <FaqExportDropdown onExport={handleExport} />
-
-                    <button
-                      onClick={openAddModal}
-                      className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0B1442] to-[#004F9F] px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
-                      Tambah FAQ
-                    </button>
+            <div className={`rounded-2xl border shadow-sm overflow-hidden ${
+              isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
+            }`}>
+              {/* Header card */}
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 px-3.5 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-5">
+                <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <span className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
+                    <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className={`text-sm sm:text-base font-black text-left ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                      <span className="inline sm:hidden">Daftar FAQ</span>
+                      <span className="hidden sm:inline">Daftar FAQ & Quick Action</span>
+                    </h3>
+                    <p className="mt-0.5 text-[10px] sm:text-xs text-slate-400 max-w-xl leading-relaxed text-left">
+                      <span className="inline sm:hidden">Menyaring dan mengelola FAQ.</span>
+                      <span className="hidden sm:inline">Gunakan tombol filter untuk menyaring FAQ berdasarkan status dan jenis tampilannya.</span>
+                    </p>
                   </div>
                 </div>
 
-                {/* Baris kedua: Urutkan — Filter — Search */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 pb-5 border-b border-slate-100">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <FaqSortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+                {/* Aksi kartu header di pojok kanan (Hanya Desktop) */}
+                <div className="hidden sm:flex items-center gap-2.5 shrink-0">
+                  <button
+                    onClick={() => setBukaImpor(true)}
+                    className={`group inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ${
+                      isDark
+                        ? "border-white/10 bg-white/5 text-slate-300 hover:border-violet-500/40 hover:bg-violet-500/10 hover:text-violet-300"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
+                    }`}
+                  >
+                    <Upload className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-translate-y-0.5" />
+                    Impor CSV
+                  </button>
+
+                  <FaqExportDropdown onExport={handleExport} isDark={isDark} />
+
+                  <button
+                    onClick={openAddModal}
+                    className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0B1442] to-[#00A5EC] px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
+                    Tambah FAQ
+                  </button>
+                </div>
+              </div>
+
+              {/* Tombol Aksi Mobile (Tambah, Ekspor, Impor) berjejer 3 kolom dengan ukuran sama rata */}
+              <div className="grid grid-cols-3 gap-1.5 px-3.5 pb-2.5 sm:hidden">
+                <button
+                  onClick={openAddModal}
+                  className="group inline-flex w-full items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-[#0B1442] to-[#00A5EC] px-2 py-2 text-[11px] font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 cursor-pointer min-w-0"
+                >
+                  <Plus className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:rotate-90" />
+                  <span className="truncate">Tambah</span>
+                </button>
+
+                <FaqExportDropdown onExport={handleExport} isDark={isDark} />
+
+                <button
+                  onClick={() => setBukaImpor(true)}
+                  className={`group inline-flex w-full items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[11px] font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer min-w-0 ${
+                    isDark
+                      ? "border-white/10 bg-white/5 text-slate-300 hover:border-violet-500/40 hover:bg-violet-500/10 hover:text-violet-300"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:-translate-y-0.5" />
+                  <span className="truncate">Impor</span>
+                </button>
+              </div>
+
+              {/* Baris Toolbar: Filter — Search */}
+              <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 px-3.5 sm:px-6 pb-3.5 sm:pb-5 border-b ${
+                isDark ? "border-white/5" : "border-slate-100"
+              }`}>
+                {/* Desktop Sort & Filter */}
+                <div className="hidden sm:flex items-center gap-2">
+                  <FaqSortDropdown sortBy={sortBy} setSortBy={setSortBy} isDark={isDark} />
+                  <button
+                    onClick={() => setShowFilterModal(true)}
+                    className={`group inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer shrink-0 ${
+                      isDark
+                        ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                    }`}
+                  >
+                    <FilterIcon className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
+                    Filter
+                    {activeFilterCount > 0 && (
+                      <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[#00A5EC] text-white px-1 text-[9.5px] font-black">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Search & Filter Bar Mobile / Desktop: Filter and Search side-by-side */}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {/* Mobile Only: Filter Button next to search input */}
+                  <div className="block sm:hidden shrink-0">
                     <button
+                      type="button"
                       onClick={() => setShowFilterModal(true)}
-                      className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300 hover:bg-slate-50 active:scale-95 cursor-pointer shrink-0"
+                      className={`group inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold shadow-sm transition-all duration-200 active:scale-95 cursor-pointer ${
+                        isDark
+                          ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
                     >
-                      <FilterIcon className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
+                      <FilterIcon className="w-3 h-3 transition-transform duration-300 group-hover:scale-110" />
                       Filter
-                      {activeFilterCount > 0 && (
-                        <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[#004F9F] text-white px-1 text-[9.5px] font-black">
-                          {activeFilterCount}
+                      {activeFilterCountMobile > 0 && (
+                        <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#00A5EC] text-white px-1 text-[8.5px] font-black">
+                          {activeFilterCountMobile}
                         </span>
                       )}
                     </button>
                   </div>
 
-                  <div className={`relative w-full sm:w-64 shrink-0 transition-transform duration-200 ${isSearchFocused ? "sm:scale-[1.03]" : ""}`}>
-                    <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-all duration-200 ${isSearchFocused ? "text-[#004F9F] scale-110" : "text-slate-400"}`} />
+                  {/* Search Input */}
+                  <div className={`relative flex-1 sm:w-64 transition-transform duration-200 ${isSearchFocused ? "sm:scale-[1.03]" : ""}`}>
+                    <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-all duration-200 ${isSearchFocused ? (isDark ? "text-sky-400" : "text-[#004F9F]") + " scale-110" : "text-slate-400"}`} />
                     <input
                       type="text"
                       value={tableSearch}
                       onChange={(e) => { setTableSearch(e.target.value); setPage(0); }}
                       onFocus={() => setIsSearchFocused(true)}
                       onBlur={() => setIsSearchFocused(false)}
-                      placeholder="Cari pertanyaan atau kata kunci..."
-                      className={`w-full rounded-xl border pl-9 pr-9 py-2.5 text-xs font-medium text-slate-700 outline-none transition-all duration-200 ${
-                        isSearchFocused ? "border-[#004F9F] bg-white shadow-md ring-4 ring-[#00A5EC]/15" : "border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-white"
+                      placeholder="Cari pertanyaan..."
+                      className={`w-full rounded-xl border pl-9 pr-4 py-2 sm:py-2.5 text-xs font-medium outline-none transition-all duration-200 ${
+                        isDark
+                          ? isSearchFocused
+                            ? "border-[#00A5EC] bg-[#161b22] text-slate-100 placeholder-slate-500 ring-4 ring-[#00A5EC]/15"
+                            : "border-white/10 bg-white/5 text-slate-100 placeholder-slate-500 hover:border-white/20"
+                          : isSearchFocused
+                          ? "border-[#004F9F] bg-white text-slate-700 placeholder-slate-400 shadow-md ring-4 ring-[#00A5EC]/15"
+                          : "border-slate-200 bg-slate-50/50 text-slate-700 placeholder-slate-400 hover:border-slate-300 hover:bg-white"
                       }`}
                     />
                   </div>
                 </div>
+              </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[920px] text-left text-[13px]">
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/60">
-                        <th className="px-5 py-3.5 w-10">
-                          <KotakCentang
-                            tercentang={semuaTerpilih}
-                            sebagian={sebagianTerpilih}
-                            onUbah={() => togglePilihSemua(idHalamanIni)}
-                            judul="Pilih semua baris yang terlihat"
-                          />
-                        </th>
-                        <SortableHeader column={columns[0]} columnSort={columnSort} setColumnSort={setColumnSort} />
-                        <SortableHeader column={columns[1]} columnSort={columnSort} setColumnSort={setColumnSort} />
-                        <th className="px-6 py-3.5 text-left text-[10.5px] font-black uppercase tracking-wider text-slate-400">Kata Kunci</th>
-                        <SortableHeader column={columns[2]} columnSort={columnSort} setColumnSort={setColumnSort} />
-                        <SortableHeader column={columns[3]} columnSort={columnSort} setColumnSort={setColumnSort} />
-                        <th className="px-6 py-3.5 text-left text-[10.5px] font-black uppercase tracking-wider text-slate-400">Quick Action</th>
-                        <th className="px-6 py-3.5 text-right text-[10.5px] font-black uppercase tracking-wider text-slate-400">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageItems.length === 0 ? (
-                        <tr className="animate-[fadeslide_0.3s_ease-out]">
-                          <td colSpan={8} className="px-6 py-16">
-                            <div className="flex flex-col items-center justify-center gap-3 text-center">
-                              <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-300">
-                                <Inbox className="w-6 h-6" />
-                                <span className="absolute inset-0 rounded-2xl border-2 border-slate-200 animate-ping opacity-40" />
-                              </span>
-                              <p className="text-sm font-bold text-slate-500">Belum ada FAQ yang sesuai</p>
+              <div className="overflow-x-auto">
+                <table className="w-full sm:min-w-[920px] text-left text-[11px] sm:text-[13px] table-fixed sm:table-auto">
+                  <thead>
+                    <tr className={`border-b ${isDark ? "border-white/5 bg-[#1f242c]" : "border-slate-100 bg-slate-50/60"}`}>
+                      <th className="px-2 sm:px-5 py-3 sm:py-3.5 w-9 sm:w-10">
+                        <KotakCentang
+                          tercentang={semuaTerpilih}
+                          sebagian={sebagianTerpilih}
+                          onUbah={() => togglePilihSemua(idHalamanIni)}
+                          judul="Pilih semua baris yang terlihat"
+                        />
+                      </th>
+                      <SortableHeader column={columns[0]} columnSort={columnSort} setColumnSort={setColumnSort} isDark={isDark} className="w-auto sm:w-[250px] sm:max-w-[250px]" />
+                      <SortableHeader column={columns[1]} columnSort={columnSort} setColumnSort={setColumnSort} isDark={isDark} className="hidden sm:table-cell sm:w-[130px] sm:max-w-[130px]" />
+                      <th className="hidden sm:table-cell px-6 py-3.5 text-left text-[10.5px] font-black uppercase tracking-wider text-slate-400 sm:w-[170px] sm:max-w-[170px]">Kata Kunci</th>
+                      <SortableHeader column={columns[2]} columnSort={columnSort} setColumnSort={setColumnSort} isDark={isDark} className="hidden sm:table-cell sm:w-[150px] sm:max-w-[150px]" />
+                      <SortableHeader column={columns[3]} columnSort={columnSort} setColumnSort={setColumnSort} isDark={isDark} className="w-20 sm:w-[120px] text-center" />
+                      <th className="hidden sm:table-cell px-6 py-3.5 text-left text-[10.5px] font-black uppercase tracking-wider text-slate-400 sm:w-[140px] sm:max-w-[140px]">Quick Action</th>
+                      <th className="px-2 sm:px-6 py-3 sm:py-3.5 text-right text-[9.5px] sm:text-[10.5px] font-black uppercase tracking-wider text-slate-400 w-12 sm:w-20">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {pageItems.length === 0 ? (
+                      <tr className="animate-[fadeslide_0.3s_ease-out]">
+                        <td colSpan={8} className="px-4 sm:px-6 py-10 sm:py-16">
+                          <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 text-center">
+                            <span className={`relative flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl ${
+                              isDark ? "bg-white/5 text-slate-500" : "bg-slate-50 text-slate-300"
+                            }`}>
+                              <Inbox className="h-5 w-5 sm:h-6 sm:w-6" />
+                              <span className={`absolute inset-0 animate-ping rounded-xl sm:rounded-2xl border-2 opacity-40 ${
+                                isDark ? "border-white/10" : "border-slate-200"
+                              }`} />
+                            </span>
+                            <div>
+                              <p className={`text-xs sm:text-sm font-bold ${isDark ? "text-slate-400" : "text-slate-500"}`}>Belum ada data yang sesuai</p>
+                              <p className="mt-0.5 text-[10px] sm:text-xs text-slate-400 max-w-[260px] sm:max-w-none">
+                                Coba ubah kata kunci pencarian atau filter status lainnya.
+                              </p>
                             </div>
-                          </td>
-                        </tr>
-                      ) : (
-                        pageItems.map((f) => {
-                          const dipilih = terpilih.includes(f.id);
-                          const nilai = hitungKepuasan(f);
-                          const aksi = LENCANA_AKSI[f.action_type || "jawaban"];
-                          const IkonAksi = aksi?.ikon;
-                          const IkonKategori = IKON_KATEGORI[f.category] || Layers;
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      pageItems.map((f) => {
+                        const dipilih = terpilih.includes(f.id);
+                        const isExpanded = expandedRows.has(f.id);
+                        const nilai = hitungKepuasan(f);
+                        const aksi = LENCANA_AKSI[f.action_type || "jawaban"];
+                        const IkonAksi = aksi?.ikon;
+                        const IkonKategori = IKON_KATEGORI[f.category] || Layers;
 
-                          return (
+                        return (
+                          <Fragment key={f.id}>
                             <tr
-                              key={f.id}
-                              className={`group border-b border-slate-50 transition-colors duration-200 ${
-                                dipilih ? "bg-blue-50/60" : "hover:bg-blue-50/30"
+                              className={`group border-b border-slate-50 dark:border-white/5 transition-colors duration-200 ${
+                                dipilih
+                                  ? isDark ? "bg-sky-500/10" : "bg-blue-50/60"
+                                  : isDark ? "hover:bg-white/5" : "hover:bg-blue-50/30"
                               }`}
                             >
-                              <td className="px-5 py-4">
+                              <td className="px-2 sm:px-5 py-2.5 sm:py-4 align-top w-9 sm:w-10">
                                 <KotakCentang
                                   tercentang={dipilih}
                                   onUbah={() => togglePilih(f.id)}
@@ -699,32 +801,56 @@ const FaqPage = () => {
                                 />
                               </td>
 
-                              <td className="px-6 py-4 w-[250px] max-w-[250px] align-top">
-                                <p className="text-[12px] font-bold leading-snug text-[#0B1442] line-clamp-2">{f.question}</p>
-                                <p className="mt-1 truncate text-[10.5px] text-slate-400">{f.answer}</p>
+                              <td
+                                className="px-2 sm:px-6 py-2.5 sm:py-4 align-top w-auto sm:w-[250px] sm:max-w-[250px] cursor-pointer sm:cursor-default"
+                                onClick={() => toggleRow(f.id)}
+                              >
+                                <div className="flex items-start justify-between gap-1.5 sm:gap-2 min-w-0">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1 min-w-0">
+                                      <div className={`text-[11px] sm:text-[12px] font-bold leading-snug break-words line-clamp-2 transition-colors duration-200 ${
+                                        isDark ? "text-slate-100 group-hover:text-[#00A5EC]" : "text-[#0B1442] group-hover:text-[#004F9F]"
+                                      }`}>
+                                        <TeksKayaInline teks={f.question} />
+                                      </div>
+                                      <ChevronDown className={`w-3 h-3 text-slate-400 block sm:hidden transition-transform duration-200 shrink-0 ${isExpanded ? "rotate-180 text-[#00A5EC]" : ""}`} />
+                                    </div>
+                                    <div className="mt-0.5 sm:mt-1 truncate text-[9.5px] sm:text-[10.5px] text-slate-400">
+                                      <TeksKayaInline teks={f.answer} />
+                                    </div>
+                                  </div>
+                                </div>
                               </td>
 
-                              <td className="px-6 py-4">
-                                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:bg-[#004F9F]/10 group-hover:text-[#004F9F] group-hover:shadow-sm">
+                              <td className="hidden sm:table-cell px-6 py-4 sm:w-[130px] sm:max-w-[130px] align-top">
+                                <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-bold transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm ${
+                                  isDark
+                                    ? "bg-white/5 text-slate-300 group-hover:bg-[#00A5EC]/20 group-hover:text-sky-300"
+                                    : "bg-slate-100 text-slate-600 group-hover:bg-[#004F9F]/10 group-hover:text-[#004F9F]"
+                                }`}>
                                   <IkonKategori className="h-3 w-3 shrink-0 transition-transform duration-300 group-hover:scale-110" />
                                   {f.category || "Umum"}
                                 </span>
                               </td>
 
-                              <td className="px-6 py-4 w-[170px] max-w-[170px] align-top">
-                                <p className="whitespace-normal break-words text-[10.5px] leading-relaxed text-slate-500" title={f.keywords || "-"}>{f.keywords || "-"}</p>
+                              <td className="hidden sm:table-cell px-6 py-4 w-[170px] max-w-[170px] align-top">
+                                <p className={`whitespace-normal break-words text-[10.5px] leading-relaxed ${
+                                  isDark ? "text-slate-400" : "text-slate-500"
+                                }`} title={f.keywords || "-"}>{f.keywords || "-"}</p>
                               </td>
 
-                              <td className="px-6 py-4">
+                              <td className="hidden sm:table-cell px-6 py-4 sm:w-[150px] sm:max-w-[150px] align-top">
                                 {nilai.total === 0 ? (
-                                  <span className="text-[11px] text-slate-300">Belum dinilai</span>
+                                  <span className="text-[11px] text-slate-400">Belum dinilai</span>
                                 ) : (
                                   <div className="w-36">
-                                    <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-500 mb-1">
+                                    <div className={`flex items-center justify-between text-[10.5px] font-bold mb-1 ${
+                                      isDark ? "text-slate-400" : "text-slate-500"
+                                    }`}>
                                       <span>{nilai.suka} suka · {nilai.tidak} tidak</span>
-                                      <span className={nilai.perluPerbaikan ? "text-red-500" : ""}>{nilai.rasio}%</span>
+                                      <span className={nilai.perluPerbaikan ? "text-red-400" : ""}>{nilai.rasio}%</span>
                                     </div>
-                                    <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                                    <div className={`h-1.5 w-full rounded-full overflow-hidden ${isDark ? "bg-white/10" : "bg-slate-100"}`}>
                                       <div
                                         className={`h-full rounded-full transition-all duration-700 ease-out ${
                                           nilai.perluPerbaikan
@@ -741,16 +867,22 @@ const FaqPage = () => {
                                 )}
                               </td>
 
-                              <td className="px-6 py-4">
-                                <div className="flex flex-col items-start gap-1">
-                                  <span className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-bold transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm ${f.is_active ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+                              <td className="px-1.5 sm:px-6 py-2.5 sm:py-4 w-20 sm:w-[120px] text-center align-top">
+                                <div className="flex flex-col items-center sm:items-start gap-1">
+                                  <span className={`inline-flex items-center gap-1 rounded-md px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[9.5px] sm:text-[11px] font-bold transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm ${
+                                    f.is_active
+                                      ? isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-50 text-emerald-600"
+                                      : isDark ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-500"
+                                  }`}>
                                     {f.is_active
-                                      ? <CheckCircle2 className="h-3 w-3 shrink-0 transition-transform duration-300 group-hover:scale-110" />
-                                      : <XCircle className="h-3 w-3 shrink-0 transition-transform duration-300 group-hover:scale-110" />}
-                                    {f.is_active ? "Aktif" : "Nonaktif"}
+                                      ? <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0 transition-transform duration-300 group-hover:scale-110" />
+                                      : <XCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0 transition-transform duration-300 group-hover:scale-110" />}
+                                    <span>{f.is_active ? "Aktif" : "Nonaktif"}</span>
                                   </span>
                                   {f.show_on_landing && (
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-600 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm">
+                                    <span className={`hidden sm:inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm ${
+                                      isDark ? "bg-sky-500/20 text-sky-400" : "bg-sky-50 text-sky-600"
+                                    }`}>
                                       <Eye className="h-2.5 w-2.5 shrink-0 transition-transform duration-300 group-hover:scale-110" />
                                       Tampil publik
                                     </span>
@@ -758,22 +890,28 @@ const FaqPage = () => {
                                 </div>
                               </td>
 
-                              <td className="px-6 py-4">
+                              <td className="hidden sm:table-cell px-6 py-4 sm:w-[140px] sm:max-w-[140px] align-top">
                                 {f.is_quick_action ? (
                                   <div className="flex flex-col items-start gap-1">
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-600 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm">
+                                    <span className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-bold transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm ${
+                                      isDark ? "bg-amber-500/20 text-amber-400" : "bg-amber-50 text-amber-600"
+                                    }`}>
                                       <Zap className="h-2.5 w-2.5 shrink-0 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12" />
                                       Tombol Cepat
                                     </span>
                                     {IkonAksi && (
-                                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm ${aksi.kelas}`}>
+                                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm ${
+                                        isDark ? "bg-white/10 text-slate-300" : aksi.kelas
+                                      }`}>
                                         <IkonAksi className="h-2.5 w-2.5 shrink-0 transition-transform duration-300 group-hover:scale-110" />
                                         {aksi.teks}
                                       </span>
                                     )}
                                     {f.tampil_saat_status && (
                                       <span
-                                        className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm"
+                                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-sm ${
+                                          isDark ? "bg-indigo-500/20 text-indigo-300" : "bg-indigo-50 text-indigo-600"
+                                        }`}
                                         title={`Hanya untuk status: ${f.tampil_saat_status}`}
                                       >
                                         <Lock className="h-2.5 w-2.5 shrink-0 transition-transform duration-300 group-hover:scale-110" />
@@ -782,33 +920,150 @@ const FaqPage = () => {
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="text-[11px] text-slate-300">—</span>
+                                  <span className="text-[11px] text-slate-400">—</span>
                                 )}
                               </td>
 
-                              <td className="px-6 py-4 text-right">
-                                <FaqActionsDropdown onEdit={() => openEditModal(f)} onDelete={() => handleDelete(f)} />
+                              <td className="px-2 sm:px-6 py-2.5 sm:py-4 text-right align-top w-12 sm:w-20">
+                                <FaqActionsDropdown onEdit={() => openEditModal(f)} onDelete={() => handleDelete(f)} isDark={isDark} />
                               </td>
                             </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
 
-                <Pagination totalItems={sorted.length} page={page} setPage={setPage} perPage={perPage} setPerPage={setPerPage} />
+                            {/* Mobile Collapsible Accordion Row */}
+                            <tr className="table-row sm:hidden">
+                              <td colSpan={4} className="p-0">
+                                <div
+                                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                                    isExpanded
+                                      ? "max-h-[600px] opacity-100 py-3 px-3.5 border-b border-dashed border-slate-200 dark:border-white/5 bg-slate-50/70 dark:bg-white/[0.02]"
+                                      : "max-h-0 opacity-0 p-0 border-none"
+                                  }`}
+                                >
+                                  <div className="space-y-2.5 text-left text-[10.5px]">
+                                    {/* Kategori & Publik */}
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400">Kategori:</span>
+                                        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-bold ${
+                                          isDark ? "bg-white/10 text-slate-200" : "bg-white text-slate-700 ring-1 ring-slate-200"
+                                        }`}>
+                                          <IkonKategori className="h-3 w-3" />
+                                          {f.category || "Umum"}
+                                        </span>
+                                      </div>
+
+                                      {f.show_on_landing && (
+                                        <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9.5px] font-bold ${
+                                          isDark ? "bg-sky-500/20 text-sky-400" : "bg-sky-50 text-sky-600"
+                                        }`}>
+                                          <Eye className="h-2.5 w-2.5" />
+                                          Publik
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Jawaban */}
+                                    <div>
+                                      <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">Jawaban:</span>
+                                      <div className={`text-[10.5px] leading-relaxed ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                                        <TeksKaya teks={f.answer} />
+                                      </div>
+                                    </div>
+
+                                    {/* Kata Kunci */}
+                                    {f.keywords && (
+                                      <div>
+                                        <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">Kata Kunci:</span>
+                                        <p className={`text-[10.5px] font-medium leading-relaxed ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                                          {f.keywords}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {/* Kepuasan */}
+                                    <div>
+                                      <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 block mb-1">Kepuasan:</span>
+                                      {nilai.total === 0 ? (
+                                        <span className="text-[10.5px] text-slate-400">Belum dinilai</span>
+                                      ) : (
+                                        <div className="space-y-1">
+                                          <div className={`flex items-center justify-between text-[10px] font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                                            <span>{nilai.suka} suka · {nilai.tidak} tidak ({f.view_count || 0} tayang)</span>
+                                            <span className={nilai.perluPerbaikan ? "text-red-400 font-black" : "font-black"}>{nilai.rasio}%</span>
+                                          </div>
+                                          <div className={`h-1.5 w-full rounded-full overflow-hidden ${isDark ? "bg-white/10" : "bg-slate-200"}`}>
+                                            <div
+                                              className={`h-full rounded-full ${
+                                                nilai.perluPerbaikan
+                                                  ? "bg-gradient-to-r from-red-600 to-red-400"
+                                                  : nilai.rasio >= 70
+                                                  ? "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                                                  : "bg-gradient-to-r from-[#0B1442] to-[#00A5EC]"
+                                              }`}
+                                              style={{ width: `${nilai.rasio}%` }}
+                                            />
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Quick Action Info */}
+                                    <div>
+                                      <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 block mb-1">Quick Action:</span>
+                                      {f.is_quick_action ? (
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                          <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9.5px] font-bold ${
+                                            isDark ? "bg-amber-500/20 text-amber-400" : "bg-amber-50 text-amber-600"
+                                          }`}>
+                                            <Zap className="h-2.5 w-2.5" />
+                                            Tombol Cepat
+                                          </span>
+                                          {IkonAksi && (
+                                            <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9.5px] font-bold ${
+                                              isDark ? "bg-white/10 text-slate-300" : aksi.kelas
+                                            }`}>
+                                              <IkonAksi className="h-2.5 w-2.5" />
+                                              {aksi.teks}
+                                            </span>
+                                          )}
+                                          {f.tampil_saat_status && (
+                                            <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9.5px] font-bold ${
+                                              isDark ? "bg-indigo-500/20 text-indigo-300" : "bg-indigo-50 text-indigo-600"
+                                            }`}>
+                                              <Lock className="h-2.5 w-2.5" />
+                                              {f.tampil_saat_status}
+                                            </span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span className="text-[10.5px] text-slate-400 italic">Bukan tombol cepat</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          </Fragment>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
 
+              <Pagination totalItems={sorted.length} page={page} setPage={setPage} perPage={perPage} setPerPage={setPerPage} isDark={isDark} />
+            </div>
+
             {/* Papan urutan + pratinjau, berdampingan pada layar lebar */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 xl:items-start">
+            <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-2 xl:items-start">
               <QuickActionBoard
                 key={versiData}
                 daftarAwal={daftarQuickAction}
                 onSimpan={handleReorder}
                 menyimpan={menyimpanUrutan}
+                isDark={isDark}
               />
-              <PratinjauQuickAction pemicuMuatUlang={versiData} />
+              <PratinjauQuickAction pemicuMuatUlang={versiData} isDark={isDark} />
             </div>
           </>
         )}
@@ -828,9 +1083,12 @@ const FaqPage = () => {
           toggleStatus={toggleStatus}
           jenisList={jenisList}
           toggleJenis={toggleJenis}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
           onApply={handleApplyFilters}
           onReset={handleResetFilters}
           onClose={() => setShowFilterModal(false)}
+          isDark={isDark}
         />
       )}
 

@@ -7,8 +7,25 @@ export const getChatSessions = () =>
 export const getSessionMessages = (id) =>
   api.get(`/manajemen/admin/chat/session/${id}/messages`);
 
-export const replySession = (id, content) =>
-  api.post(`/manajemen/admin/chat/session/${id}/reply`, { content });
+export const replySession = (id, content, replyToId = null) =>
+  api.post(`/manajemen/admin/chat/session/${id}/reply`, {
+    content,
+    reply_to_id: replyToId,
+  });
+
+export const sematkanSesi = (id) =>
+  api.put(`/manajemen/admin/chat/session/${id}/sematkan`);
+
+export const tandaiBelumDibaca = (id) =>
+  api.put(`/manajemen/admin/chat/session/${id}/tandai-belum-dibaca`);
+
+export const hapusPesan = (id) =>
+  api.delete(`/manajemen/admin/chat/pesan/${id}`);
+
+export const kirimLampiran = (sesiId, formData) =>
+  api.post(`/manajemen/admin/chat/session/${sesiId}/lampiran`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
 
 export const closeSession = (id) =>
   api.put(`/manajemen/admin/chat/session/${id}/close`);
@@ -42,6 +59,9 @@ export const getPertanyaanFaq = (params = {}) =>
 
 export const updatePertanyaanFaq = (id, data) =>
   api.put(`/manajemen/admin/pertanyaan-faq/${id}`, data);
+
+export const balasPertanyaanFaq = (id, jawaban) =>
+  api.post(`/manajemen/admin/pertanyaan-faq/${id}/balas`, { jawaban });
 
 export const deletePertanyaanFaq = (id) =>
   api.delete(`/manajemen/admin/pertanyaan-faq/${id}`);

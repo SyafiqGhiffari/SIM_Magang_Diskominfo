@@ -3,7 +3,6 @@ import ProtectedRoute from "./ProtectedRoute";
 import LoginPage from "../pages/auth/LoginPage";
 import DashboardPage from "../pages/admin/DashboardPage";
 import FaqPage from "../pages/admin/FaqPage";
-import PertanyaanMasukPage from "../pages/admin/PertanyaanMasukPage";
 import AnalitikFaqPage from "../pages/admin/AnalitikFaqPage";
 import KelolaAkunPage from "../pages/admin/KelolaAkunPage";
 import BidangPage from "../pages/admin/BidangPage";
@@ -18,12 +17,18 @@ import RekapPresensiPage from "../pages/admin/RekapPresensiPage";
 import KelolaSertifikatPage from "../pages/admin/KelolaSertifikatPage";
 import TemplateSertifikatPage from "../pages/admin/TemplateSertifikatPage";
 import PengaturanLandingPage from "../pages/admin/PengaturanLandingPage";
+import RekapNilaiAdminPage from "../pages/admin/RekapNilaiAdminPage";
+import PengaturanBobotPenilaianPage from "../pages/admin/PengaturanBobotPenilaianPage";
+import TemplateRaporPage from "../pages/admin/TemplateRaporPage";
 import MentorDashboardPage from "../pages/mentor/MentorDashboardPage";
 import PresensiBimbinganPage from "../pages/mentor/PresensiBimbinganPage";
 import VerifikasiIzinPage from "../pages/mentor/VerifikasiIzinPage";
+import PenilaianMentorPage from "../pages/mentor/PenilaianMentorPage";
 import PesertaDashboardPage from "../pages/peserta/PesertaDashboardPage";
 import PresensiSayaPage from "../pages/peserta/PresensiSayaPage";
 import PengajuanIzinPage from "../pages/peserta/PengajuanIzinPage";
+import TranskripNilaiPesertaPage from "../pages/peserta/TranskripNilaiPesertaPage";
+import BantuanPage from "../pages/admin/BantuanPage";
 import { getToken, getRole } from "../utils/authStorage";
 
 const roleHomePath = {
@@ -46,8 +51,8 @@ const AppRoutes = () => {
 
       {/* Admin — hanya role admin yang boleh akses */}
       <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><DashboardPage /></ProtectedRoute>} /> 
+      <Route path="/admin/bantuan" element={<ProtectedRoute allowedRoles={["admin"]}><BantuanPage /></ProtectedRoute>} />
       <Route path="/admin/faq" element={<ProtectedRoute allowedRoles={["admin"]}><FaqPage /></ProtectedRoute>} />
-      <Route path="/admin/pertanyaan" element={<ProtectedRoute allowedRoles={["admin"]}><PertanyaanMasukPage /></ProtectedRoute>} />
       <Route path="/admin/analitik-faq" element={<AnalitikFaqPage />} />
       <Route path="/admin/akun" element={<ProtectedRoute allowedRoles={["admin"]}><KelolaAkunPage /></ProtectedRoute>} />
       <Route path="/admin/bidang" element={<ProtectedRoute allowedRoles={["admin"]}><BidangPage /></ProtectedRoute>} />
@@ -59,6 +64,9 @@ const AppRoutes = () => {
       <Route path="/admin/jam-kerja" element={<ProtectedRoute allowedRoles={["admin"]}><JamKerjaLiburPage /></ProtectedRoute>} />
       <Route path="/admin/presensi/rekap" element={<ProtectedRoute allowedRoles={["admin"]}><RekapPresensiPage /></ProtectedRoute>} />
       <Route path="/admin/presensi" element={<ProtectedRoute allowedRoles={["admin"]}><DataPresensiPage /></ProtectedRoute>} />
+      <Route path="/admin/penilaian" element={<ProtectedRoute allowedRoles={["admin"]}><RekapNilaiAdminPage /></ProtectedRoute>} />
+      <Route path="/admin/penilaian/bobot" element={<ProtectedRoute allowedRoles={["admin"]}><PengaturanBobotPenilaianPage /></ProtectedRoute>} />
+      <Route path="/admin/penilaian/template" element={<ProtectedRoute allowedRoles={["admin"]}><TemplateRaporPage /></ProtectedRoute>} />
       <Route path="/admin/sertifikat" element={<ProtectedRoute allowedRoles={["admin"]}><KelolaSertifikatPage /></ProtectedRoute>} />
       <Route path="/admin/sertifikat/template" element={<ProtectedRoute allowedRoles={["admin"]}><TemplateSertifikatPage /></ProtectedRoute>} />
       <Route path="/admin/pengaturan-landing" element={<Navigate to="/admin/landing/identitas" replace />} />
@@ -69,11 +77,13 @@ const AppRoutes = () => {
       <Route path="/mentor" element={<ProtectedRoute allowedRoles={["mentor"]}><MentorDashboardPage /></ProtectedRoute>} />
       <Route path="/mentor/presensi" element={<ProtectedRoute allowedRoles={["mentor"]}><PresensiBimbinganPage /></ProtectedRoute>} />
       <Route path="/mentor/pengajuan-izin" element={<ProtectedRoute allowedRoles={["mentor"]}><VerifikasiIzinPage /></ProtectedRoute>} />
+      <Route path="/mentor/penilaian" element={<ProtectedRoute allowedRoles={["mentor"]}><PenilaianMentorPage /></ProtectedRoute>} />
 
       {/* Peserta — hanya role peserta yang boleh akses */}
       <Route path="/peserta" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaDashboardPage /></ProtectedRoute>} />
       <Route path="/peserta/presensi" element={<ProtectedRoute allowedRoles={["peserta"]}><PresensiSayaPage /></ProtectedRoute>} />
       <Route path="/peserta/pengajuan-izin" element={<ProtectedRoute allowedRoles={["peserta"]}><PengajuanIzinPage /></ProtectedRoute>} />
+      <Route path="/peserta/penilaian" element={<ProtectedRoute allowedRoles={["peserta"]}><TranskripNilaiPesertaPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

@@ -34,6 +34,13 @@ const TemplateSuratPage = () => {
   const [search, setSearch] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [sortBy, setSortBy] = useState("nama_az");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const emptyFilters = { jenis_peserta: [], status: [], aset: [] };
   const [filters, setFilters] = useState(emptyFilters);
@@ -48,7 +55,7 @@ const TemplateSuratPage = () => {
 
   const openFilter = () => { setFilters(appliedFilters); setShowFilterModal(true); };
   const applyFilter = () => setAppliedFilters(filters);
-  const resetFilter = () => { setFilters(emptyFilters); setAppliedFilters(emptyFilters); };
+  const resetFilter = () => { setFilters(emptyFilters); setAppliedFilters(emptyFilters); setSortBy("terbaru"); };
 
   const fetchTemplates = async () => {
     try {
@@ -135,6 +142,7 @@ const TemplateSuratPage = () => {
   });
 
   const activeFilterCount = Object.values(appliedFilters).reduce((n, arr) => n + arr.length, 0);
+  const activeFilterCountMobile = activeFilterCount + (sortBy ? 1 : 0);
 
   const totalTemplate = templates.length;
   const totalPublish = templates.filter((t) => t.status === "publish").length;
@@ -147,27 +155,34 @@ const TemplateSuratPage = () => {
         <div>
           <h2 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>Template Surat Penerimaan</h2>
           <p className={`mt-1.5 text-xs max-w-5xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-            Kelola berbagai desain surat penerimaan magang. Atur kop, redaksi, penandatangan, dan tata letak PDF tanpa mengubah kode, lalu pilih templatenya saat menerbitkan surat.
+            <span className="hidden sm:inline">
+              Kelola berbagai desain surat penerimaan magang. Atur kop, redaksi, penandatangan, dan tata letak PDF tanpa mengubah kode, lalu pilih templatenya saat menerbitkan surat.
+            </span>
+            <span className="inline sm:hidden">
+              Kelola kop, redaksi, penandatangan, dan tata letak PDF surat penerimaan.
+            </span>
           </p>
         </div>
 
         {/* Statistik ringkas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           {[
-            { icon: LayoutTemplate, label: "Total Template", value: totalTemplate, caption: "Desain surat tersimpan", lightGradient: "from-blue-300 to-white", gradient: "from-[#004F9F] to-[#0B1442]", iconBg: "bg-blue-50", iconColor: "text-blue-600" },
-            { icon: CheckCircle2, label: "Publish", value: totalPublish, caption: "Siap dipakai menerbitkan", lightGradient: "from-emerald-300 to-white", gradient: "from-emerald-500 to-emerald-700", iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
-            { icon: FileEdit, label: "Draft", value: totalDraft, caption: "Belum bisa dipilih admin", lightGradient: "from-amber-300 to-white", gradient: "from-amber-500 to-amber-700", iconBg: "bg-amber-50", iconColor: "text-amber-600" },
-            { icon: ImageIcon, label: "Aset Lengkap", value: totalAsetLengkap, caption: "Logo, tanda tangan, stempel", lightGradient: "from-sky-300 to-white", gradient: "from-sky-500 to-sky-700", iconBg: "bg-sky-50", iconColor: "text-sky-600" },
+            { icon: LayoutTemplate, label: "Total Template", value: totalTemplate, caption: "Desain surat tersimpan", lightGradient: "from-blue-300 to-white", gradient: "from-[#004F9F] to-[#0B1442]", iconBg: isDark ? "bg-blue-950/60 text-sky-400" : "bg-blue-50 text-blue-600" },
+            { icon: CheckCircle2, label: "Publish", value: totalPublish, caption: "Siap dipakai menerbitkan", lightGradient: "from-emerald-300 to-white", gradient: "from-emerald-500 to-emerald-700", iconBg: isDark ? "bg-emerald-950/60 text-emerald-400" : "bg-emerald-50 text-emerald-600" },
+            { icon: FileEdit, label: "Draft", value: totalDraft, caption: "Belum bisa dipilih admin", lightGradient: "from-amber-300 to-white", gradient: "from-amber-500 to-amber-700", iconBg: isDark ? "bg-amber-950/60 text-amber-400" : "bg-amber-50 text-amber-600" },
+            { icon: ImageIcon, label: "Aset Lengkap", value: totalAsetLengkap, caption: "Logo, tanda tangan, stempel", lightGradient: "from-sky-300 to-white", gradient: "from-sky-500 to-sky-700", iconBg: isDark ? "bg-sky-950/60 text-sky-400" : "bg-sky-50 text-sky-600" },
           ].map((c, i) => (
-            <div key={i} className={`group relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br ${c.lightGradient} p-4 sm:p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1`}>
+            <div key={i} className={`group relative overflow-hidden rounded-2xl border p-3 sm:p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
+              isDark ? "border-white/10 bg-[#161b22]" : `border-slate-200 bg-gradient-to-br ${c.lightGradient}`
+            }`}>
               <div className={`absolute -right-12 -top-12 h-36 w-36 rounded-full bg-gradient-to-br ${c.gradient} opacity-[0.3] blur-xl transition-all duration-300 group-hover:opacity-[0.4] group-hover:scale-125`} />
               <div className="relative flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[11px] sm:text-sm font-bold tracking-wide text-slate-500 truncate">{c.label}</p>
-                  <h3 className="mt-1 sm:mt-1.5 text-2xl sm:text-4xl font-black tracking-tight text-[#0B1442]">{c.value}</h3>
-                  <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs font-medium text-slate-400 leading-snug">{c.caption}</p>
+                  <p className={`text-[10px] sm:text-sm font-bold tracking-wide truncate ${isDark ? "text-slate-400" : "text-slate-500"}`}>{c.label}</p>
+                  <h3 className={`mt-1 sm:mt-1.5 text-xl sm:text-4xl font-black tracking-tight ${isDark ? "text-white" : "text-[#0B1442]"}`}>{c.value}</h3>
+                  <p className={`mt-1.5 sm:mt-2 text-[9px] sm:text-xs font-medium leading-snug ${isDark ? "text-slate-500" : "text-slate-400"}`}>{c.caption}</p>
                 </div>
-                <span className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 ${c.iconBg} ${c.iconColor}`}>
+                <span className={`flex h-7.5 w-7.5 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 ${c.iconBg}`}>
                   <c.icon className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={2} />
                 </span>
               </div>
@@ -176,36 +191,47 @@ const TemplateSuratPage = () => {
           ))}
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+        <div className={`rounded-2xl border shadow-sm overflow-hidden ${isDark ? "border-white/5 bg-[#161b22]" : "border-slate-200/80 bg-white"}`}>
           {/* Header card */}
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 px-4 sm:px-6 pt-5 pb-4">
-            <div className="flex items-start gap-3 min-w-0">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
-                <FileSignature className="w-5 h-5" />
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 pt-4 pb-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <span className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
+                <FileSignature className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
               </span>
-              <div className="min-w-0">
-                <h3 className="text-base font-black text-[#0B1442]">Daftar Template</h3>
-                <p className="mt-0.5 text-xs text-slate-400 max-w-xl leading-relaxed">
-                  Simpan beberapa versi surat, lalu pilih templatenya saat menerbitkan surat penerimaan.
+              <div className="min-w-0 text-left">
+                <h3 className={`text-sm sm:text-base font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                  Daftar Template
+                </h3>
+                <p className="mt-0.5 text-[10px] sm:text-xs text-slate-400 max-w-xl leading-relaxed">
+                  <span className="hidden sm:inline">Simpan beberapa versi surat, lalu pilih templatenya saat menerbitkan surat penerimaan.</span>
+                  <span className="inline sm:hidden">Pilih template saat menerbitkan surat penerimaan.</span>
                 </p>
               </div>
             </div>
             <button
               onClick={openCreateTemplate}
-              className="group inline-flex items-center gap-2 self-start rounded-xl bg-gradient-to-r from-[#0B1442] to-[#004F9F] px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 cursor-pointer"
+              className="group inline-flex items-center gap-1 sm:gap-2 shrink-0 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#004F9F] px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 cursor-pointer"
             >
-              <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
-              Tambah Template
+              <Plus className="w-3.5 h-3.5 transition-transform duration-300 group-hover:rotate-90" />
+              <span className="hidden sm:inline">Tambah Template</span>
+              <span className="inline sm:hidden">Tambah</span>
             </button>
           </div>
 
           {/* Toolbar: Urutkan — Filter — Search */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 pb-4 border-b border-slate-100">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <TemplateSuratSortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+          <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 pb-4 border-b ${isDark ? "border-white/5 bg-[#161b22]/30" : "border-slate-100"}`}>
+            
+            {/* Desktop Only: SortDropdown + Filter button */}
+            <div className="hidden sm:flex items-center gap-2.5">
+              <TemplateSuratSortDropdown sortBy={sortBy} setSortBy={setSortBy} isDark={isDark} />
+              
               <button
                 onClick={openFilter}
-                className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300 hover:bg-slate-50 active:scale-95 cursor-pointer shrink-0"
+                className={`group inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer shrink-0 ${
+                  isDark
+                    ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                }`}
               >
                 <FilterIcon className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
                 Filter
@@ -217,20 +243,52 @@ const TemplateSuratPage = () => {
               </button>
             </div>
 
-            <div className={`relative w-full sm:w-64 shrink-0 transition-transform duration-200 ${isSearchFocused ? "sm:scale-[1.03]" : ""}`}>
-              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-all duration-200 ${isSearchFocused ? "text-[#004F9F] scale-110" : "text-slate-400"}`} />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                placeholder="Cari nama atau keterangan..."
-                className={`w-full rounded-xl border pl-9 pr-3 py-2.5 text-xs font-medium text-slate-700 outline-none transition-all duration-200 ${
-                  isSearchFocused ? "border-[#004F9F] bg-white shadow-md ring-4 ring-[#00A5EC]/15" : "border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-white"
-                }`}
-              />
+            {/* Mobile/All: Filter and Search row */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {/* Mobile Only: Filter Button */}
+              <div className="block sm:hidden shrink-0">
+                <button
+                  type="button"
+                  onClick={openFilter}
+                  className={`group inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold shadow-sm transition-all duration-200 active:scale-95 cursor-pointer ${
+                    isDark
+                      ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <FilterIcon className="w-3 h-3 transition-transform duration-300 group-hover:scale-110" />
+                  Filter
+                  {activeFilterCountMobile > 0 && (
+                    <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#004F9F] text-white px-1 text-[8.5px] font-black">
+                      {activeFilterCountMobile}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Search input */}
+              <div className={`relative flex-1 sm:w-64 shrink-0 transition-transform duration-200 ${isSearchFocused ? "scale-[1.01]" : ""}`}>
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-all duration-200 ${isSearchFocused ? (isDark ? "text-[#00A5EC] scale-110" : "text-[#004F9F] scale-110") : "text-slate-400"}`} />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  placeholder="Cari sesuatu..."
+                  className={`w-full rounded-xl border pl-9 pr-3 py-2 sm:py-2.5 text-xs font-medium outline-none transition-all duration-200 ${
+                    isSearchFocused
+                      ? isDark
+                        ? "border-[#00A5EC] bg-white/[0.07] shadow-md ring-4 ring-[#00A5EC]/20 text-slate-200"
+                        : "border-[#004F9F] bg-white shadow-md ring-4 ring-[#00A5EC]/15 text-slate-700"
+                      : isDark
+                        ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
+                        : "border-slate-200 bg-slate-50/50 text-slate-700 hover:border-slate-300 hover:bg-white"
+                  }`}
+                />
+              </div>
             </div>
+
           </div>
 
           {/* Grid daftar template */}
@@ -240,24 +298,42 @@ const TemplateSuratPage = () => {
                 <Loader2 className="h-4 w-4 animate-spin" /> Memuat template...
               </div>
             ) : sorted.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-300"><Inbox className="w-7 h-7" /></span>
-                <p className="text-sm font-bold text-slate-600">{templates.length === 0 ? "Belum ada template surat" : "Template tidak ditemukan"}</p>
-                <p className="max-w-xs text-xs text-slate-400">
-                  {templates.length === 0
-                    ? <>Klik <span className="font-bold text-[#004F9F]">Tambah Template</span> untuk membuat desain surat pertama.</>
-                    : "Coba kata kunci atau filter lain."}
-                </p>
+              <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 py-10 sm:py-16 text-center animate-[fadeslide_0.3s_ease-out]">
+                <span className={`relative flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl ${
+                  isDark ? "bg-white/5 text-slate-500" : "bg-slate-50 text-slate-300"
+                }`}>
+                  <Inbox className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className={`absolute inset-0 animate-ping rounded-xl sm:rounded-2xl border-2 opacity-40 ${
+                    isDark ? "border-white/10" : "border-slate-200"
+                  }`} />
+                </span>
+                <div>
+                  <p className={`text-xs sm:text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                    {templates.length === 0 ? "Belum ada template surat" : "Template tidak ditemukan"}
+                  </p>
+                  <p className="mt-0.5 max-w-[260px] sm:max-w-xs text-[10px] sm:text-xs text-slate-400">
+                    {templates.length === 0
+                      ? <>Klik <span className="font-bold text-[#004F9F]">Tambah Template</span> untuk membuat desain surat pertama.</>
+                      : "Coba kata kunci atau filter lain."}
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {sorted.map((tpl) => (
                   <div
                     key={tpl.id}
-                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                    className={`group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
+                      isDark ? "border-white/10 bg-[#1e2530]" : "border-slate-200 bg-white"
+                    }`}
                   >
                     {/* Pratinjau surat */}
-                    <div className="relative flex aspect-[1/0.9] w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_25%_15%,#eef5ff_0%,#f1f5f9_55%,#e7edf7_100%)] px-2.5 pt-2 pb-2.5">
+                    <div
+                      onClick={() => setPreviewTemplate(tpl)}
+                      className={`relative flex aspect-[1/0.9] w-full flex-col overflow-hidden px-2.5 pt-2 pb-2.5 cursor-pointer ${
+                        isDark ? "bg-[#161b22]" : "bg-[radial-gradient(circle_at_25%_15%,#eef5ff_0%,#f1f5f9_55%,#e7edf7_100%)]"
+                      }`}
+                    >
                       {/* Badge di baris paling atas */}
                       <div className="relative z-10 flex shrink-0 items-center justify-between gap-1.5">
                         <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#0B1442] to-[#004F9F] px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wide text-white shadow-md ring-1 ring-white/25">
@@ -266,8 +342,8 @@ const TemplateSuratPage = () => {
                         <span
                           className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider shadow-md ring-1 ${
                             tpl.status === "publish"
-                              ? "bg-white text-emerald-600 ring-emerald-200"
-                              : "bg-white text-amber-600 ring-amber-200"
+                              ? isDark ? "bg-[#102a1e] text-emerald-400 ring-emerald-900/30" : "bg-white text-emerald-600 ring-emerald-200"
+                              : isDark ? "bg-[#332200] text-amber-400 ring-amber-900/30" : "bg-white text-amber-600 ring-amber-200"
                           }`}
                         >
                           {tpl.status === "publish" ? <CheckCircle2 className="w-2.5 h-2.5" /> : <FileEdit className="w-2.5 h-2.5" />}
@@ -282,11 +358,11 @@ const TemplateSuratPage = () => {
                         </div>
                       </div>
 
-                      {/* Overlay saat hover — tombol pratinjau */}
-                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-gradient-to-t from-[#0B1442]/75 via-[#0B1442]/15 to-[#0B1442]/25 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100">
+                      {/* Overlay saat hover — tombol pratinjau (Hanya desktop) */}
+                      <div className="pointer-events-none absolute inset-0 hidden sm:flex items-center justify-center bg-gradient-to-t from-[#0B1442]/75 via-[#0B1442]/15 to-[#0B1442]/25 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
                         <button
                           type="button"
-                          onClick={() => setPreviewTemplate(tpl)}
+                          onClick={(e) => { e.stopPropagation(); setPreviewTemplate(tpl); }}
                           className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-2 text-[11px] font-black text-[#0B1442] shadow-lg transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" /> Pratinjau surat lengkap
@@ -295,51 +371,74 @@ const TemplateSuratPage = () => {
                     </div>
 
                     {/* Info + aksi */}
-                    <div className="relative flex flex-1 flex-col overflow-hidden bg-gradient-to-br from-blue-50/60 to-white p-3">
+                    <div className={`relative flex flex-1 flex-col overflow-hidden p-2.5 sm:p-3 ${
+                      isDark ? "bg-[#1b222d]" : "bg-gradient-to-br from-blue-50/60 to-white"
+                    }`}>
                       <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-gradient-to-br from-[#004F9F] to-[#0B1442] opacity-[0.12] blur-xl transition-all duration-300 group-hover:opacity-[0.22] group-hover:scale-125" />
 
-                      <div className="relative flex items-start gap-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
-                          <FileSignature className="w-3.5 h-3.5" strokeWidth={2} />
+                      <div className="relative flex items-start gap-1.5 sm:gap-2">
+                        <span className={`flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 ${
+                          isDark ? "bg-white/5 text-[#00A5EC]" : "bg-blue-50 text-[#004F9F]"
+                        }`}>
+                          <FileSignature className="w-3 h-3 sm:w-3.5 sm:h-3.5" strokeWidth={2} />
                         </span>
-                        <div className="min-w-0">
-                          <h4 className="text-[12.5px] font-black leading-snug tracking-tight text-[#0B1442] break-words">{tpl.nama}</h4>
-                          <p className="mt-0.5 text-[10px] font-medium leading-snug text-slate-400 break-words whitespace-normal">
+                        <div className="min-w-0 text-left">
+                          <h4 className={`text-[11px] sm:text-[12.5px] font-black leading-snug tracking-tight break-words transition-colors duration-200 ${isDark ? "text-slate-100 group-hover:text-[#00A5EC]" : "text-[#0B1442] group-hover:text-[#004F9F]"}`}>{tpl.nama}</h4>
+                          <p className="mt-0.5 text-[9px] sm:text-[10px] font-medium leading-snug text-slate-400 break-words whitespace-normal">
                             {tpl.keterangan || "Tanpa keterangan"}
                           </p>
                         </div>
                       </div>
 
                       <div className="relative mt-2 flex flex-wrap items-center gap-1">
-                        <span className="inline-flex items-center gap-1 rounded-md bg-white/80 px-1.5 py-0.5 text-[9px] font-bold text-slate-500 ring-1 ring-inset ring-slate-200/70">
-                          <GraduationCap className="w-2.5 h-2.5" /> {labelPeserta(tpl)}
+                        <span className={`inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[8px] sm:text-[9px] font-bold ring-1 ring-inset ${
+                          isDark ? "bg-white/5 text-slate-300 ring-white/10" : "bg-white/80 text-slate-500 ring-slate-200/70"
+                        }`}>
+                          <GraduationCap className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> {labelPeserta(tpl)}
                         </span>
-                        <span className="inline-flex items-center gap-1 rounded-md bg-white/80 px-1.5 py-0.5 text-[9px] font-bold text-slate-500 ring-1 ring-inset ring-slate-200/70">
-                          <BadgeCheck className="w-2.5 h-2.5" /> {tpl.status === "publish" ? "Publish" : "Draft"}
+                        <span className={`inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[8px] sm:text-[9px] font-bold ring-1 ring-inset ${
+                          isDark ? "bg-white/5 text-slate-300 ring-white/10" : "bg-white/80 text-slate-500 ring-slate-200/70"
+                        }`}>
+                          <BadgeCheck className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> {tpl.status === "publish" ? "Publish" : "Draft"}
                         </span>
-                        <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-[#004F9F] ring-1 ring-inset ring-blue-100">
-                          <ImageIcon className="w-2.5 h-2.5" /> {countAset(tpl)}/3
+                        <span className={`inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[8px] sm:text-[9px] font-bold ring-1 ring-inset ${
+                          isDark ? "bg-sky-500/10 text-sky-400 ring-sky-500/20" : "bg-blue-50 text-[#004F9F] ring-blue-100"
+                        }`}>
+                          <ImageIcon className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> {countAset(tpl)}/3
                         </span>
                       </div>
 
                       <div className="relative mt-auto flex items-center gap-1.5 pt-2.5">
                         <button
                           onClick={() => openEditTemplate(tpl)}
-                          className="group/edit inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-[#0B1442] to-[#004F9F] px-2.5 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer"
+                          className="group/edit inline-flex h-7.5 sm:h-8.5 flex-1 items-center justify-center gap-1 sm:gap-1.5 rounded-lg bg-gradient-to-r from-[#0B1442] to-[#004F9F] px-2 text-[10px] sm:text-[11px] font-bold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer"
                         >
                           <Pencil className="w-3 h-3 transition-transform duration-300 group-hover/edit:-rotate-12" /> Atur Desain
                         </button>
                         <button
+                          onClick={() => setPreviewTemplate(tpl)}
+                          title="Pratinjau template"
+                          className={`inline-flex sm:hidden h-7.5 w-7.5 shrink-0 items-center justify-center rounded-lg border text-[10px] sm:text-[11px] font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ${
+                            isDark ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                          }`}
+                        >
+                          <Eye className="w-3 h-3" />
+                        </button>
+                        <button
                           onClick={() => duplikat(tpl)}
                           title="Duplikat template"
-                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 transition-all duration-200 hover:bg-slate-50 hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                          className={`inline-flex h-7.5 w-7.5 sm:h-8.5 sm:w-8.5 shrink-0 items-center justify-center rounded-lg border text-[10px] sm:text-[11px] font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ${
+                            isDark ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                          }`}
                         >
                           <Copy className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => handleDeleteTemplate(tpl)}
                           title="Hapus template"
-                          className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-600 transition-all duration-200 hover:bg-red-100 hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                          className={`inline-flex h-7.5 w-7.5 sm:h-8.5 sm:w-8.5 shrink-0 items-center justify-center rounded-lg border text-[10px] sm:text-[11px] font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ${
+                            isDark ? "border-red-900/30 bg-red-950/20 text-red-400 hover:bg-red-900/25" : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                          }`}
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -354,7 +453,6 @@ const TemplateSuratPage = () => {
             )}
           </div>
         </div>
-      </div>
 
       {designer && (
         <TemplateSuratDesigner
@@ -371,6 +469,9 @@ const TemplateSuratPage = () => {
           onApply={applyFilter}
           onReset={resetFilter}
           onClose={() => setShowFilterModal(false)}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          isDark={isDark}
         />
       )}
 
@@ -387,36 +488,38 @@ const TemplateSuratPage = () => {
           `}</style>
 
           <div
-            className="flex max-h-[93vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-[0_35px_90px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/15 animate-[tplPop_0.3s_cubic-bezier(0.16,1,0.3,1)]"
+            className={`flex max-h-[93vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl shadow-[0_35px_90px_-20px_rgba(0,0,0,0.65)] ring-1 animate-[tplPop_0.3s_cubic-bezier(0.16,1,0.3,1)] ${
+              isDark ? "bg-[#161b22] ring-white/10" : "bg-white ring-black/5"
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="relative shrink-0 overflow-hidden bg-gradient-to-r from-[#0B1442] via-[#0D2A63] to-[#004F9F] px-5 py-4 text-white">
+            <div className="relative shrink-0 overflow-hidden bg-gradient-to-r from-[#0B1442] via-[#0D2A63] to-[#004F9F] px-4 py-3 sm:px-5 sm:py-4 text-white">
               <div className="pointer-events-none absolute -left-10 -top-16 h-40 w-40 rounded-full bg-[#00A5EC]/25 blur-3xl" />
               <div className="pointer-events-none absolute -bottom-20 right-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
 
               <div className="relative flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="group/icon grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur transition-all duration-300 hover:scale-110 hover:bg-white/25">
-                    <FileSignature className="w-5 h-5 transition-transform duration-300 group-hover/icon:rotate-6" />
+                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                  <div className="group/icon grid h-8 w-8 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur transition-all duration-300 hover:scale-110 hover:bg-white/25">
+                    <FileSignature className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 group-hover/icon:rotate-6" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="truncate text-base font-black tracking-tight">{previewTemplate.nama}</h3>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset ring-white/20 transition-colors duration-200 hover:bg-white/25">
-                        <GraduationCap className="w-2.5 h-2.5" /> {labelPeserta(previewTemplate)}
+                    <h3 className="truncate text-xs sm:text-base font-black tracking-tight text-white">{previewTemplate.nama}</h3>
+                    <div className="mt-1 sm:mt-2 flex flex-wrap items-center gap-x-1 gap-y-1 sm:gap-x-1.5 sm:gap-y-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset ring-white/20 transition-colors duration-200 hover:bg-white/25">
+                        <GraduationCap className="w-2 sm:w-2.5 h-2 sm:h-2.5" /> {labelPeserta(previewTemplate)}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase ring-1 ring-inset ring-white/20 transition-colors duration-200 hover:bg-white/25">
-                        <BadgeCheck className="w-2.5 h-2.5" /> {previewTemplate.status === "publish" ? "Publish" : "Draft"}
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold uppercase ring-1 ring-inset ring-white/20 transition-colors duration-200 hover:bg-white/25">
+                        <BadgeCheck className="w-2 sm:w-2.5 h-2 sm:h-2.5" /> {previewTemplate.status === "publish" ? "Publish" : "Draft"}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ring-white/20">
-                        <ImageIcon className="w-2.5 h-2.5" /> {previewTemplate.file_logo ? "Logo" : "Tanpa logo"}
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold ring-1 ring-inset ring-white/20">
+                        <ImageIcon className="w-2 sm:w-2.5 h-2 sm:h-2.5" /> {previewTemplate.file_logo ? "Logo" : "Tanpa logo"}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ring-white/20">
-                        <PenTool className="w-2.5 h-2.5" /> {previewTemplate.file_ttd ? "TTD" : "Tanpa TTD"}
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold ring-1 ring-inset ring-white/20">
+                        <PenTool className="w-2 sm:w-2.5 h-2 sm:h-2.5" /> {previewTemplate.file_ttd ? "TTD" : "Tanpa TTD"}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ring-white/20">
-                        <Stamp className="w-2.5 h-2.5" /> {previewTemplate.file_stempel ? "Stempel" : "Tanpa stempel"}
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold ring-1 ring-inset ring-white/20">
+                        <Stamp className="w-2 sm:w-2.5 h-2 sm:h-2.5" /> {previewTemplate.file_stempel ? "Stempel" : "Tanpa stempel"}
                       </span>
                     </div>
                   </div>
@@ -426,22 +529,24 @@ const TemplateSuratPage = () => {
                   type="button"
                   onClick={() => setPreviewTemplate(null)}
                   title="Tutup (Esc)"
-                  className="group/x grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 text-white/90 ring-1 ring-white/20 backdrop-blur transition-all duration-300 hover:rotate-90 hover:bg-red-500/90 hover:text-white hover:ring-red-300/40 active:scale-90 cursor-pointer"
+                  className="group/x grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-white/10 text-white/90 ring-1 ring-white/20 backdrop-blur transition-all duration-300 hover:rotate-90 hover:bg-red-500/90 hover:text-white hover:ring-red-300/40 active:scale-90 cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </div>
             </div>
 
             {/* Isi: surat */}
-            <div className="relative min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_20%_10%,#eef5ff_0%,#f1f5f9_50%,#e4ebf6_100%)] p-6">
+            <div className={`relative min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 ${
+              isDark ? "bg-[#0b0f19]" : "bg-[radial-gradient(circle_at_20%_10%,#eef5ff_0%,#f1f5f9_55%,#e4ebf6_100%)]"
+            }`}>
               <div className="pointer-events-none absolute inset-0 opacity-[0.55] [background-image:linear-gradient(#0b144210_1px,transparent_1px),linear-gradient(90deg,#0b144210_1px,transparent_1px)] [background-size:28px_28px]" />
 
-              <div className="group/sheet relative mx-auto w-full max-w-2xl">
+              <div className="group/sheet relative mx-auto w-[72vw] sm:w-full max-w-[280px] sm:max-w-2xl">
                 <div className="pointer-events-none absolute inset-6 rounded-2xl bg-gradient-to-r from-[#00A5EC]/0 via-[#004F9F]/25 to-[#00A5EC]/0 opacity-0 blur-2xl transition-opacity duration-500 group-hover/sheet:opacity-100" />
 
                 <div className="relative aspect-[1/1.414] w-full overflow-hidden rounded-sm shadow-2xl transition-transform duration-500 ease-out will-change-transform group-hover/sheet:-translate-y-1.5 group-hover/sheet:scale-[1.01]">
-                  <TemplateSuratPreview template={previewTemplate} base={9} />
+                  <TemplateSuratPreview template={previewTemplate} base={isMobile ? 4.2 : 9} />
 
                   {/* Kilau menyapu saat hover */}
                   <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -450,21 +555,26 @@ const TemplateSuratPage = () => {
                 </div>
               </div>
 
-              <p className="relative mt-4 text-center text-[11px] font-semibold text-slate-400">
-                Data peserta di atas hanyalah contoh · tekan <span className="rounded border border-slate-300 bg-white px-1 py-0.5 text-[10px] font-bold text-slate-500">Esc</span> untuk menutup
+              <p className="relative mt-4 text-center text-[10.5px] sm:text-[11px] font-semibold text-slate-400">
+                Data peserta di atas hanyalah contoh
+                <span className="hidden sm:inline"> · tekan <span className="rounded border border-slate-350 bg-white/95 dark:border-white/10 dark:bg-white/5 px-1 py-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">Esc</span> untuk menutup</span>
               </p>
             </div>
 
             {/* Footer */}
-            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-100 bg-white/90 px-5 py-3.5 backdrop-blur">
+            <div className={`flex shrink-0 items-center justify-between gap-2 border-t px-4 py-3 sm:px-5 sm:py-3.5 backdrop-blur ${
+              isDark ? "border-white/5 bg-[#161b22]/95" : "border-slate-100 bg-white/90"
+            }`}>
               <span className="hidden items-center gap-1.5 text-[11px] font-semibold text-slate-400 sm:inline-flex">
                 <Eye className="w-3.5 h-3.5" /> Pratinjau kasar tata letak; hasil akhir mengikuti PDF yang digenerate
               </span>
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
                   onClick={() => setPreviewTemplate(null)}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm active:scale-95 cursor-pointer"
+                  className={`rounded-xl border px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ${
+                    isDark ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
                 >
                   Tutup
                 </button>
@@ -475,15 +585,16 @@ const TemplateSuratPage = () => {
                     setPreviewTemplate(null);
                     openEditTemplate(tpl);
                   }}
-                  className="group/edit inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#0B1442] via-[#004F9F] to-[#00A5EC] bg-[length:200%_100%] bg-left px-4 py-2 text-xs font-bold text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-right hover:shadow-lg hover:shadow-[#004F9F]/30 active:scale-95 cursor-pointer"
+                  className="group/edit inline-flex items-center gap-1 sm:gap-1.5 rounded-xl bg-gradient-to-r from-[#0B1442] via-[#004F9F] to-[#00A5EC] bg-[length:200%_100%] bg-left px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-right hover:shadow-lg hover:shadow-[#004F9F]/30 active:scale-95 cursor-pointer"
                 >
-                  <Pencil className="w-3.5 h-3.5 transition-transform duration-300 group-hover/edit:-rotate-12" /> Atur Desain
+                  <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform duration-300 group-hover/edit:-rotate-12" /> Atur Desain
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+      </div>
     </AdminLayout>
   );
 };

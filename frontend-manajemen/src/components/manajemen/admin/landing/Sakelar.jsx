@@ -6,33 +6,33 @@ const Sakelar = ({ nyala, onUbah, judul, ket, isDark, ikon: Ikon = null }) => (
   <button
     type="button"
     onClick={() => onUbah(!nyala)}
-    className={`group/sakelar flex w-full cursor-pointer items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-300 active:scale-[0.995] ${
+    className={`group/sakelar flex w-full cursor-pointer items-center gap-2 sm:gap-4 rounded-lg sm:rounded-2xl border p-2 sm:p-4 text-left transition-all duration-300 active:scale-[0.995] ${
       nyala
         ? isDark
-          ? "border-[#00A5EC]/40 bg-[#00A5EC]/[0.07]"
+          ? "border-[#00A5EC]/40 bg-[#00A5EC]/10"
           : "border-[#00A5EC]/45 bg-gradient-to-r from-[#00A5EC]/[0.07] to-transparent shadow-sm"
         : isDark
-        ? "border-white/10 bg-white/[0.03] hover:border-white/20"
-        : "border-slate-200/80 bg-slate-50/60 hover:border-slate-300 hover:bg-white hover:shadow-sm"
+        ? "border-white/10 bg-[#161b22] hover:border-white/20"
+        : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-sm"
     }`}
   >
     {Ikon && (
       <span
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-300 ${
+        className={`flex h-6.5 w-6.5 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-md sm:rounded-xl transition-all duration-300 ${
           nyala
             ? "bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md"
             : isDark
-            ? "bg-white/5 text-slate-500"
+            ? "bg-white/5 text-slate-400"
             : "bg-slate-100 text-slate-400"
         }`}
       >
-        <Ikon className="h-4.5 w-4.5" strokeWidth={2.2} />
+        <Ikon className="h-3 w-3 sm:h-4.5 sm:w-4.5" strokeWidth={2.2} />
       </span>
     )}
 
     <span className="min-w-0 flex-1">
       <span
-        className={`block text-[13px] font-black tracking-tight ${
+        className={`block text-[10.5px] sm:text-[13px] font-black tracking-tight ${
           isDark ? "text-slate-100" : "text-[#0B1442]"
         }`}
       >
@@ -40,8 +40,8 @@ const Sakelar = ({ nyala, onUbah, judul, ket, isDark, ikon: Ikon = null }) => (
       </span>
       {ket && (
         <span
-          className={`mt-0.5 block text-[11.5px] font-medium leading-relaxed ${
-            isDark ? "text-slate-500" : "text-slate-400"
+          className={`mt-0.5 block text-[8px] sm:text-[11.5px] font-medium leading-tight sm:leading-relaxed ${
+            isDark ? "text-slate-400" : "text-slate-400"
           }`}
         >
           {ket}
@@ -51,7 +51,7 @@ const Sakelar = ({ nyala, onUbah, judul, ket, isDark, ikon: Ikon = null }) => (
 
     {/* batang sakelar */}
     <span
-      className={`relative flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 ${
+      className={`relative flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full p-[3px] transition-colors duration-200 ${
         nyala
           ? "bg-gradient-to-r from-[#004F9F] to-[#00A5EC]"
           : isDark
@@ -60,8 +60,8 @@ const Sakelar = ({ nyala, onUbah, judul, ket, isDark, ikon: Ikon = null }) => (
       }`}
     >
       <span
-        className={`absolute h-5 w-5 rounded-full bg-white shadow-md transition-all duration-300 ${
-          nyala ? "left-[22px]" : "left-0.5"
+        className={`h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+          nyala ? "translate-x-4" : "translate-x-0"
         }`}
       />
     </span>

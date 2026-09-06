@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import {
-  X, ClipboardList, LogIn, LogOut, Clock, Building2, GraduationCap,
+  X, LogIn, LogOut, Clock, Building2, GraduationCap,
   CalendarDays, UserCog, AlarmClockOff, Lock, StickyNote,
-  Image as ImageIcon, Info, ArrowRight, Timer, ShieldCheck, Maximize2, Sparkles,
+  Image as ImageIcon, Info, ArrowRight, Timer, ShieldCheck, Maximize2, Sparkles, ClipboardList,
 } from "lucide-react";
 import PresensiStatusBadge from "./PresensiStatusBadge";
 import { formatTanggalHari, formatTanggalPresensi, formatMenit, statusInfo } from "../../../../constants/presensiStatus";
@@ -27,61 +27,61 @@ const PesertaAvatarModal = ({ nama, foto }) => {
           src={url}
           alt={nama}
           onError={() => setError(true)}
-          className="h-12 w-12 rounded-2xl object-cover border border-white/20 shadow-lg"
+          className="h-9 w-9 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl object-cover border border-white/20 shadow-lg"
         />
       ) : (
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-[13px] font-black text-white border border-white/20 shadow-lg">
+        <span className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-[10px] sm:text-[13px] font-black text-white border border-white/20 shadow-lg">
           {getInisial(nama)}
         </span>
       )}
-      <span className="absolute -inset-1 rounded-2xl border-2 border-[#00A5EC]/30 animate-pulse pointer-events-none" />
+      <span className="absolute -inset-0.5 sm:-inset-1 rounded-xl sm:rounded-2xl border-2 border-[#00A5EC]/30 animate-pulse pointer-events-none" />
     </span>
   );
 };
 
-/* Kartu jam masuk / jam pulang (sorotan utama) */
-const JamCard = ({ icon: Icon, label, value, tone, delay = 0 }) => {
+/* Kartu jam masuk / jam pulang */
+const JamCard = ({ icon: Icon, label, value, tone, delay = 0, isDark = false }) => {
   const ada = Boolean(value);
   const tones = {
     masuk: {
-      ring: "ring-emerald-200/70",
-      bg: "bg-gradient-to-br from-emerald-50 to-emerald-50/30",
-      chip: "bg-emerald-500/10 text-emerald-600",
-      text: "text-emerald-700",
+      ring: isDark ? "ring-emerald-500/30" : "ring-emerald-200/70",
+      bg: isDark ? "bg-emerald-500/[0.07]" : "bg-gradient-to-br from-emerald-50 to-emerald-50/30",
+      chip: isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-500/10 text-emerald-600",
+      text: isDark ? "text-emerald-300" : "text-emerald-700",
     },
     pulang: {
-      ring: "ring-sky-200/70",
-      bg: "bg-gradient-to-br from-sky-50 to-sky-50/30",
-      chip: "bg-sky-500/10 text-sky-600",
-      text: "text-sky-700",
+      ring: isDark ? "ring-sky-500/30" : "ring-sky-200/70",
+      bg: isDark ? "bg-sky-500/[0.07]" : "bg-gradient-to-br from-sky-50 to-sky-50/30",
+      chip: isDark ? "bg-sky-500/20 text-sky-400" : "bg-sky-500/10 text-sky-600",
+      text: isDark ? "text-sky-300" : "text-sky-700",
     },
   };
   const t = ada ? tones[tone] : {
-    ring: "ring-slate-200",
-    bg: "bg-slate-50/70",
-    chip: "bg-slate-200/60 text-slate-400",
-    text: "text-slate-400",
+    ring: isDark ? "ring-white/10" : "ring-slate-200",
+    bg: isDark ? "bg-white/[0.02]" : "bg-slate-50/70",
+    chip: isDark ? "bg-white/5 text-slate-500" : "bg-slate-200/60 text-slate-400",
+    text: isDark ? "text-slate-500" : "text-slate-400",
   };
 
   return (
     <div
-      className={`group relative flex-1 overflow-hidden rounded-2xl ring-1 ${t.ring} ${t.bg} px-4 py-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md animate-[fadeslide_0.3s_ease-out]`}
+      className={`group relative flex-1 overflow-hidden rounded-xl sm:rounded-2xl ring-1 ${t.ring} ${t.bg} px-2.5 py-2 sm:px-4 sm:py-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md animate-[fadeslide_0.3s_ease-out]`}
       style={{ animationDelay: `${delay}ms`, animationFillMode: "backwards" }}
     >
-      <div className="flex items-center gap-2.5">
-        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${t.chip} transition-transform duration-300 group-hover:scale-110`}>
-          <Icon className="w-4 h-4" />
+      <div className="flex items-center gap-1.5 sm:gap-2.5">
+        <span className={`flex h-6 w-6 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl ${t.chip} transition-transform duration-300 group-hover:scale-110`}>
+          <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
         </span>
         <div className="min-w-0">
-          <p className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</p>
-          <p className={`mt-0.5 text-[17px] font-black leading-none tabular-nums ${t.text}`}>
+          <p className="text-[8px] sm:text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</p>
+          <p className={`mt-0.5 text-xs sm:text-[17px] font-black leading-none tabular-nums ${t.text}`}>
             {ada ? value : "--:--"}
           </p>
         </div>
       </div>
       {!ada && (
-        <p className="mt-2 text-[10px] font-semibold text-slate-400">
-          Belum melakukan absen {tone === "masuk" ? "masuk" : "pulang"}
+        <p className="mt-1 sm:mt-2 text-[8px] sm:text-[10px] font-semibold text-slate-400">
+          Belum absen {tone === "masuk" ? "masuk" : "pulang"}
         </p>
       )}
     </div>
@@ -89,65 +89,72 @@ const JamCard = ({ icon: Icon, label, value, tone, delay = 0 }) => {
 };
 
 /* Baris informasi pendukung */
-const InfoItem = ({ icon: Icon, label, value, accent = "slate", delay = 0 }) => {
+const InfoItem = ({ icon: Icon, label, value, accent = "slate", delay = 0, isDark = false }) => {
   const accents = {
-    slate: "bg-slate-100 text-slate-500 group-hover:bg-[#004F9F]/10 group-hover:text-[#004F9F]",
-    amber: "bg-amber-50 text-amber-600",
-    brand: "bg-[#004F9F]/10 text-[#004F9F]",
+    slate: isDark ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-500 group-hover:bg-[#004F9F]/10 group-hover:text-[#004F9F]",
+    amber: isDark ? "bg-amber-500/15 text-amber-300" : "bg-amber-50 text-amber-600",
+    brand: isDark ? "bg-[#00A5EC]/15 text-[#00A5EC]" : "bg-[#004F9F]/10 text-[#004F9F]",
   };
   return (
     <div
-      className="group flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-white px-3.5 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#004F9F]/25 hover:shadow-sm animate-[fadeslide_0.3s_ease-out]"
+      className={`group flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border px-2.5 py-2 sm:px-3.5 sm:py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm animate-[fadeslide_0.3s_ease-out] ${
+        isDark
+          ? "border-white/10 bg-[#1c2333] hover:border-white/20"
+          : "border-slate-200/80 bg-white hover:border-[#004F9F]/25"
+      }`}
       style={{ animationDelay: `${delay}ms`, animationFillMode: "backwards" }}
     >
-      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-110 ${accents[accent]}`}>
-        <Icon className="w-4 h-4" />
+      <span className={`flex h-6 w-6 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl transition-all duration-300 group-hover:scale-110 ${accents[accent]}`}>
+        <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
       </span>
       <div className="min-w-0">
-        <p className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</p>
-        <p className="mt-0.5 text-[12.5px] font-bold text-[#0B1442] break-words leading-snug">{value || "-"}</p>
+        <p className="text-[8px] sm:text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</p>
+        <p className={`mt-0.5 text-[10.5px] sm:text-[12.5px] font-bold break-words leading-snug ${isDark ? "text-slate-200" : "text-[#0B1442]"}`}>
+          {value || "-"}
+        </p>
       </div>
     </div>
   );
 };
 
 /* Judul seksi dengan garis pemisah */
-const SectionTitle = ({ children }) => (
-  <div className="mb-2.5 flex items-center gap-2.5">
-    <span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-[#00A5EC] to-[#004F9F]" />
-    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{children}</p>
-    <span className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
+const SectionTitle = ({ children, isDark = false }) => (
+  <div className="mb-1.5 sm:mb-2.5 flex items-center gap-1.5 sm:gap-2.5">
+    <span className="h-2.5 sm:h-3.5 w-1 rounded-full bg-gradient-to-b from-[#00A5EC] to-[#004F9F]" />
+    <p className="text-[8.5px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{children}</p>
+    <span className={`h-px flex-1 ${isDark ? "bg-white/10" : "bg-gradient-to-r from-slate-200 to-transparent"}`} />
   </div>
 );
 
-const FotoBukti = ({ label, file, delay = 0 }) => {
+const FotoBukti = ({ label, file, delay = 0, isDark = false }) => {
   if (!file) return null;
   return (
     <a
       href={getFileUrl(file)}
       target="_blank"
       rel="noreferrer"
-      className="group relative block overflow-hidden rounded-2xl border border-slate-200 transition-all duration-300 hover:-translate-y-1 hover:border-[#004F9F]/30 hover:shadow-lg animate-[fadeslide_0.3s_ease-out]"
+      className={`group relative block overflow-hidden rounded-xl sm:rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg animate-[fadeslide_0.3s_ease-out] ${
+        isDark ? "border-white/10 hover:border-[#00A5EC]/40" : "border-slate-200 hover:border-[#004F9F]/30"
+      }`}
       style={{ animationDelay: `${delay}ms`, animationFillMode: "backwards" }}
     >
-      <img src={getFileUrl(file)} alt={label} className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-      <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white/85 text-[#0B1442] opacity-0 backdrop-blur-sm transition-all duration-300 group-hover:opacity-100">
-        <Maximize2 className="w-3.5 h-3.5" />
+      <img src={getFileUrl(file)} alt={label} className="h-24 sm:h-32 w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+      <span className="absolute right-2 top-2 flex h-5 w-5 sm:h-7 sm:w-7 items-center justify-center rounded-lg bg-white/85 text-[#0B1442] opacity-0 backdrop-blur-sm transition-all duration-300 group-hover:opacity-100">
+        <Maximize2 className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
       </span>
-      <span className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-slate-900/85 via-slate-900/40 to-transparent px-3 pb-2 pt-6 text-[10.5px] font-bold text-white">
-        <ImageIcon className="w-3 h-3" /> {label}
+      <span className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-slate-900/85 via-slate-900/40 to-transparent px-2.5 pb-1.5 pt-5 sm:px-3 sm:pb-2 sm:pt-6 text-[8.5px] sm:text-[10.5px] font-bold text-white">
+        <ImageIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {label}
       </span>
     </a>
   );
 };
 
-const PresensiDetailModal = ({ data, onClose }) => {
+const PresensiDetailModal = ({ data, onClose, isDark = false }) => {
   useEffect(() => {
     const handleKeyDown = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [onClose]);
 
   if (!data) return null;
 
@@ -164,100 +171,118 @@ const PresensiDetailModal = ({ data, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-[backdropFade_0.25s_ease-out]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-3 sm:p-4 animate-[backdropFade_0.25s_ease-out]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl ring-1 ring-slate-900/5 overflow-hidden animate-[modalFadeUp_0.3s_ease-out] max-h-[92vh] flex flex-col"
+        className={`w-full max-w-sm sm:max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-[modalFadeUp_0.3s_ease-out] max-h-[92vh] flex flex-col ${
+          isDark ? "bg-[#161b22] border border-white/10" : "bg-white ring-1 ring-slate-900/5"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ================= Header ================= */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-6 py-5 shrink-0">
+        {/* Header with Watermark & Status Badges Below Date */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-3.5 py-3.5 sm:px-6 sm:py-5 shrink-0">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#00A5EC]/20 blur-3xl pointer-events-none" />
-          <ClipboardList
-            className="absolute right-16 top-1/2 -translate-y-1/2 w-24 h-24 opacity-[0.06] text-sky-300 pointer-events-none rotate-6"
-            strokeWidth={1}
-          />
+          <ClipboardList className="absolute right-7 sm:right-12 top-1/2 -translate-y-1/2 w-16 h-16 sm:w-20 sm:h-20 opacity-[0.06] text-sky-300 pointer-events-none rotate-6" strokeWidth={1} />
 
-          <div className="relative flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3.5 min-w-0">
+          <div className="relative flex items-start justify-between gap-2 sm:gap-3">
+            {/* Foto & Identitas Peserta (Foto lurus dengan tulisan nama) */}
+            <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
               <PesertaAvatarModal nama={data.nama} foto={data.foto_peserta || data.foto_profil} />
-              <div className="min-w-0">
-                <div className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-[#00A5EC] mb-1 bg-white/5 border border-white/10 rounded-full px-2.5 py-0.5">
+              <div className="min-w-0 flex-1">
+                <div className="inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest text-[#00A5EC] mb-0.5 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
                   <Sparkles className="w-2.5 h-2.5 animate-pulse" />
                   Detail Presensi
                 </div>
-                <h3 className="text-base font-black text-white leading-tight truncate">{data.nama}</h3>
-                <p className="flex items-center gap-1.5 text-[11px] text-white/60 mt-0.5">
-                  <CalendarDays className="w-3 h-3 shrink-0" />
-                  <span className="truncate">{formatTanggalHari(data.tanggal)}</span>
+                <h3 className="text-xs sm:text-base font-black text-white leading-tight truncate">{data.nama}</h3>
+                <p className="flex items-center gap-1 text-[9.5px] sm:text-[11.5px] text-white/80 font-bold mt-0.5">
+                  <CalendarDays className="w-3 h-3 text-sky-300 shrink-0" />
+                  <span>{formatTanggalHari(data.tanggal)}</span>
                 </p>
               </div>
             </div>
+
             <button
               onClick={onClose}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-300 cursor-pointer"
+              className="flex h-6 w-6 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-300 cursor-pointer"
               aria-label="Tutup detail presensi"
             >
-              <X className="w-5 h-5" />
+              <X className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
             </button>
           </div>
 
-          {/* Deretan badge status */}
-          <div className="relative mt-4 flex flex-wrap items-center gap-1.5">
+          {/* Deretan badge status di bawah tulisan hari dan tanggal, mulai dari pojok kiri */}
+          <div className="relative mt-2.5 sm:mt-3 flex flex-wrap items-center gap-1.5 sm:gap-2">
             <span className="animate-[popIn_0.35s_ease-out]">
-              <PresensiStatusBadge status={data.status} className="!bg-white/95 !ring-0 shadow-sm" />
+              <PresensiStatusBadge status={data.status} className="!bg-white/95 !ring-0 shadow-sm !text-slate-800 !py-0.5 !px-1.5 !text-[9px] sm:!text-[10px]" />
             </span>
+
             {terlambat > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-2.5 py-1 text-[10.5px] font-bold text-amber-200 ring-1 ring-amber-300/30 backdrop-blur-sm">
-                <Timer className="w-3 h-3" /> Terlambat {formatMenit(terlambat)}
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[8.5px] sm:text-[10px] font-bold text-amber-200 ring-1 ring-amber-300/30 backdrop-blur-sm">
+                <Timer className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> +{formatMenit(terlambat)}
               </span>
             )}
             {data.lupa_presensi && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10.5px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
-                <AlarmClockOff className="w-3 h-3" /> Lupa presensi
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-white/10 px-1.5 py-0.5 text-[8.5px] sm:text-[10px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
+                <AlarmClockOff className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Lupa presensi
               </span>
             )}
             {data.dikunci && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10.5px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
-                <Lock className="w-3 h-3" /> Terkunci
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-white/10 px-1.5 py-0.5 text-[8.5px] sm:text-[10px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
+                <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Terkunci
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10.5px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
-              <UserCog className="w-3 h-3" /> {sumberLabel}
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-white/10 px-1.5 py-0.5 text-[8.5px] sm:text-[10px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
+              <UserCog className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {sumberLabel}
             </span>
           </div>
         </div>
 
-        {/* ================= Body ================= */}
-        <div className="flex-1 overflow-y-auto bg-slate-50/40 p-6 space-y-5">
-          {/* Sorotan waktu presensi */}
+        {/* Body */}
+        <div className={`flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-5 ${
+          isDark ? "bg-[#161b22]" : "bg-slate-50/40"
+        }`}>
+          {/* Waktu presensi */}
           <div>
-            <SectionTitle>Waktu Presensi</SectionTitle>
-            <div className="flex flex-col items-stretch gap-2.5 sm:flex-row sm:items-center">
-              <JamCard icon={LogIn} label="Jam Masuk" value={data.jam_masuk} tone="masuk" delay={40} />
-              <span className="mx-auto hidden h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-300 shadow-sm sm:flex">
+            <SectionTitle isDark={isDark}>Waktu Presensi</SectionTitle>
+            <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+              <JamCard icon={LogIn} label="Jam Masuk" value={data.jam_masuk} tone="masuk" delay={40} isDark={isDark} />
+              <span className={`mx-auto hidden h-8 w-8 shrink-0 items-center justify-center rounded-full border text-slate-300 shadow-sm sm:flex ${
+                isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white"
+              }`}>
                 <ArrowRight className="w-3.5 h-3.5" />
               </span>
-              <JamCard icon={LogOut} label="Jam Pulang" value={data.jam_pulang} tone="pulang" delay={90} />
+              <JamCard icon={LogOut} label="Jam Pulang" value={data.jam_pulang} tone="pulang" delay={90} isDark={isDark} />
             </div>
 
             <div
-              className={`mt-2.5 flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 ring-1 animate-[fadeslide_0.3s_ease-out] ${
-                terlambat > 0 ? "bg-amber-50/80 ring-amber-200/70" : "bg-white ring-slate-200/80"
+              className={`mt-1.5 sm:mt-2.5 flex items-center gap-2 sm:gap-2.5 rounded-xl sm:rounded-2xl px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 ring-1 animate-[fadeslide_0.3s_ease-out] ${
+                terlambat > 0
+                  ? isDark
+                    ? "bg-amber-500/10 ring-amber-500/30"
+                    : "bg-amber-50/80 ring-amber-200/70"
+                  : isDark
+                    ? "bg-[#1c2333] ring-white/10"
+                    : "bg-white ring-slate-200/80"
               }`}
               style={{ animationDelay: "140ms", animationFillMode: "backwards" }}
             >
               <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-                  terlambat > 0 ? "bg-amber-500/15 text-amber-600" : "bg-emerald-500/10 text-emerald-600"
+                className={`flex h-5 w-5 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg ${
+                  terlambat > 0
+                    ? isDark ? "bg-amber-500/20 text-amber-400" : "bg-amber-500/15 text-amber-600"
+                    : isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-500/10 text-emerald-600"
                 }`}
               >
-                {terlambat > 0 ? <Clock className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                {terlambat > 0 ? <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
               </span>
               <div className="min-w-0">
-                <p className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400">Keterlambatan</p>
-                <p className={`text-[12.5px] font-bold ${terlambat > 0 ? "text-amber-700" : "text-slate-600"}`}>
+                <p className="text-[8px] sm:text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400">Keterlambatan</p>
+                <p className={`text-[10px] sm:text-[12.5px] font-bold ${
+                  terlambat > 0
+                    ? isDark ? "text-amber-400" : "text-amber-700"
+                    : isDark ? "text-slate-300" : "text-slate-600"
+                }`}>
                   {terlambat > 0 ? formatMenit(terlambat) : "Tidak ada keterlambatan"}
                 </p>
               </div>
@@ -269,48 +294,56 @@ const PresensiDetailModal = ({ data, onClose }) => {
 
           {/* Informasi penempatan */}
           <div>
-            <SectionTitle>Informasi Peserta</SectionTitle>
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              <InfoItem icon={Building2} label="Bidang" value={data.bidang} accent="brand" delay={40} />
-              <InfoItem icon={GraduationCap} label="Institusi" value={data.institusi} delay={80} />
-              <InfoItem icon={UserCog} label="Mentor Pembimbing" value={data.mentor_nama} delay={120} />
-              <InfoItem icon={StickyNote} label="Keterangan" value={data.keterangan} accent={data.keterangan ? "amber" : "slate"} delay={160} />
+            <SectionTitle isDark={isDark}>Informasi Peserta</SectionTitle>
+            <div className="grid grid-cols-1 gap-1.5 sm:gap-2.5 sm:grid-cols-2">
+              <InfoItem icon={Building2} label="Bidang" value={data.bidang} accent="brand" delay={40} isDark={isDark} />
+              <InfoItem icon={GraduationCap} label="Institusi" value={data.institusi} delay={80} isDark={isDark} />
+              <InfoItem icon={UserCog} label="Mentor Pembimbing" value={data.mentor_nama} delay={120} isDark={isDark} />
+              <InfoItem icon={StickyNote} label="Keterangan" value={data.keterangan} accent={data.keterangan ? "amber" : "slate"} delay={160} isDark={isDark} />
             </div>
           </div>
 
           {/* Foto bukti */}
           {adaFoto && (
             <div>
-              <SectionTitle>Foto Bukti Presensi</SectionTitle>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FotoBukti label="Foto masuk" file={data.foto_masuk} delay={40} />
-                <FotoBukti label="Foto pulang" file={data.foto_pulang} delay={80} />
+              <SectionTitle isDark={isDark}>Foto Bukti Presensi</SectionTitle>
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 sm:grid-cols-2">
+                <FotoBukti label="Foto masuk" file={data.foto_masuk} delay={40} isDark={isDark} />
+                <FotoBukti label="Foto pulang" file={data.foto_pulang} delay={80} isDark={isDark} />
               </div>
             </div>
           )}
 
           {/* Catatan hak akses */}
-          <div className="flex items-start gap-2.5 rounded-2xl border border-[#004F9F]/15 bg-[#004F9F]/[0.04] px-3.5 py-3">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#004F9F]/10 text-[#004F9F]">
-              <Info className="w-3.5 h-3.5" />
+          <div className={`flex items-start gap-2 sm:gap-2.5 rounded-xl sm:rounded-2xl border px-2.5 py-2 sm:px-3.5 sm:py-3 ${
+            isDark ? "border-blue-500/20 bg-blue-500/[0.05]" : "border-[#004F9F]/15 bg-[#004F9F]/[0.04]"
+          }`}>
+            <span className={`flex h-4.5 w-4.5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-lg ${
+              isDark ? "bg-blue-500/20 text-[#00A5EC]" : "bg-[#004F9F]/10 text-[#004F9F]"
+            }`}>
+              <Info className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
             </span>
-            <p className="text-[11px] font-medium leading-relaxed text-slate-500">
-              Data presensi hanya dapat dikoreksi oleh <span className="font-bold text-[#0B1442]">mentor pembimbing</span>.
+            <p className={`text-[9.5px] sm:text-[11px] font-medium leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+              Data presensi hanya dapat dikoreksi oleh <span className={`font-bold ${isDark ? "text-slate-200" : "text-[#0B1442]"}`}>mentor pembimbing</span>.
               Admin memiliki akses lihat &amp; rekap.
             </p>
           </div>
         </div>
 
-        {/* ================= Footer ================= */}
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-white px-6 py-4 shrink-0">
+        {/* Footer */}
+        <div className={`flex items-center justify-between gap-3 border-t p-2.5 sm:px-6 sm:py-3.5 shrink-0 ${
+          isDark ? "border-white/10 bg-[#161b22]" : "border-slate-100 bg-white"
+        }`}>
           <p className="hidden items-center gap-1.5 text-[10.5px] font-semibold text-slate-400 sm:flex">
             Tekan
-            <kbd className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-sans text-[9.5px] font-bold text-slate-500">Esc</kbd>
+            <kbd className={`rounded-md border px-1.5 py-0.5 font-sans text-[9.5px] font-bold ${
+              isDark ? "border-white/10 bg-white/5 text-slate-300" : "border-slate-200 bg-slate-50 text-slate-500"
+            }`}>Esc</kbd>
             untuk menutup
           </p>
           <button
             onClick={onClose}
-            className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+            className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-2 overflow-hidden rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-3.5 py-1.5 sm:px-5 sm:py-2.5 text-[10.5px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
           >
             <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent group-hover:animate-[shine_0.9s_ease-out]" />
             <span className="relative">Tutup</span>

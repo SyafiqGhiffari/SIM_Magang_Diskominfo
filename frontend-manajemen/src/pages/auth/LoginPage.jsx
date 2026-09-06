@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginAdmin } from "../../services/authService";
 import { saveAuthData, saveRememberedEmail, getRememberedEmail, clearRememberedEmail } from "../../utils/authStorage";
@@ -18,10 +18,30 @@ const LoginPage = () => {
   const [rememberMe, setRememberMe] = useState(() => Boolean(getRememberedEmail()));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [visibleError, setVisibleError] = useState(false);
+
+  // Otomatis menghilangkan badge eror secara halus (fade-out & collapse) setelah 4.5 detik
+  useEffect(() => {
+    if (!error || !visibleError) return;
+
+    const fadeTimer = setTimeout(() => {
+      setVisibleError(false);
+    }, 4500);
+
+    const clearTimer = setTimeout(() => {
+      setError("");
+    }, 4900);
+
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(clearTimer);
+    };
+  }, [error, visibleError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setVisibleError(false);
     setLoading(true);
 
     try {
@@ -46,13 +66,14 @@ const LoginPage = () => {
       navigate(roleHomePath[payload.user.role] || "/login");
     } catch (err) {
       setError(err.response?.data?.message || "Email atau password salah. Silakan coba lagi.");
+      setVisibleError(true);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <section className="relative flex min-h-screen flex-col items-center bg-slate-100 overflow-hidden">
+    <section className="relative flex h-screen h-[100dvh] w-full flex-col items-center justify-center bg-slate-100 overflow-hidden px-4 py-4 sm:py-6">
       {/* Background image + overlay */}
       <img
         src="/images/gedung-kominfo.jpg"
@@ -62,52 +83,64 @@ const LoginPage = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-[#0B1442]/90 via-[#0B1442]/85 to-[#004F9F]/80" />
 
       {/* Content wrapper */}
-      <div className="relative z-10 flex w-full flex-1 flex-col items-center justify-center px-4 py-16">
+      <div className="relative z-10 flex w-full max-w-md flex-col items-center justify-center my-auto">
         {/* Logo & Judul */}
-        <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-xl shadow-slate-300/50 animate-float">
-            <img src="/images/icon-diskominfo.png" alt="Logo Diskominfo" className="h-11 w-11 object-contain" />
+        <div className="mb-4 sm:mb-5 flex flex-col items-center text-center">
+          <div className="mb-2.5 flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-white shadow-xl shadow-slate-300/50 animate-float">
+            <img src="/images/icon-diskominfo.png" alt="Logo Diskominfo" className="h-9 w-9 sm:h-10 sm:w-10 object-contain" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-white">SIM Magang</h1>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-white/70">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">SIM Magang</h1>
+          <p className="mt-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-white/70">
             Sistem Manajemen Magang Diskominfo Ponorogo
           </p>
         </div>
 
         {/* Card Login */}
-        <div className="w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-8 shadow-2xl shadow-slate-300/40">
-          <div className="mb-6">
-            <h2 className="text-xl font-extrabold tracking-tight text-[#0B1442]">Masuk ke Akun</h2>
-            <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
+        <div className="w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-7 shadow-2xl shadow-slate-300/40">
+          <div className="mb-4 sm:mb-4.5">
+            <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-[#0B1442]">Masuk ke Akun</h2>
+            <p className="mt-1 text-xs text-slate-500 leading-relaxed">
               Silakan gunakan email dan password yang telah diberikan oleh administrator.
             </p>
           </div>
 
-          {error && (
-            <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-semibold text-red-600">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
+          {/* Error Banner dengan animasi expand/collapse + fade-out yang sangat halus */}
+          <div
+            className={`grid transition-all duration-300 ease-in-out ${
+              visibleError && error
+                ? "grid-rows-[1fr] opacity-100 mb-4 transform translate-y-0"
+                : "grid-rows-[0fr] opacity-0 mb-0 transform -translate-y-1.5 pointer-events-none"
+            }`}
+          >
+            <div className="overflow-hidden">
+              <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-2.5 sm:p-3 text-xs font-semibold text-red-600 shadow-sm">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
             </div>
-          )}
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-4.5">
             {/* Email */}
             <div>
               <label className="text-xs font-bold uppercase tracking-wide text-slate-700">
                 Alamat Email
               </label>
-              <div className="relative mt-1.5">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+              <div className="relative mt-1">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                   <Mail className="w-4 h-4" />
                 </span>
                 <input
                   type="email"
                   placeholder="user@gmail.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (visibleError) setVisibleError(false);
+                  }}
                   required
                   autoComplete="username"
-                  className="w-full rounded-xl border border-slate-200 pl-11 pr-4 py-3 text-sm transition-all focus:border-[#004F9F] focus:ring-2 focus:ring-[#00A5EC]/20 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-2.5 sm:py-2.8 text-xs sm:text-sm transition-all focus:border-[#004F9F] focus:ring-2 focus:ring-[#00A5EC]/20 focus:outline-none"
                 />
               </div>
             </div>
@@ -117,23 +150,26 @@ const LoginPage = () => {
               <label className="text-xs font-bold uppercase tracking-wide text-slate-700">
                 Password
               </label>
-              <div className="relative mt-1.5">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+              <div className="relative mt-1">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                   <Lock className="w-4 h-4" />
                 </span>
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (visibleError) setVisibleError(false);
+                  }}
                   required
                   autoComplete="current-password"
-                  className="w-full rounded-xl border border-slate-200 pl-11 pr-12 py-3 text-sm transition-all focus:border-[#004F9F] focus:ring-2 focus:ring-[#00A5EC]/20 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-200 pl-10 pr-11 py-2.5 sm:py-2.8 text-xs sm:text-sm transition-all focus:border-[#004F9F] focus:ring-2 focus:ring-[#00A5EC]/20 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((p) => !p)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -149,7 +185,7 @@ const LoginPage = () => {
                 className="sr-only"
               />
               <span
-                className={`relative flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200 ${
+                className={`relative flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200 ${
                   rememberMe
                     ? "border-[#004F9F] bg-gradient-to-br from-[#0B1442] to-[#004F9F]"
                     : "border-slate-300 bg-white group-hover:border-[#004F9F]/60"
@@ -161,7 +197,7 @@ const LoginPage = () => {
                   fill="none"
                   stroke="white"
                   strokeWidth={3}
-                  className={`h-3 w-3 transition-transform duration-200 ${rememberMe ? "scale-100" : "scale-0"}`}
+                  className={`h-2.5 w-2.5 transition-transform duration-200 ${rememberMe ? "scale-100" : "scale-0"}`}
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                 </svg>
@@ -173,7 +209,7 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] py-3.5 text-sm font-bold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0 cursor-pointer"
+              className="group flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] py-2.8 sm:py-3 text-xs sm:text-sm font-bold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0 cursor-pointer"
             >
               {loading ? (
                 <>

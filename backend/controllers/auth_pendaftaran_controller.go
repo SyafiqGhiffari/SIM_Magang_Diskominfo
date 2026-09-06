@@ -1,4 +1,4 @@
-﻿package controllers
+package controllers
 
 import (
 	"fmt"
@@ -96,20 +96,17 @@ func LoginPendaftaran(c *gin.Context) {
 		return
 	}
 
-	// ── TOLAK LOGIN kalau masih ada sesi aktif di device lain ──
-	if user.CurrentSessionID != "" && user.SessionIssuedAt != nil {
-		elapsed := time.Since(*user.SessionIssuedAt)
-		if elapsed < 1*time.Hour {
-			utils.ErrorResponse(c, http.StatusConflict, "Akun ini sedang aktif di perangkat/browser lain. Silakan logout dari perangkat tersebut terlebih dahulu.")
-			return
-		}
-		// kalau sudah lewat 24 jam, sesi lama dianggap kadaluarsa — biarkan login lanjut
-	}
-
 	newSessionID := uuid.NewString()
 	now := time.Now()
+	clientIP := c.ClientIP()
+
 	user.CurrentSessionID = newSessionID
 	user.SessionIssuedAt = &now
+	user.LastActivityAt = &now
+	user.LastActiveAt = &now
+	user.LastLoginAt = &now
+	user.LastLoginIP = clientIP
+
 	if err := config.DB.Save(&user).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memproses sesi login")
 		return
@@ -143,11 +140,29 @@ func LogoutPendaftaran(c *gin.Context) {
 	}
 	user.CurrentSessionID = ""
 	user.SessionIssuedAt = nil
+	user.LastActivityAt = nil
 	if err := config.DB.Save(&user).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memproses logout")
 		return
 	}
 	utils.SuccessResponse(c, http.StatusOK, "Logout berhasil", nil)
+}
+
+// PingPendaftaran memperbarui waktu aktivitas sesi (keep-alive)
+func PingPendaftaran(c *gin.Context) {
+	userID, ok := getUserIDFromContext(c)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "User tidak ditemukan")
+		return
+	}
+	now := time.Now()
+	config.DB.Model(&models.UserPendaftaran{}).Where("id = ?", userID).Updates(map[string]interface{}{
+		"last_activity_at": &now,
+		"last_active_at":   &now,
+	})
+	utils.SuccessResponse(c, http.StatusOK, "Sesi berhasil diperpanjang", gin.H{
+		"last_activity_at": now,
+	})
 }
 
 func GetProfilPendaftaran(c *gin.Context) {

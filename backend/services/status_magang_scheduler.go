@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"sim-magang-backend/config"
+	"sim-magang-backend/models"
 	"sim-magang-backend/utils"
 )
 
@@ -46,6 +47,28 @@ func SinkronStatusMagang() {
 			AND (p.tanggal_selesai IS NULL OR DATE(p.tanggal_selesai) >= ?)
 	`, hariIni).Error; err != nil {
 		log.Println("[status-magang] gagal mengaktifkan kembali:", err)
+	}
+
+	// 3. Buat draf sertifikat otomatis bagi peserta selesai yang belum memiliki sertifikat
+	var alumniTanpaSertifikat []struct {
+		ID uint
+	}
+	if err := config.DB.Raw(`
+		SELECT u.id
+		FROM user_manajemens u
+		WHERE u.role = 'peserta' AND u.status_magang = 'selesai'
+		  AND NOT EXISTS (
+			SELECT 1 FROM sertifikats s WHERE s.akun_peserta_id = u.id
+		  )
+	`).Scan(&alumniTanpaSertifikat).Error; err == nil {
+		for _, a := range alumniTanpaSertifikat {
+			draf := models.Sertifikat{
+				AkunPesertaID:   a.ID,
+				NomorSertifikat: "-",
+				Status:          "draft",
+			}
+			_ = config.DB.Create(&draf)
+		}
 	}
 }
 

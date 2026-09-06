@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { CalendarCheck, ClipboardList, MailCheck } from "lucide-react";
+import { CalendarCheck, ClipboardList, MailCheck, ClipboardCheck } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
+import { getHitunganAntreanMentor } from "../services/mentorService";
 import { logoutAdmin, getMe } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
-import { clearAuthData } from "../utils/authStorage";
+import { clearAuthData, getUser, updateAuthUser } from "../utils/authStorage";
 
 const navItems = [
   {
@@ -27,6 +28,12 @@ const navItems = [
       { key: "verifikasi-izin", to: "/mentor/pengajuan-izin", label: "Verifikasi Izin", icon: <MailCheck className="w-4 h-4 shrink-0" /> },
     ],
   },
+  {
+    key: "penilaian",
+    to: "/mentor/penilaian",
+    label: "Penilaian Peserta",
+    icon: <ClipboardCheck className="w-[18px] h-[18px] shrink-0" />,
+  },
 ];
 
 const tabTitles = {
@@ -34,13 +41,15 @@ const tabTitles = {
   akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
   "presensi-bimbingan": { title: "Presensi Bimbingan", desc: "Pantau dan koreksi presensi peserta bimbingan Anda" },
   "verifikasi-izin": { title: "Verifikasi Izin & Sakit", desc: "Setujui atau tolak pengajuan izin peserta bimbingan" },
+  penilaian: { title: "Penilaian Peserta", desc: "Evaluasi kinerja 4 pilar kompetensi untuk peserta bimbingan Anda" },
 };
 
 const MentorLayout = ({ children, searchValue = "", onSearchChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(() => getUser() || null);
   const [isDark, setIsDark] = useState(() => localStorage.getItem("admin_theme") === "dark");
+  const [hitunganIzin, setHitunganIzin] = useState(0);
 
   useEffect(() => {
     if (isDark) {
@@ -53,10 +62,45 @@ const MentorLayout = ({ children, searchValue = "", onSearchChange }) => {
   }, [isDark]);
 
   useEffect(() => {
+    const ambil = async () => {
+      try {
+        const res = await getHitunganAntreanMentor();
+        if (res.data?.data) {
+          setHitunganIzin(res.data.data?.izin || 0);
+        }
+      } catch {
+        /* diam */
+      }
+    };
+    ambil();
+    const t = setInterval(ambil, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  const navItemsWithBadge = useMemo(
+    () =>
+      navItems.map((item) => {
+        if (item.key === "presensi") {
+          return {
+            ...item,
+            children: item.children.map((c) =>
+              c.key === "verifikasi-izin" ? { ...c, badge: hitunganIzin } : c
+            ),
+          };
+        }
+        return item;
+      }),
+    [hitunganIzin]
+  );
+
+  useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await getMe();
-        setProfile(res.data.data);
+        if (res.data?.data) {
+          setProfile(res.data.data);
+          updateAuthUser(res.data.data);
+        }
       } catch {
         navigate("/login");
       }
@@ -87,13 +131,14 @@ const MentorLayout = ({ children, searchValue = "", onSearchChange }) => {
     location.pathname === "/mentor" ? "dashboard" :
     location.pathname.startsWith("/mentor/akun") ? "akun" :
     location.pathname.startsWith("/mentor/pengajuan-izin") ? "verifikasi-izin" :
-    location.pathname.startsWith("/mentor/presensi") ? "presensi-bimbingan" : "dashboard";
+    location.pathname.startsWith("/mentor/presensi") ? "presensi-bimbingan" :
+    location.pathname.startsWith("/mentor/penilaian") ? "penilaian" : "dashboard";
 
   const currentTab = tabTitles[activeKey] || tabTitles.dashboard;
 
   return (
     <ManajemenShell
-      navItems={navItems}
+      navItems={navItemsWithBadge}
       activeKey={activeKey}
       handleLogout={handleLogout}
       roleLabel="Mentor"

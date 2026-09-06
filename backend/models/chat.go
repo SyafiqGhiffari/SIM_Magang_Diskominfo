@@ -11,6 +11,14 @@ type ChatSession struct {
 	LastMessageAt       *time.Time `json:"last_message_at"`
 	UnreadAdminCount    int        `gorm:"default:0" json:"unread_admin_count"`   // pesan peserta belum dibaca admin
 	UnreadUserCount     int        `gorm:"default:0" json:"unread_user_count"`    // pesan admin belum dibaca peserta
+
+	// ── Penataan daftar oleh admin ──
+	// Disematkan naik ke urutan teratas. Ditandai-belum-dibaca dipakai admin
+	// untuk menyimpan percakapan yang perlu ditindaklanjuti nanti, meski
+	// isinya sudah sempat dibuka.
+	IsPinnedAdmin     bool `gorm:"default:false;index" json:"is_pinned_admin"`
+	AdminMarkedUnread bool `gorm:"default:false" json:"admin_marked_unread"`
+
 	CreatedAt           time.Time  `json:"created_at"`
 	UpdatedAt           time.Time  `json:"updated_at"`
 }
@@ -22,12 +30,34 @@ func (ChatSession) TableName() string {
 // ChatMessage mewakili satu pesan dalam sesi chat
 type ChatMessage struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
-	SessionID   uint      `gorm:"not null;index" json:"session_id"`
+	SessionID   uint      `gorm:"not null;index;index:idx_chat_session_created,priority:1" json:"session_id"`
 	SenderType  string    `gorm:"type:enum('user','admin','bot');not null" json:"sender_type"`
-	Content     string    `gorm:"type:text;not null" json:"content"`
+	Content     string    `gorm:"type:text" json:"content"`
 	IsReadAdmin bool      `gorm:"default:false" json:"is_read_admin"`
 	IsReadUser  bool      `gorm:"default:false" json:"is_read_user"`
-	CreatedAt   time.Time `json:"created_at"`
+
+	// ── Sumber FAQ (untuk balasan bot) ──
+	FaqID *uint `gorm:"index" json:"faq_id"`
+
+	// ── Lampiran ──
+	// teks   = pesan biasa, FilePath kosong
+	// gambar = ditampilkan langsung sebagai pratinjau
+	// berkas = ditampilkan sebagai kartu unduhan
+	Tipe     string `gorm:"type:enum('teks','gambar','video','berkas');default:'teks'" json:"tipe"`
+	FilePath string `gorm:"type:varchar(255);default:''" json:"file_path"`
+	FileNama string `gorm:"type:varchar(255);default:''" json:"file_nama"`
+	FileSize int64  `gorm:"default:0" json:"file_size"`
+
+	// ── Balasan berkutip ──
+	ReplyToID *uint        `gorm:"index" json:"reply_to_id"`
+	ReplyTo   *ChatMessage `gorm:"foreignKey:ReplyToID" json:"reply_to,omitempty"`
+
+	// ── Hapus lunak ──
+	// Pesan tidak benar-benar dibuang agar jejak percakapan tetap utuh untuk
+	// keperluan audit; tampilannya diganti "Pesan ini telah dihapus".
+	DihapusPada *time.Time `json:"dihapus_pada"`
+
+	CreatedAt   time.Time `gorm:"index:idx_chat_session_created,priority:2" json:"created_at"`
 }
 
 func (ChatMessage) TableName() string {
@@ -47,7 +77,7 @@ type FaqEntry struct {
 	OrderIndex int    `gorm:"default:0;index" json:"order_index"` // makin kecil makin atas
 
 	// ── Kontrol penayangan ──
-	IsActive      bool `gorm:"default:true" json:"is_active"`             // dipakai bot & semua kanal
+	IsActive      bool `gorm:"default:true;index:idx_faq_active_view,priority:1" json:"is_active"`             // dipakai bot & semua kanal
 	ShowOnLanding bool `gorm:"default:true" json:"show_on_landing"`       // tampil di halaman FAQ publik
 	IsQuickAction bool `gorm:"default:false" json:"is_quick_action"`      // tampil sbg tombol di chat widget
 
@@ -73,7 +103,7 @@ type FaqEntry struct {
 	// ── Statistik pemakaian ──
 	// Disimpan sebagai penghitung agar panel admin tidak perlu
 	// menghitung ulang seluruh tabel umpan balik setiap kali dibuka.
-	ViewCount      int `gorm:"default:0" json:"view_count"`      // berapa kali jawaban ini ditampilkan
+	ViewCount      int `gorm:"default:0;index:idx_faq_active_view,priority:2" json:"view_count"`      // berapa kali jawaban ini ditampilkan
 	HelpfulCount   int `gorm:"default:0" json:"helpful_count"`   // jempol naik
 	UnhelpfulCount int `gorm:"default:0" json:"unhelpful_count"` // jempol turun
 

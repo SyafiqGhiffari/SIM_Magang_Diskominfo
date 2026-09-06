@@ -164,6 +164,8 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
         <Menu className="w-5 h-5" />
       </button>
 
+      {/* Di mobile judul dipindah ke baris tersendiri di bawah topbar,
+          karena ruang mendatar di sini selalu kurang untuk judul panjang. */}
       <div className="leading-snug min-w-0 shrink-0 hidden sm:block">
         <h2 className={`text-sm font-black tracking-tight truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{currentTab?.title}</h2>
         <p className={`text-[10px] font-sans truncate ${isDark ? "text-slate-500" : "text-slate-400"}`}>{currentTab?.desc}</p>
@@ -226,7 +228,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
 
           {mobileSearchOpen && (
             <div
-              className={`absolute right-0 top-12 z-50 w-72 max-w-[calc(100vw-2rem)] origin-top-right rounded-2xl border shadow-2xl overflow-hidden animate-[fadeslide_0.2s_ease-out] ${
+              className={`fixed left-3 right-3 top-[72px] z-50 rounded-2xl border shadow-2xl overflow-hidden animate-[fadeslide_0.2s_ease-out] ${
                 isDark ? "bg-[#1c2128] border-white/10 shadow-black/40" : "bg-white border-slate-200 shadow-slate-200/70"
               }`}
             >
@@ -257,10 +259,21 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
           )}
         </div>
 
+        <div className={`md:hidden h-6 w-px mx-0.5 ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+
         {/* Notifikasi */}
         <div className="relative" ref={notifRef}>
           <button onClick={bukaTutupNotif}
-            className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 ${isDark ? "hover:bg-white/10 text-slate-300" : "hover:bg-slate-100 text-slate-600"} ${notifOpen ? (isDark ? "bg-white/10" : "bg-slate-100") : ""}`}>
+            title="Notifikasi"
+            className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 ${
+              notifOpen
+                ? isDark
+                  ? "bg-[#00A5EC]/15 text-[#00A5EC]"
+                  : "bg-blue-50 text-[#004F9F]"
+                : isDark
+                ? "text-slate-300 hover:bg-white/10"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
             </svg>
@@ -273,7 +286,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
           </button>
 
           {notifOpen && (
-            <div className={`absolute right-0 top-12 z-50 w-72 rounded-2xl border shadow-2xl overflow-hidden animate-[fadeslide_0.2s_ease-out] ${isDark ? "bg-[#1c2128] border-white/10 shadow-black/40" : "bg-white border-slate-200 shadow-slate-200/70"}`}>
+            <div className={`fixed left-3 right-3 top-[72px] md:absolute md:left-auto md:right-0 md:top-12 md:w-72 z-50 rounded-2xl border shadow-2xl overflow-hidden animate-[fadeslide_0.2s_ease-out] ${isDark ? "bg-[#1c2128] border-white/10 shadow-black/40" : "bg-white border-slate-200 shadow-slate-200/70"}`}>
               <div className="relative overflow-hidden border-b border-white/10 bg-gradient-to-br from-[#0B1442] via-[#123072] to-[#004F9F] px-4 py-3">
                 <span className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-[#00A5EC]/25 blur-2xl" />
                 <div className="relative flex items-center justify-between gap-2">
@@ -293,18 +306,18 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
                       <button
                         onClick={handleBacaSemua}
                         title="Tandai semua sudah dibaca"
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition hover:bg-white/15 hover:text-white cursor-pointer"
+                        className="group/baca flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-all duration-200 hover:bg-emerald-500 hover:text-white active:scale-90 cursor-pointer"
                       >
-                        <CheckCheck className="w-3.5 h-3.5" />
+                        <CheckCheck className="w-3.5 h-3.5 transition-transform duration-200 group-hover/baca:scale-110" />
                       </button>
                     )}
                     {notifList.length > 0 && (
                       <button
                         onClick={handleHapusSemua}
                         title="Hapus semua notifikasi"
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition hover:bg-rose-500/80 hover:text-white cursor-pointer"
+                        className="group/hapus flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-all duration-200 hover:bg-rose-500 hover:text-white active:scale-90 cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/hapus:scale-110" />
                       </button>
                     )}
                   </div>
@@ -324,7 +337,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
                   <p className={`mt-0.5 text-[10.5px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>Semua pekerjaan Anda sudah tertangani.</p>
                 </div>
               ) : (
-                <div className="max-h-96 overflow-y-auto">
+                <div className="max-h-[45vh] md:max-h-80 overflow-y-auto">
                   {notifList.map((n) => {
                     const meta = NOTIF_META[n.tipe] ?? NOTIF_META.sistem;
                     const Icon = meta.icon;
@@ -356,7 +369,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
                               </span>
                               {belumDibaca && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" />}
                             </span>
-                            <span className={`mt-0.5 block text-[10.5px] leading-snug ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                            <span className={`mt-0.5 block text-[10.5px] leading-snug line-clamp-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                               {n.pesan}
                             </span>
                             <span className={`mt-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
@@ -371,13 +384,11 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
                         <button
                           onClick={(e) => handleHapusNotif(e, n)}
                           title="Hapus notifikasi"
-                          className={`mr-2.5 mt-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg opacity-0 transition-all duration-200 group-hover/notif:opacity-100 focus:opacity-100 cursor-pointer ${
-                            isDark
-                              ? "text-slate-500 hover:bg-rose-500/15 hover:text-rose-400"
-                              : "text-slate-400 hover:bg-rose-50 hover:text-rose-500"
+                          className={`group/hapus1 mr-2.5 mt-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg opacity-100 md:opacity-0 transition-all duration-200 md:group-hover/notif:opacity-100 focus:opacity-100 hover:bg-rose-500 hover:text-white active:scale-90 cursor-pointer ${
+                            isDark ? "text-slate-500" : "text-slate-400"
                           }`}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/hapus1:scale-110" />
                         </button>
                       </div>
                     );
@@ -388,12 +399,13 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
           )}
         </div>
 
-        <div className={`h-6 w-px mx-0.5 md:mx-1 ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+        {/* Jam & Tanggal — disembunyikan di mobile karena ponsel sudah
+            menampilkan jam pada bilah status sistem. */}
+        <div className={`hidden sm:block h-6 w-px mx-0.5 md:mx-1 ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
 
-        {/* Jam & Tanggal — sekarang selalu tampil, versi ringkas di mobile */}
-        <div className={`flex flex-col items-end leading-tight px-2 md:px-3 py-1.5 rounded-xl ${isDark ? "bg-white/5" : "bg-slate-50"}`}>
+        <div className={`hidden sm:flex flex-col items-end leading-tight px-2 md:px-3 py-1.5 rounded-xl ${isDark ? "bg-white/5" : "bg-slate-50"}`}>
           <span className={`text-[10px] md:text-[11px] font-black tabular-nums ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{fmtTime(clock)}</span>
-          <span className={`hidden sm:block text-[9px] font-bold ${isDark ? "text-slate-500" : "text-slate-400"}`}>{fmtDate(clock)}</span>
+          <span className={`text-[9px] font-bold whitespace-nowrap ${isDark ? "text-slate-500" : "text-slate-400"}`}>{fmtDate(clock)}</span>
         </div>
 
         <div className={`h-6 w-px mx-0.5 md:mx-1 ${isDark ? "bg-white/10" : "bg-slate-200"}`} />

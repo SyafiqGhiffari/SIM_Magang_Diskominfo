@@ -31,6 +31,12 @@ type UserManajemen struct {
 	// IsOnline: true jika admin sedang aktif login di web manajemen
 	IsOnline bool `gorm:"default:false" json:"is_online"`
 
+	// Manajemen sesi & idle timeout
+	CurrentSessionID string     `gorm:"type:varchar(64)" json:"-"`
+	LastActivityAt   *time.Time `gorm:"index" json:"last_activity_at,omitempty"`
+	LastLoginAt      *time.Time `json:"last_login_at,omitempty"`
+	LastLoginIP      string     `gorm:"type:varchar(45)" json:"last_login_ip,omitempty"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

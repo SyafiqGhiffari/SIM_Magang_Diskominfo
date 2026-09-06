@@ -36,6 +36,9 @@ func main() {
 	// akun peserta belum dibuat, mentor belum ditugaskan, sertifikat pending.
 	services.MulaiPengingatNotifikasiAdmin(config.DB)
 
+	// Penjadwal pembersihan berkas sampah / lampiran terhapus > 30 hari
+	services.MulaiPenjadwalPembersihanBerkas(config.DB)
+
 	router := gin.Default()
 
 	// Batas maksimal ukuran total form-data (6 file x 10MB + field lain)

@@ -49,7 +49,7 @@ const PageLoader = () => {
       }`}
     >
       <div
-        className="absolute top-0 left-0 h-1.5 bg-gradient-to-r from-[#00A5EC] via-[#004F9F] to-[#00A5EC] transition-all duration-500 ease-out"
+        className="absolute top-0 left-0 h-1 sm:h-1.5 bg-gradient-to-r from-[#00A5EC] via-[#004F9F] to-[#00A5EC] transition-all duration-500 ease-out"
         style={{
           width: "100%",
           animation: "loading-bar 1.5s infinite linear",
@@ -57,22 +57,22 @@ const PageLoader = () => {
       />
 
       <div className="relative flex flex-col items-center">
-        <div className="relative h-20 w-20">
+        <div className="relative h-16 w-16 sm:h-20 sm:w-20">
           <div className="absolute inset-0 flex items-center justify-center">
             <img
               src="/images/icon-diskominfo.png"
               alt="Logo Kominfo"
-              className="h-10 w-10 animate-pulse"
+              className="h-8 w-8 sm:h-10 sm:w-10 animate-pulse"
             />
           </div>
           <div className="absolute inset-0 rounded-full border-4 border-slate-700/30"></div>
           <div className="absolute inset-0 rounded-full border-4 border-[#00A5EC] border-t-transparent animate-spin"></div>
         </div>
 
-        <h3 className="mt-6 text-sm font-extrabold tracking-widest text-white uppercase animate-pulse">
+        <h3 className="mt-5 sm:mt-6 text-xs sm:text-sm font-extrabold tracking-widest text-white uppercase animate-pulse">
           Memuat Halaman...
         </h3>
-        <p className="mt-1 text-[10px] text-[#00A5EC]/70 uppercase tracking-widest">
+        <p className="mt-1 text-[8.5px] sm:text-[10px] text-[#00A5EC]/70 uppercase tracking-widest">
           Diskominfo Ponorogo
         </p>
       </div>

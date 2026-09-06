@@ -1,0 +1,34 @@
+# .air.toml
+# Konfigurasi Live-Reload (Air) untuk SIM Magang Diskominfo Backend
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  # Perintah build binary
+  cmd = "go build -o ./tmp/main.exe ."
+  # File binary yang akan dieksekusi
+  bin = "tmp\\main.exe"
+  # Ekstensi file yang dipantau
+  include_ext = ["go", "env"]
+  # Folder yang dikecualikan dari pemantauan (agar tidak memicu loop reload)
+  exclude_dir = ["assets", "tmp", "uploads", "fonts"]
+  # Jeda waktu debounce sebelum build ulang (dalam ms)
+  delay = 800
+  # Hentikan bila terjadi error kompilasi
+  stop_on_error = true
+  # Matikan proses lama sebelum menjalankan yang baru
+  send_interrupt = true
+  kill_delay = 500
+
+[log]
+  time = true
+
+[color]
+  main = "magenta"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "green"
+
+[misc]
+  clean_on_exit = true

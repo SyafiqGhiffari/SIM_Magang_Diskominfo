@@ -12,8 +12,9 @@ import { toastError } from "../../utils/swal";
 import { useManajemenTheme } from "../../context/useManajemenTheme";
 import { formatTanggalPresensi, formatMenit } from "../../constants/presensiStatus";
 import {
-  ClipboardList, Search, Inbox, Filter as FilterIcon, Users, CheckCircle2, Clock, UserX,
-  GraduationCap, LogIn, LogOut, Eye, PencilLine, AlarmClockOff, MailCheck, Loader2,
+  ClipboardList, Search, Inbox, Filter as FilterIcon, CheckCircle2, Clock,
+  GraduationCap, LogIn, LogOut, Eye, AlarmClockOff, Loader2,
+  Users, UserX, PencilLine, MailCheck,
 } from "lucide-react";
 
 const emptyFilters = {
@@ -53,9 +54,10 @@ const PesertaAvatar = ({ nama, foto }) => {
 };
 
 const hitungFilterAktif = (f) =>
-  (f.status.length > 0 ? 1 : 0) +
-  (f.kategori.length > 0 ? 1 : 0) +
-  (f.tanggal_dari || f.tanggal_sampai ? 1 : 0) +
+  f.status.length +
+  f.kategori.length +
+  (f.tanggal_dari ? 1 : 0) +
+  (f.tanggal_sampai ? 1 : 0) +
   (f.lupa_presensi ? 1 : 0);
 
 const PresensiBimbinganPage = () => {
@@ -111,18 +113,14 @@ const PresensiBimbinganPage = () => {
       const params = buildParams();
       const [resList, resStat] = await Promise.all([
         getPresensiMentor(params),
-        getStatistikPresensiMentor({
-          tanggal_dari: params.tanggal_dari,
-          tanggal_sampai: params.tanggal_sampai,
-          kategori: params.kategori,
-        }),
+        getStatistikPresensiMentor(),
       ]);
       const payload = resList.data.data || {};
       setRows(payload.data || []);
       setTotal(payload.meta?.total || 0);
       setStat(resStat.data.data || null);
     } catch (err) {
-      toastError(err.response?.data?.message || "Gagal memuat presensi peserta bimbingan.");
+      toastError(err.response?.data?.message || "Gagal memuat presensi bimbingan.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -136,7 +134,7 @@ const PresensiBimbinganPage = () => {
 
   const openFilter = () => { setDraftFilters(appliedFilters); setShowFilterModal(true); };
   const applyFilter = () => { setAppliedFilters(draftFilters); setPage(0); };
-  const resetFilter = () => { setDraftFilters(emptyFilters); setAppliedFilters(emptyFilters); setPage(0); };
+  const resetFilter = () => { setDraftFilters(emptyFilters); setAppliedFilters(emptyFilters); setSortBy("tanggal_baru"); setPage(0); };
 
   const activeFilterCount = hitungFilterAktif(appliedFilters);
 
@@ -173,7 +171,9 @@ const PresensiBimbinganPage = () => {
     <MentorLayout searchValue={search} onSearchChange={(v) => setSearch(v)}>
       <div className="space-y-6 animate-[fadeslide_0.35s_ease-out]">
         <div>
-          <h2 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>Presensi Bimbingan</h2>
+          <h2 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+            Presensi Bimbingan
+          </h2>
           <p className={`mt-1.5 text-xs max-w-5xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             Pantau kehadiran peserta bimbingan Anda. Sebagai mentor, Anda berwenang mengoreksi presensi dan memverifikasi pengajuan izin/sakit.
           </p>
@@ -188,15 +188,30 @@ const PresensiBimbinganPage = () => {
           <div className="space-y-6 animate-[fadeslide_0.3s_ease-out]">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {statCards.map((c, i) => (
-                <div key={i} className={`group relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br ${c.lightGradient} p-4 sm:p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1`}>
+                <div
+                  key={i}
+                  className={`group relative overflow-hidden rounded-2xl border p-4 sm:p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
+                    isDark
+                      ? "border-white/10 bg-[#161b22]"
+                      : `border-slate-200 bg-gradient-to-br ${c.lightGradient}`
+                  }`}
+                >
                   <div className={`absolute -right-12 -top-12 h-36 w-36 rounded-full bg-gradient-to-br ${c.gradient} opacity-[0.3] blur-xl transition-all duration-300 group-hover:opacity-[0.4] group-hover:scale-125`} />
                   <div className="relative flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-[11px] sm:text-sm font-bold tracking-wide text-slate-500 truncate">{c.label}</p>
-                      <h3 className="mt-1 sm:mt-1.5 text-2xl sm:text-4xl font-black tracking-tight text-[#0B1442]">{c.value}</h3>
-                      <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs font-medium text-slate-400 leading-snug">{c.caption}</p>
+                      <p className={`text-[11px] sm:text-sm font-bold tracking-wide truncate ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                        {c.label}
+                      </p>
+                      <h3 className={`mt-1 sm:mt-1.5 text-2xl sm:text-4xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                        {c.value}
+                      </h3>
+                      <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs font-medium text-slate-400 leading-snug">
+                        {c.caption}
+                      </p>
                     </div>
-                    <span className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 ${c.iconBg} ${c.iconColor}`}>
+                    <span className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 ${
+                      isDark ? "bg-white/10 text-white" : `${c.iconBg} ${c.iconColor}`
+                    }`}>
                       <c.icon className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={2} />
                     </span>
                   </div>
@@ -206,31 +221,41 @@ const PresensiBimbinganPage = () => {
             </div>
 
             {(stat?.izin_menunggu ?? 0) > 0 && (
-              <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 sm:px-6 py-3.5 shadow-sm">
+              <div className={`flex flex-wrap items-center gap-2.5 rounded-2xl border px-4 sm:px-6 py-3.5 shadow-sm ${
+                isDark
+                  ? "border-amber-500/20 bg-amber-500/10 text-amber-300"
+                  : "border-amber-200 bg-amber-50/70 text-amber-700"
+              }`}>
                 <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm">
                   <MailCheck className="w-3.5 h-3.5" /> {stat.izin_menunggu} pengajuan menunggu
                 </span>
-                <span className="text-[11.5px] font-semibold text-amber-700">
+                <span className="text-[11.5px] font-semibold">
                   Ada pengajuan izin/sakit peserta bimbingan Anda yang belum diverifikasi — buka menu “Verifikasi Izin”.
                 </span>
               </div>
             )}
 
-            <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+            <div className={`rounded-2xl border shadow-sm overflow-hidden ${
+              isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
+            }`}>
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 px-4 sm:px-6 pt-5 pb-3">
                 <div className="flex items-start gap-3 min-w-0">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
                     <ClipboardList className="w-5 h-5" />
                   </span>
                   <div className="min-w-0">
-                    <h3 className="text-base font-black text-[#0B1442]">Riwayat Presensi Peserta Bimbingan</h3>
+                    <h3 className={`text-base font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                      Riwayat Presensi Peserta Bimbingan
+                    </h3>
                     <p className="mt-0.5 text-xs text-slate-400 max-w-xl leading-relaxed">
                       Gunakan tombol koreksi bila peserta lupa presensi atau ada kekeliruan pencatatan.
                     </p>
                   </div>
                 </div>
                 {refreshing && (
-                  <span className="inline-flex items-center gap-1.5 self-start rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 ring-1 ring-slate-200">
+                  <span className={`inline-flex items-center gap-1.5 self-start rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+                    isDark ? "bg-white/5 text-slate-400 ring-1 ring-white/10" : "bg-slate-50 text-slate-400 ring-1 ring-slate-200"
+                  }`}>
                     <Loader2 className="w-3 h-3 animate-spin" /> Memuat
                   </span>
                 )}
@@ -238,15 +263,19 @@ const PresensiBimbinganPage = () => {
 
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 pb-4">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <PresensiSortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+                  <PresensiSortDropdown sortBy={sortBy} setSortBy={setSortBy} isDark={isDark} />
                   <button
                     onClick={openFilter}
-                    className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300 hover:bg-slate-50 active:scale-95 cursor-pointer shrink-0"
+                    className={`group inline-flex h-8 sm:h-auto items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-xs font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer shrink-0 ${
+                      isDark
+                        ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                    }`}
                   >
-                    <FilterIcon className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
+                    <FilterIcon className="w-3 sm:w-3.5 h-3 sm:h-3.5 transition-transform duration-300 group-hover:scale-110" />
                     Filter
                     {activeFilterCount > 0 && (
-                      <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[#004F9F] text-white px-1 text-[9.5px] font-black">
+                      <span className="flex h-4 min-w-[16px] sm:h-4.5 sm:min-w-[18px] items-center justify-center rounded-full bg-[#004F9F] text-white px-1 text-[8.5px] sm:text-[9.5px] font-black">
                         {activeFilterCount}
                       </span>
                     )}
@@ -262,8 +291,14 @@ const PresensiBimbinganPage = () => {
                     onFocus={() => setIsSearchFocused(true)}
                     onBlur={() => setIsSearchFocused(false)}
                     placeholder="Cari nama peserta atau institusi..."
-                    className={`w-full rounded-xl border pl-9 pr-3 py-2.5 text-xs font-medium text-slate-700 outline-none transition-all duration-200 ${
-                      isSearchFocused ? "border-[#004F9F] bg-white shadow-md ring-4 ring-[#00A5EC]/15" : "border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-white"
+                    className={`w-full rounded-xl border pl-9 pr-3 py-2.5 text-xs font-medium outline-none transition-all duration-200 ${
+                      isSearchFocused
+                        ? isDark
+                          ? "border-[#00A5EC] bg-[#1c2333] text-slate-100 shadow-md ring-4 ring-[#00A5EC]/15"
+                          : "border-[#004F9F] bg-white text-slate-700 shadow-md ring-4 ring-[#00A5EC]/15"
+                        : isDark
+                          ? "border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:bg-white/10"
+                          : "border-slate-200 bg-slate-50/50 text-slate-700 hover:border-slate-300 hover:bg-white"
                     }`}
                   />
                 </div>
@@ -272,23 +307,29 @@ const PresensiBimbinganPage = () => {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[860px] text-left text-[13px]">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/60">
+                    <tr className={`border-b ${isDark ? "border-white/5 bg-white/[0.02]" : "border-slate-100 bg-slate-50/60"}`}>
                       {headerCols.map((h) => (
                         <th key={h} className="px-6 py-3.5 text-left text-[10.5px] font-black uppercase tracking-wider text-slate-400">{h}</th>
                       ))}
                       <th className="px-6 py-3.5 text-right text-[10.5px] font-black uppercase tracking-wider text-slate-400">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className={`divide-y ${isDark ? "divide-white/5" : "divide-slate-50"}`}>
                     {rows.length === 0 ? (
                       <tr className="animate-[fadeslide_0.3s_ease-out]">
                         <td colSpan={5} className="px-6 py-16">
                           <div className="flex flex-col items-center justify-center gap-3 text-center">
-                            <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-300">
+                            <span className={`relative flex h-14 w-14 items-center justify-center rounded-2xl ${
+                              isDark ? "bg-white/5 text-slate-500" : "bg-slate-50 text-slate-300"
+                            }`}>
                               <Inbox className="w-6 h-6" />
-                              <span className="absolute inset-0 rounded-2xl border-2 border-slate-200 animate-ping opacity-40" />
+                              <span className={`absolute inset-0 rounded-2xl border-2 animate-ping opacity-40 ${
+                                isDark ? "border-white/20" : "border-slate-200"
+                              }`} />
                             </span>
-                            <p className="text-sm font-bold text-slate-500">Belum ada data presensi peserta bimbingan</p>
+                            <p className={`text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-500"}`}>
+                              Belum ada data presensi peserta bimbingan
+                            </p>
                             <p className="text-xs text-slate-400 max-w-sm">Pastikan peserta sudah ditugaskan kepada Anda oleh admin, atau ubah filter periode.</p>
                           </div>
                         </td>
@@ -297,14 +338,18 @@ const PresensiBimbinganPage = () => {
                       rows.map((r, i) => (
                         <tr
                           key={r.id}
-                          className="group border-b border-slate-50 transition-all duration-200 hover:bg-blue-50/30 hover:shadow-sm animate-[fadeslide_0.3s_ease-out]"
+                          className={`group transition-all duration-200 animate-[fadeslide_0.3s_ease-out] ${
+                            isDark ? "hover:bg-white/[0.03]" : "hover:bg-blue-50/30 hover:shadow-sm"
+                          }`}
                           style={{ animationDelay: `${i * 40}ms`, animationFillMode: "backwards" }}
                         >
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <PesertaAvatar nama={r.nama} foto={r.foto_peserta || r.foto_profil} />
                               <div className="min-w-0">
-                                <p className="font-bold text-[#0B1442] transition-colors duration-200 group-hover:text-[#004F9F] truncate">{r.nama}</p>
+                                <p className={`font-bold transition-colors duration-200 truncate ${
+                                  isDark ? "text-slate-100 group-hover:text-[#00A5EC]" : "text-[#0B1442] group-hover:text-[#004F9F]"
+                                }`}>{r.nama}</p>
                                 {r.institusi && (
                                   <p className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5 truncate">
                                     <GraduationCap className="w-3 h-3 shrink-0" /> {r.institusi}
@@ -315,28 +360,40 @@ const PresensiBimbinganPage = () => {
                           </td>
 
                           <td className="px-6 py-4">
-                            <p className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10.5px] font-bold text-slate-600 shadow-sm whitespace-nowrap transition-all duration-200 group-hover:border-slate-300 group-hover:bg-white group-hover:shadow-md">
+                            <p className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10.5px] font-bold shadow-sm whitespace-nowrap transition-all duration-200 ${
+                              isDark
+                                ? "border-white/10 bg-white/5 text-slate-300 group-hover:border-white/20"
+                                : "border-slate-200 bg-slate-50 text-slate-600 group-hover:border-slate-300 group-hover:bg-white group-hover:shadow-md"
+                            }`}>
                               {formatTanggalPresensi(r.tanggal)}
                             </p>
                           </td>
 
                           <td className="px-6 py-4">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-bold text-emerald-600">
+                              <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-bold ${
+                                isDark ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-50 text-emerald-600"
+                              }`}>
                                 <LogIn className="w-2.5 h-2.5" /> {r.jam_masuk || "--:--"}
                               </span>
-                              <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-1.5 py-0.5 text-[10.5px] font-bold text-sky-600">
+                              <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-bold ${
+                                isDark ? "bg-sky-500/15 text-sky-300" : "bg-sky-50 text-sky-600"
+                              }`}>
                                 <LogOut className="w-2.5 h-2.5" /> {r.jam_pulang || "--:--"}
                               </span>
                             </div>
                             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                               {r.menit_terlambat > 0 && (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-600">
+                                <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                                  isDark ? "bg-amber-500/15 text-amber-300" : "bg-amber-50 text-amber-600"
+                                }`}>
                                   <Clock className="w-2.5 h-2.5" /> +{formatMenit(r.menit_terlambat)}
                                 </span>
                               )}
                               {r.lupa_presensi && (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                                <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                                  isDark ? "bg-amber-500/20 text-amber-300" : "bg-amber-100 text-amber-700"
+                                }`}>
                                   <AlarmClockOff className="w-2.5 h-2.5" /> Lupa presensi
                                 </span>
                               )}
@@ -351,7 +408,11 @@ const PresensiBimbinganPage = () => {
                             <div className="flex justify-end gap-2">
                               <button
                                 onClick={() => setDetail(r)}
-                                className="group/btn inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#004F9F]/40 hover:bg-blue-50 hover:text-[#004F9F] hover:shadow-md active:scale-95 cursor-pointer"
+                                className={`group/btn inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ${
+                                  isDark
+                                    ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
+                                    : "border-slate-200 bg-white text-slate-600 hover:border-[#004F9F]/40 hover:bg-blue-50 hover:text-[#004F9F] hover:shadow-md"
+                                }`}
                               >
                                 <Eye className="w-3.5 h-3.5 transition-transform duration-300 group-hover/btn:scale-110" />
                                 Detail
@@ -386,16 +447,20 @@ const PresensiBimbinganPage = () => {
           onApply={applyFilter}
           onReset={resetFilter}
           onClose={() => setShowFilterModal(false)}
+          isDark={isDark}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
         />
       )}
 
-      {detail && <PresensiDetailModal data={detail} onClose={() => setDetail(null)} />}
+      {detail && <PresensiDetailModal data={detail} onClose={() => setDetail(null)} isDark={isDark} />}
 
       {koreksi && (
         <KoreksiPresensiModal
           data={koreksi}
           onClose={() => setKoreksi(null)}
           onSaved={() => setReloadKey((k) => k + 1)}
+          isDark={isDark}
         />
       )}
     </MentorLayout>

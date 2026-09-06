@@ -21,8 +21,8 @@ import (
 // data pendaftaran magang terkait dan sertifikatnya (jika sudah dibuat).
 func GetAllSertifikat(c *gin.Context) {
 	var users []models.UserManajemen
-	// Sertifikat harus tetap dapat dikelola & diunduh walau peserta sudah selesai magang (alumni) atau akunnya dinonaktifkan admin.
-	if err := config.DB.Where("role = ?", "peserta").Order("created_at desc").Find(&users).Error; err != nil {
+	// Hanya peserta aktif yang ditampilkan pada kelola sertifikat
+	if err := config.DB.Where("role = ? AND status_akun = ?", "peserta", "aktif").Order("created_at desc").Find(&users).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data peserta")
 		return
 	}
@@ -48,6 +48,7 @@ func GetAllSertifikat(c *gin.Context) {
 	type Resp struct {
 		AkunPesertaID  uint                      `json:"akun_peserta_id"`
 		Nama           string                    `json:"nama"`
+		FotoProfil     string                    `json:"foto_profil"`
 		Bidang         string                    `json:"bidang"`
 		Institusi      string                    `json:"institusi"`
 		TanggalMulai   string                    `json:"tanggal_mulai"`
@@ -58,7 +59,7 @@ func GetAllSertifikat(c *gin.Context) {
 
 	result := make([]Resp, 0, len(users))
 	for _, u := range users {
-		r := Resp{AkunPesertaID: u.ID, Nama: u.Nama}
+		r := Resp{AkunPesertaID: u.ID, Nama: u.Nama, FotoProfil: u.FotoProfil}
 		if p, ok := pendaftaranByAkun[u.ID]; ok {
 			pCopy := p
 			r.Pendaftaran = &pCopy

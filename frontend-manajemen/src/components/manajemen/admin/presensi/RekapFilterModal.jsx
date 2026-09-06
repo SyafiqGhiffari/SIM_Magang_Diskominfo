@@ -1,143 +1,267 @@
 import { useEffect } from "react";
-import { Filter as FilterIcon, X, RotateCcw, Check, Building2, GraduationCap, TrendingUp, AlertTriangle } from "lucide-react";
-import { KATEGORI_PESERTA_OPTS } from "../../../../constants/presensiStatus";
+import { Filter as FilterIcon, X, RotateCcw, Check, Building2, GraduationCap, TrendingUp, AlertTriangle, ArrowUpDown } from "lucide-react";
+import { KATEGORI_PESERTA_OPTS, REKAP_SORT_OPTS } from "../../../../constants/presensiStatus";
 
-const CheckboxItem = ({ checked, label, onToggle, dot }) => (
+const CheckboxItem = ({ checked, label, onToggle, dot, isDark }) => (
   <button
     type="button"
     onClick={onToggle}
-    className={`group flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
-      checked ? "border-[#004F9F]/50 bg-blue-50/50 shadow-sm" : "border-slate-200 bg-slate-50/70 hover:border-[#004F9F]/40 hover:bg-white"
+    className={`group flex items-center gap-1.5 sm:gap-2.5 rounded-lg sm:rounded-xl border px-2 py-1.5 sm:px-3 sm:py-2.5 text-left transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
+      checked
+        ? isDark
+          ? "border-[#00A5EC]/45 bg-[#00A5EC]/10 shadow-sm"
+          : "border-[#004F9F]/50 bg-blue-50/50 shadow-sm"
+        : isDark
+          ? "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
+          : "border-slate-200 bg-slate-50/70 hover:border-[#004F9F]/40 hover:bg-white"
     }`}
   >
     <span
-      className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200 ${
-        checked ? "border-[#004F9F] bg-gradient-to-br from-[#0B1442] to-[#004F9F] scale-110" : "border-slate-300 bg-white group-hover:border-[#004F9F]/60"
+      className={`flex h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200 ${
+        checked
+          ? isDark
+            ? "border-[#00A5EC] bg-gradient-to-br from-[#00A5EC] to-[#004F9F] scale-110"
+            : "border-[#004F9F] bg-gradient-to-br from-[#0B1442] to-[#004F9F] scale-110"
+          : isDark
+            ? "border-white/20 bg-white/5 group-hover:border-white/30"
+            : "border-slate-300 bg-white group-hover:border-[#004F9F]/60"
       }`}
     >
-      <Check className={`w-3 h-3 text-white transition-transform duration-200 ${checked ? "scale-100" : "scale-0"}`} strokeWidth={3} />
+      <Check
+        className={`w-2 h-2 sm:w-2.5 sm:h-2.5 text-white transition-transform duration-200 ${
+          checked ? "scale-100" : "scale-0"
+        }`}
+        strokeWidth={3}
+      />
     </span>
-    {dot && <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />}
-    <span className="text-xs font-bold text-slate-700 truncate">{label}</span>
+    {dot && <span className={`h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0 rounded-full ${dot}`} />}
+    <span className={`text-[9px] sm:text-xs font-bold truncate ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+      {label}
+    </span>
+  </button>
+);
+
+const RadioItem = ({ checked, label, onSelect, isDark }) => (
+  <button
+    type="button"
+    onClick={onSelect}
+    className={`group flex items-center gap-1.5 sm:gap-2.5 rounded-lg sm:rounded-xl border px-2 py-1.5 sm:px-3 sm:py-2 text-left transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
+      checked
+        ? isDark
+          ? "border-[#00A5EC]/45 bg-[#00A5EC]/10 shadow-sm"
+          : "border-[#004F9F]/50 bg-blue-50/50 shadow-sm"
+        : isDark
+          ? "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
+          : "border-slate-200 bg-slate-50/70 hover:border-[#004F9F]/40 hover:bg-white"
+    }`}
+  >
+    <span
+      className={`flex h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
+        checked
+          ? isDark ? "border-[#00A5EC] scale-110" : "border-[#004F9F] scale-110"
+          : isDark
+            ? "border-white/20 group-hover:border-white/30"
+            : "border-slate-300 group-hover:border-[#004F9F]/60"
+      }`}
+    >
+      <span
+        className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-gradient-to-br transition-transform duration-200 ${
+          checked ? "scale-100" : "scale-0"
+        } ${isDark ? "from-[#00A5EC] to-[#004F9F]" : "from-[#0B1442] to-[#004F9F]"}`}
+      />
+    </span>
+    <span className={`text-[9px] sm:text-xs font-bold truncate ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+      {label}
+    </span>
   </button>
 );
 
 const RENTANG_OPTS = [
-  { value: "", label: "Semua rentang", dot: "bg-slate-300" },
   { value: "lt75", label: "Di bawah 75% (bermasalah)", dot: "bg-rose-500" },
   { value: "75_90", label: "75% – 89%", dot: "bg-amber-500" },
   { value: "gte90", label: "90% ke atas", dot: "bg-emerald-500" },
 ];
 
-const RekapFilterModal = ({ draft, setDraft, bidangOptions = [], onApply, onReset, onClose }) => {
+const RekapFilterModal = ({
+  draft,
+  setDraft,
+  bidangOptions = [],
+  onApply,
+  onReset,
+  onClose,
+  isDark = false,
+  sortBy,
+  setSortBy,
+}) => {
   useEffect(() => {
-    const handleKeyDown = (e) => { if (e.key === "Escape") onClose(); };
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [onClose]);
 
   const toggleArr = (field, value) =>
     setDraft((prev) => ({
       ...prev,
-      [field]: prev[field].includes(value) ? prev[field].filter((v) => v !== value) : [...prev[field], value],
+      [field]: prev[field].includes(value)
+        ? prev[field].filter((v) => v !== value)
+        : [...prev[field], value],
     }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-3 sm:p-4" onClick={onClose}>
       <div
-        className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden animate-[modalFadeUp_0.3s_ease-out] max-h-[90vh] flex flex-col"
+        className={`w-full max-w-sm sm:max-w-2xl max-h-[90vh] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-[modalFadeUp_0.3s_ease-out] ${
+          isDark ? "bg-[#161b22] border border-white/10" : "bg-white"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-6 py-6 shrink-0">
+        {/* Header with Watermark */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-3.5 py-3 sm:px-6 sm:py-5 shrink-0">
           <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-[#00A5EC]/15 blur-2xl pointer-events-none" />
-          <div className="relative flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md">
-              <FilterIcon className="w-5 h-5 text-white" />
-            </span>
-            <div>
-              <h3 className="text-sm font-black text-white">Filter Rekap Presensi</h3>
-              <p className="text-[11px] text-white/60 mt-0.5">Saring rekap berdasarkan bidang, jenis peserta, dan tingkat kehadiran</p>
+          <FilterIcon className="absolute right-6 sm:right-12 top-1/2 -translate-y-1/2 w-14 h-14 sm:w-18 sm:h-18 opacity-[0.06] text-sky-300 pointer-events-none rotate-6" strokeWidth={1} />
+
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="flex h-7.5 w-7.5 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-lg sm:rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md">
+                <FilterIcon className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-white" />
+              </span>
+              <div>
+                <h3 className="text-xs sm:text-sm font-black text-white">Filter Rekap Presensi</h3>
+                <p className="text-[8.5px] sm:text-[11px] text-white/60 mt-0.5">Saring rekap kehadiran sesuai kriteria</p>
+              </div>
             </div>
+            <button
+              onClick={onClose}
+              className="flex h-6 w-6 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg text-white/70 transition-all duration-200 hover:bg-white/10 hover:text-white hover:rotate-90 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
+            </button>
           </div>
-          <button onClick={onClose} className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-300 cursor-pointer">
-            <X className="w-4.5 h-4.5" />
-          </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Rentang kehadiran */}
+        {/* Body scrollable */}
+        <div className="flex-1 overflow-y-auto p-2.5 sm:p-5 space-y-2.5 sm:space-y-4">
+          {/* Tingkat Kehadiran */}
           <div>
-            <label className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-              <TrendingUp className="w-3.5 h-3.5" />
+            <label className="flex items-center gap-1 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 sm:mb-1.5">
+              <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               Tingkat Kehadiran
             </label>
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2">
               {RENTANG_OPTS.map((o) => (
                 <CheckboxItem
-                  key={o.value || "all"}
+                  key={o.value}
                   label={o.label}
                   dot={o.dot}
-                  checked={draft.persentase === o.value}
-                  onToggle={() => setDraft((p) => ({ ...p, persentase: o.value }))}
+                  checked={draft.persentase.includes(o.value)}
+                  onToggle={() => toggleArr("persentase", o.value)}
+                  isDark={isDark}
                 />
               ))}
             </div>
           </div>
 
-          {/* Jenis peserta */}
+          {/* Jenis Peserta */}
           <div>
-            <label className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-              <GraduationCap className="w-3.5 h-3.5" />
+            <label className="flex items-center gap-1 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 sm:mb-1.5">
+              <GraduationCap className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               Jenis Peserta
             </label>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
               {KATEGORI_PESERTA_OPTS.map((k) => (
                 <CheckboxItem
                   key={k.value}
                   label={k.label}
                   checked={draft.kategori.includes(k.value)}
                   onToggle={() => toggleArr("kategori", k.value)}
+                  isDark={isDark}
                 />
               ))}
             </div>
           </div>
 
-          {/* Bidang */}
+          {/* Bidang Penempatan */}
           {bidangOptions.length > 0 && (
             <div>
-              <label className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                <Building2 className="w-3.5 h-3.5" />
+              <label className="flex items-center gap-1 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 sm:mb-1.5">
+                <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 Bidang Penempatan
               </label>
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 max-h-44 overflow-y-auto overscroll-contain px-1 py-1">
-                {bidangOptions.map((b) => (
-                  <CheckboxItem key={b} label={b} checked={draft.bidang.includes(b)} onToggle={() => toggleArr("bidang", b)} />
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 max-h-36 sm:max-h-44 overflow-y-auto overscroll-contain p-1 pr-1.5">
+                {bidangOptions.map((b, idx) => {
+                  const namaBidang = typeof b === "string" ? b : (b?.nama || b?.name || "");
+                  return (
+                    <CheckboxItem
+                      key={b?.id || namaBidang || idx}
+                      label={namaBidang}
+                      checked={draft.bidang.includes(namaBidang)}
+                      onToggle={() => toggleArr("bidang", namaBidang)}
+                      isDark={isDark}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}
 
-          <p className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-100 px-3.5 py-2.5 text-[11px] font-medium text-amber-700">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            Persentase kehadiran dihitung dari (hadir + terlambat) dibagi hari kerja efektif peserta. Peserta di bawah 75% ditandai sebagai bermasalah.
+          {/* Catatan Persentase */}
+          <p className={`flex items-start gap-2 rounded-xl border p-2.5 sm:p-3 text-[9.5px] sm:text-[11px] font-medium leading-relaxed ${
+            isDark
+              ? "bg-amber-500/10 border-amber-500/20 text-amber-300"
+              : "bg-amber-50 border-amber-100 text-amber-700"
+          }`}>
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
+            Persentase kehadiran dihitung dari (hadir + terlambat) dibagi hari kerja efektif. Peserta di bawah 75% ditandai sebagai bermasalah.
           </p>
+
+          {/* Mobile Only: Sort Section (Khusus HP, Desktop memiliki dropdown sort di luar) */}
+          {setSortBy && (
+            <div className={`block sm:hidden border-t border-dashed pt-2 ${isDark ? "border-white/10" : "border-slate-200"}`}>
+              <label className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                <ArrowUpDown className="w-3 h-3" />
+                Urutkan Data
+              </label>
+              <div className="grid grid-cols-1 gap-1">
+                {REKAP_SORT_OPTS.map((opt) => (
+                  <RadioItem
+                    key={opt.value}
+                    label={opt.label}
+                    checked={sortBy === opt.value}
+                    onSelect={() => setSortBy(opt.value)}
+                    isDark={isDark}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 shrink-0">
-          <button onClick={onReset} className="group flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition-all duration-200 hover:bg-slate-50 hover:-translate-y-0.5 active:scale-95 cursor-pointer">
-            <RotateCcw className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-rotate-45" />
-            Reset Filter
+        <div className={`flex items-center justify-between gap-2 border-t p-2.5 sm:px-6 sm:py-3.5 shrink-0 ${isDark ? "border-white/10 bg-[#161b22]" : "border-slate-100 bg-slate-50/50"}`}>
+          <button
+            type="button"
+            onClick={onReset}
+            className={`inline-flex items-center gap-1.5 rounded-lg sm:rounded-xl border px-3 py-1.5 sm:px-4 sm:py-2.5 text-[10px] sm:text-xs font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ${
+              isDark
+                ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
+                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+            }`}
+          >
+            <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span>Reset Filter</span>
           </button>
           <button
-            onClick={() => { onApply(); onClose(); }}
-            className="group flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-4 py-3 text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+            type="button"
+            onClick={() => {
+              onApply();
+              onClose();
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#004F9F] px-4 py-1.5 sm:px-5 sm:py-2.5 text-[10px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:from-[#0f1d5e] hover:to-[#005bb8] hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
           >
-            <FilterIcon className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12" />
-            Terapkan Filter
+            <FilterIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span>Terapkan Filter</span>
           </button>
         </div>
       </div>

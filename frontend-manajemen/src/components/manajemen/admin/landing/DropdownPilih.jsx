@@ -109,9 +109,9 @@ const DropdownPilih = ({
           <div
             ref={panelRef}
             style={gaya}
-            className={`overflow-y-auto overflow-x-hidden rounded-2xl border p-1.5 shadow-2xl animate-[fadeslide_0.18s_ease-out] ${
+            className={`overflow-y-auto overflow-x-hidden rounded-xl sm:rounded-2xl border p-1 sm:p-1.5 shadow-2xl animate-[fadeslide_0.18s_ease-out] ${
               isDark
-                ? "border-white/10 bg-[#111c33] shadow-black/50"
+                ? "border-white/10 bg-[#161b22] shadow-black/60"
                 : "border-slate-200/80 bg-white shadow-slate-900/15"
             }`}
           >
@@ -126,7 +126,7 @@ const DropdownPilih = ({
                     onUbah(o.key);
                     setBuka(false);
                   }}
-                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-all duration-200 ${
+                  className={`flex w-full cursor-pointer items-center gap-2 sm:gap-2.5 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2.5 text-left transition-all duration-200 ${
                     ini
                       ? isDark
                         ? "bg-[#00A5EC]/15 text-[#7DD3FC]"
@@ -136,16 +136,16 @@ const DropdownPilih = ({
                       : "text-slate-600 hover:bg-slate-50"
                   }`}
                 >
-                  {IkonOpsi && <IkonOpsi className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} />}
+                  {IkonOpsi && <IkonOpsi className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" strokeWidth={2.4} />}
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs font-bold">{o.label}</span>
+                    <span className="block truncate text-[10.5px] sm:text-xs font-bold">{o.label}</span>
                     {o.ket && (
-                      <span className="mt-0.5 block truncate text-[10.5px] font-medium text-slate-400">
+                      <span className="mt-0.5 block truncate text-[9px] sm:text-[10.5px] font-medium text-slate-400">
                         {o.ket}
                       </span>
                     )}
                   </span>
-                  {ini && <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={3.2} />}
+                  {ini && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" strokeWidth={3.2} />}
                 </button>
               );
             })}
@@ -160,24 +160,24 @@ const DropdownPilih = ({
         ref={tombolRef}
         type="button"
         onClick={() => setBuka((b) => !b)}
-        className={`group/dd flex w-full cursor-pointer items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left text-xs font-bold outline-none transition-all duration-200 ${
+        className={`group/dd flex w-full cursor-pointer items-center gap-1.5 sm:gap-2.5 rounded-lg sm:rounded-xl border px-2.5 sm:px-3.5 py-1.5 sm:py-2.5 text-left text-[10.5px] sm:text-xs font-bold outline-none transition-all duration-200 ${
           buka
             ? isDark
-              ? "border-[#00A5EC] bg-white/[0.07] text-slate-100 ring-4 ring-[#00A5EC]/20"
+              ? "border-[#00A5EC] bg-[#161b22] text-slate-100 ring-4 ring-[#00A5EC]/15"
               : "border-[#004F9F] bg-white text-[#0B1442] ring-4 ring-[#00A5EC]/15"
             : isDark
-            ? "border-white/10 bg-white/5 text-slate-200 hover:border-white/25"
+            ? "border-white/10 bg-[#0d1117] text-slate-200 hover:border-white/25"
             : "border-slate-200 bg-slate-50/70 text-slate-600 hover:border-slate-300 hover:bg-white hover:shadow-sm"
         }`}
       >
         {IkonTerpilih && (
-          <IkonTerpilih className="h-3.5 w-3.5 shrink-0 text-[#00A5EC]" strokeWidth={2.6} />
+          <IkonTerpilih className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 text-[#00A5EC]" strokeWidth={2.6} />
         )}
         <span className={`flex-1 truncate ${terpilih ? "" : "text-slate-400"}`}>
           {terpilih?.label || placeholder}
         </span>
         <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform duration-300 ${
+          className={`h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 text-slate-400 transition-transform duration-300 ${
             buka ? "rotate-180 text-[#00A5EC]" : ""
           }`}
           strokeWidth={3}

@@ -31,6 +31,7 @@ type barisBebanMentor struct {
 	FotoProfil string `json:"foto_profil"`
 	Kapasitas  int    `json:"kapasitas"`
 	Bimbingan  int    `json:"bimbingan"`
+	IsOnline   bool   `json:"is_online"`
 }
 
 type barisPesertaBermasalah struct {
@@ -41,6 +42,7 @@ type barisPesertaBermasalah struct {
 	Hadir      int    `json:"hadir"`
 	Total      int    `json:"total"`
 	Persen     int    `json:"persen"`
+	IsOnline   bool   `json:"is_online"`
 }
 
 type barisAkanSelesai struct {
@@ -188,7 +190,8 @@ func GetRingkasanDashboardAdmin(c *gin.Context) {
 		       COALESCE(b.nama, '')        AS bidang,
 		       COALESCE(u.foto_profil, '') AS foto_profil,
 		       u.kapasitas_bimbingan       AS kapasitas,
-		       COALESCE(m.jumlah, 0)       AS bimbingan
+		       COALESCE(m.jumlah, 0)       AS bimbingan,
+		       u.is_online                 AS is_online
 		FROM user_manajemens u
 		LEFT JOIN bidang_magangs b ON b.id = u.bidang_id
 		LEFT JOIN (
@@ -230,7 +233,8 @@ func GetRingkasanDashboardAdmin(c *gin.Context) {
 		       COALESCE(NULLIF(u.foto_profil, ''), p.file_pas_foto, '') AS foto_profil,
 		       SUM(pr.status IN ('hadir','terlambat')) AS hadir,
 		       COUNT(pr.id)                            AS total,
-		       ROUND(SUM(pr.status IN ('hadir','terlambat')) * 100 / COUNT(pr.id)) AS persen
+		       ROUND(SUM(pr.status IN ('hadir','terlambat')) * 100 / COUNT(pr.id)) AS persen,
+		       u.is_online                 AS is_online
 		FROM user_manajemens u
 		JOIN presensis pr ON pr.peserta_id = u.id
 		LEFT JOIN pendaftaran_magangs p ON p.akun_peserta_id = u.id
@@ -238,7 +242,7 @@ func GetRingkasanDashboardAdmin(c *gin.Context) {
 		  AND u.status_akun = 'aktif'
 		  AND u.status_magang = 'aktif'
 		  AND pr.tanggal >= ? AND pr.tanggal <= ?
-		GROUP BY u.id, u.nama, p.posisi_bidang, u.foto_profil, p.file_pas_foto
+		GROUP BY u.id, u.nama, p.posisi_bidang, u.foto_profil, p.file_pas_foto, u.is_online
 		HAVING COUNT(pr.id) > 0
 		   AND SUM(pr.status IN ('hadir','terlambat')) * 100 / COUNT(pr.id) < 75
 		ORDER BY persen ASC
@@ -247,7 +251,7 @@ func GetRingkasanDashboardAdmin(c *gin.Context) {
 
 	var pesertaAktif, pesertaAlumni, jumlahMentor int64
 	db.Model(&models.UserManajemen{}).
-		Where("role = ? AND status_magang = ?", "peserta", "aktif").Count(&pesertaAktif)
+		Where("role = ? AND status_akun = ? AND status_magang = ?", "peserta", "aktif", "aktif").Count(&pesertaAktif)
 	db.Model(&models.UserManajemen{}).
 		Where("role = ? AND status_magang = ?", "peserta", "selesai").Count(&pesertaAlumni)
 	db.Model(&models.UserManajemen{}).
@@ -385,6 +389,55 @@ func GetRingkasanDashboardAdmin(c *gin.Context) {
 			"persen_kehadiran": persenKehadiran,
 			"total_presensi":   total30,
 			"rekap_30_hari":    rekap30,
+		},
+	})
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN: Hitungan antrean / tindakan aktif untuk lencana sidebar
+// GET /api/manajemen/admin/antrean/hitungan
+// ─────────────────────────────────────────────────────────────────────────────
+
+func AdminHitunganAntrean(c *gin.Context) {
+	db := config.DB
+	if db == nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Koneksi basis data belum siap")
+		return
+	}
+
+	hariIni := utils.TanggalHariIni()
+
+	var menungguVerifikasi int64
+	db.Model(&models.PendaftaranMagang{}).Where("status_pendaftaran = ?", "menunggu").Count(&menungguVerifikasi)
+
+	var suratBelumTerbit int64
+	db.Model(&models.PendaftaranMagang{}).Where("status_pendaftaran = ? AND surat_penerimaan_id IS NULL", "diterima").Count(&suratBelumTerbit)
+
+	var akunBelumDibuat int64
+	db.Model(&models.PendaftaranMagang{}).Where("status_pendaftaran = ? AND akun_peserta_id IS NULL", "diterima").Count(&akunBelumDibuat)
+
+	var belumPunyaMentor int64
+	db.Model(&models.PendaftaranMagang{}).Where("akun_peserta_id IS NOT NULL AND mentor_id IS NULL AND tanggal_selesai >= ?", hariIni).Count(&belumPunyaMentor)
+
+	var sertifikatTertunda int64
+	db.Model(&models.PendaftaranMagang{}).Where("akun_peserta_id IS NOT NULL AND tanggal_selesai < ? AND akun_peserta_id NOT IN (SELECT akun_peserta_id FROM sertifikats)", hariIni).Count(&sertifikatTertunda)
+
+	var chatBelumDibalas int64
+	db.Table("chat_sessions").Where("status = ? AND unread_admin_count > 0", "open").Count(&chatBelumDibalas)
+
+	var pertanyaanBaru int64
+	db.Table("faq_pertanyaan").Where("status = ?", "baru").Count(&pertanyaanBaru)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"pendaftaran":        menungguVerifikasi,
+			"surat_penerimaan":   suratBelumTerbit,
+			"peserta":            akunBelumDibuat + belumPunyaMentor,
+			"sertifikat":         sertifikatTertunda,
+			"chat_belum_dibalas": chatBelumDibalas,
+			"pertanyaan_baru":    pertanyaanBaru,
+			"bantuan":            chatBelumDibalas + pertanyaanBaru,
 		},
 	})
 }

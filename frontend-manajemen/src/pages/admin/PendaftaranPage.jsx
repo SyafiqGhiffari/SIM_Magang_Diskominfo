@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AdminLayout from "../../layouts/AdminLayout";
 import PendaftaranStats from "../../components/manajemen/admin/pendaftaran/PendaftaranStats";
 import SortDropdown from "../../components/manajemen/admin/pendaftaran/SortDropdown";
@@ -22,6 +22,8 @@ import { ClipboardList, Filter as FilterIcon, Search, X } from "lucide-react";
 const PendaftaranPage = () => {
   const { isDark } = useManajemenTheme();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const statusParam = searchParams.get("status");
 
   const [list, setList] = useState([]);
   const [bidangOptions, setBidangOptions] = useState([]);
@@ -41,16 +43,25 @@ const PendaftaranPage = () => {
   const [suratMap, setSuratMap] = useState({});
   const [selectedSurat, setSelectedSurat] = useState(null);
 
-  const [statusList, setStatusList] = useState(["menunggu"]);
+  const [statusList, setStatusList] = useState(statusParam ? (statusParam === "semua" ? [] : [statusParam]) : ["menunggu"]);
   const [bidang, setBidang] = useState("");
   const [kategori, setKategori] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [appliedStatusList, setAppliedStatusList] = useState(["menunggu"]);
+  const [appliedStatusList, setAppliedStatusList] = useState(statusParam ? (statusParam === "semua" ? [] : [statusParam]) : ["menunggu"]);
   const [appliedBidang, setAppliedBidang] = useState("");
   const [appliedKategori, setAppliedKategori] = useState("");
   const [appliedDateFrom, setAppliedDateFrom] = useState("");
   const [appliedDateTo, setAppliedDateTo] = useState("");
+
+  const [prevStatusParam, setPrevStatusParam] = useState(statusParam);
+  if (statusParam !== prevStatusParam) {
+    setPrevStatusParam(statusParam);
+    const listBaru = statusParam ? (statusParam === "semua" ? [] : [statusParam]) : ["menunggu"];
+    setStatusList(listBaru);
+    setAppliedStatusList(listBaru);
+    setPage(0);
+  }
 
   const toggleStatus = (key) => {
     setStatusList((prev) =>
@@ -214,6 +225,7 @@ const PendaftaranPage = () => {
     setAppliedKategori("");
     setAppliedDateFrom("");
     setAppliedDateTo("");
+    setSortBy("terbaru");
     setPage(0);
   };
 
@@ -237,22 +249,31 @@ const PendaftaranPage = () => {
     }
   };
 
-  const activeFilterCount =
-    (appliedStatusList.length > 0 && appliedStatusList.length < 4 ? 1 : 0) +
+  const activeFilterCountDesktop =
+    appliedStatusList.length +
     (appliedBidang ? 1 : 0) +
     (appliedKategori ? 1 : 0) +
-    (appliedDateFrom || appliedDateTo ? 1 : 0);
+    (appliedDateFrom ? 1 : 0) +
+    (appliedDateTo ? 1 : 0);
+
+  const activeFilterCountMobile =
+    activeFilterCountDesktop + (sortBy ? 1 : 0);
 
   return (
     <AdminLayout searchValue={search} onSearchChange={(v) => { setSearch(v); setPage(0); }}>
       <div className="space-y-6 animate-[fadeslide_0.35s_ease-out]">
         {/* Judul halaman (hero) */}
         <div>
-          <h2 className={`text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+          <h2 className={`text-lg sm:text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
             Kelola Pendaftaran Magang
           </h2>
-          <p className={`mt-1.5 text-xs max-w-3xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-            Pantau setiap pengajuan magang yang masuk, tinjau kelengkapan berkas, lalu putuskan status penerimaan peserta dalam satu tempat.
+          <p className={`mt-1.5 text-[11px] sm:text-xs max-w-3xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+            <span className="inline sm:hidden">
+              Pantau pengajuan magang, tinjau berkas, dan tentukan status.
+            </span>
+            <span className="hidden sm:inline">
+              Pantau setiap pengajuan magang yang masuk, tinjau kelengkapan berkas, lalu putuskan status penerimaan peserta dalam satu tempat.
+            </span>
           </p>
         </div>
 
@@ -268,73 +289,116 @@ const PendaftaranPage = () => {
               diterima={counts.diterima}
               ditolak={counts.ditolak}
               avgDays={avgDays}
+              isDark={isDark}
             />
 
-            <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-              {/* Header card */}
-              <div className="flex flex-wrap items-start justify-between gap-4 px-6 pt-6 pb-5">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
-                    <ClipboardList className="w-5 h-5" />
+            <div className={`rounded-2xl border shadow-sm overflow-hidden ${isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"}`}>              {/* Header card */}
+              <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4 px-4 sm:px-6 pt-4 sm:pt-6 pb-3.5 sm:pb-5">
+                <div className="flex items-start gap-2.5 sm:gap-3">
+                  <span className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
+                    <ClipboardList className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                   </span>
                   <div>
-                    <h3 className="text-base font-black text-[#0B1442]">Daftar Pendaftaran Peserta</h3>
-                    <p className="mt-0.5 text-xs text-slate-400 max-w-xl leading-relaxed">
-                      Gunakan tombol filter untuk menyaring data berdasarkan status, bidang, dan tanggal.
+                    <h3 className={`text-sm sm:text-base font-black text-left ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                      <span className="inline sm:hidden">Daftar Pendaftaran</span>
+                      <span className="hidden sm:inline">Daftar Pendaftaran Peserta</span>
+                    </h3>
+                    <p className="mt-0.5 text-[10.5px] sm:text-xs text-slate-400 max-w-xl leading-relaxed text-left">
+                      <span className="inline sm:hidden">Menyaring data pendaftaran.</span>
+                      <span className="hidden sm:inline">Gunakan tombol filter untuk menyaring data berdasarkan status, bidang, dan tanggal.</span>
                     </p>
                   </div>
                 </div>
-                <ExportDropdown onExport={handleExport} />
+                <div>
+                  <ExportDropdown onExport={handleExport} isDark={isDark} />
+                </div>
               </div>
 
-              {/* Baris kedua: Urutkan (kiri) — Filter — Search (kanan pojok) */}
-              <div className="flex flex-wrap items-center justify-between gap-3 px-6 pb-5 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+              {/* Baris kedua: Actions / Controls */}
+              <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 pb-3.5 sm:pb-5 border-b ${isDark ? "border-white/5" : "border-slate-100"}`}>
+                
+                {/* Desktop: Row containing SortDropdown + Filter button */}
+                <div className="hidden sm:flex items-center gap-2 sm:gap-2.5">
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} isDark={isDark} />
 
                   <button
                     onClick={() => setShowFilterModal(true)}
-                    className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300 hover:bg-slate-50 active:scale-95 cursor-pointer shrink-0"
+                    className={`group inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer shrink-0 ${
+                      isDark
+                        ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                    }`}
                   >
-                    <FilterIcon className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
+                    <FilterIcon className="w-3 sm:w-3.5 h-3 sm:h-3.5 transition-transform duration-300 group-hover:scale-110" />
                     Filter
-                    {activeFilterCount > 0 && (
-                      <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[#004F9F] text-white px-1 text-[9.5px] font-black">
-                        {activeFilterCount}
+                    {activeFilterCountDesktop > 0 && (
+                      <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#004F9F] text-white px-1 text-[8px] sm:text-[9.5px] font-black">
+                        {activeFilterCountDesktop}
                       </span>
                     )}
                   </button>
                 </div>
 
-                <div className={`group relative w-64 shrink-0 transition-transform duration-200 ${isSearchFocused ? "scale-[1.03]" : ""}`}>
-                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-all duration-200 ${isSearchFocused ? "text-[#004F9F] scale-110" : "text-slate-400"}`} />
-                  <input
-                    type="text"
-                    value={tableSearch}
-                    onChange={(e) => { setTableSearch(e.target.value); setPage(0); }}
-                    onFocus={() => setIsSearchFocused(true)}
-                    onBlur={() => setIsSearchFocused(false)}
-                    placeholder="Cari nama, email, bidang..."
-                    className={`w-full rounded-xl border pl-9 pr-9 py-2.5 text-xs font-medium text-slate-700 outline-none transition-all duration-200 ${
-                      isSearchFocused
-                        ? "border-[#004F9F] bg-white shadow-md ring-4 ring-[#00A5EC]/15"
-                        : "border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-white"
-                    }`}
-                  />
-                  {tableSearch && (
+                {/* Mobile: Row 2 containing Filter and Search side-by-side */}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {/* Mobile Only: Filter Button next to search */}
+                  <div className="block sm:hidden shrink-0">
                     <button
                       type="button"
-                      onClick={() => { setTableSearch(""); setPage(0); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer animate-[fadeslide_0.15s_ease-out]"
+                      onClick={() => setShowFilterModal(true)}
+                      className={`group inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold shadow-sm transition-all duration-200 active:scale-95 cursor-pointer ${
+                        isDark
+                          ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <FilterIcon className="w-3 h-3 transition-transform duration-300 group-hover:scale-110" />
+                      Filter
+                      {activeFilterCountMobile > 0 && (
+                        <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#004F9F] text-white px-1 text-[8.5px] font-black">
+                          {activeFilterCountMobile}
+                        </span>
+                      )}
                     </button>
-                  )}
-                  <span
-                    className={`pointer-events-none absolute -bottom-0.5 left-1/2 h-0.5 rounded-full bg-gradient-to-r from-[#0B1442] to-[#00A5EC] transition-all duration-300 ease-out ${
-                      isSearchFocused ? "w-[calc(100%-12px)] -translate-x-1/2" : "w-0 -translate-x-1/2"
-                    }`}
-                  />
+                  </div>
+
+                  {/* Search Input */}
+                  <div className={`group relative flex-1 sm:w-64 shrink-0 transition-transform duration-200 ${isSearchFocused ? "scale-[1.01]" : ""}`}>
+                    <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3 sm:w-3.5 h-3 sm:h-3.5 transition-all duration-200 ${isSearchFocused ? (isDark ? "text-[#00A5EC] scale-110" : "text-[#004F9F] scale-110") : "text-slate-400"}`} />
+                    <input
+                      type="text"
+                      value={tableSearch}
+                      onChange={(e) => { setTableSearch(e.target.value); setPage(0); }}
+                      onFocus={() => setIsSearchFocused(true)}
+                      onBlur={() => setIsSearchFocused(false)}
+                      placeholder="Cari sesuatu..."
+                      className={`w-full rounded-lg sm:rounded-xl border pl-8 sm:pl-9 pr-8 sm:pr-9 py-2 sm:py-2.5 text-[11px] sm:text-xs font-medium outline-none transition-all duration-200 ${
+                        isDark
+                          ? isSearchFocused
+                            ? "border-[#00A5EC] bg-white/[0.07] text-slate-100 shadow-md ring-4 ring-[#00A5EC]/20"
+                            : "border-white/10 bg-white/5 text-slate-100 placeholder-slate-500 hover:border-white/20"
+                          : isSearchFocused
+                            ? "border-[#004F9F] bg-white shadow-md ring-4 ring-[#00A5EC]/15 text-slate-700"
+                            : "border-slate-200 bg-slate-50/50 text-slate-700 placeholder-slate-300 hover:border-slate-300 hover:bg-white"
+                      }`}
+                    />
+                    {tableSearch && (
+                      <button
+                        type="button"
+                        onClick={() => { setTableSearch(""); setPage(0); }}
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors cursor-pointer animate-[fadeslide_0.15s_ease-out] ${
+                          isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-400 hover:text-slate-600"
+                        }`}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <span
+                      className={`pointer-events-none absolute -bottom-0.5 left-1/2 h-0.5 rounded-full bg-gradient-to-r from-[#0B1442] to-[#00A5EC] transition-all duration-300 ease-out ${
+                        isSearchFocused ? "w-[calc(100%-12px)] -translate-x-1/2" : "w-0 -translate-x-1/2"
+                      }`}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -347,6 +411,7 @@ const PendaftaranPage = () => {
                 suratMap={suratMap}
                 columnSort={columnSort}
                 setColumnSort={setColumnSort}
+                isDark={isDark}
               />
 
               <Pagination
@@ -355,17 +420,18 @@ const PendaftaranPage = () => {
                 setPage={setPage}
                 perPage={perPage}
                 setPerPage={setPerPage}
+                isDark={isDark}
               />
             </div>
           </>
         )}
       </div>
-
       {selectedVerifikasi && (
         <DetailModal
           pendaftaran={selectedVerifikasi}
           onClose={() => setSelectedVerifikasi(null)}
           onUpdated={fetchData}
+          isDark={isDark}
         />
       )}
 
@@ -374,6 +440,7 @@ const PendaftaranPage = () => {
           pendaftaran={selectedReview}
           onClose={() => setSelectedReview(null)}
           onUpdated={fetchData}
+          isDark={isDark}
         />
       )}
 
@@ -383,6 +450,7 @@ const PendaftaranPage = () => {
           surat={suratMap[selectedSurat.id] || null}
           onClose={() => setSelectedSurat(null)}
           onSaved={fetchData}
+          isDark={isDark}
         />
       )}
 
@@ -402,6 +470,9 @@ const PendaftaranPage = () => {
           onApply={handleApplyFilters}
           onReset={handleResetFilters}
           onClose={() => setShowFilterModal(false)}
+          isDark={isDark}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
         />
       )}
     </AdminLayout>

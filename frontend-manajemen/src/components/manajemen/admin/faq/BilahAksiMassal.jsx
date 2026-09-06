@@ -114,20 +114,20 @@ function BilahAksiMassal({ jumlah = 0, ringkasan, sibuk = false, onAksi, onTutup
             ? `${label} — ${kena} dari ${r.total} FAQ terpilih yang terpengaruh`
             : `${label} ${r.total} FAQ terpilih`}
           style={{ animationDelay: `${mulai + i * 45}ms`, animationFillMode: "backwards" }}
-          className={`group relative inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs font-bold text-white/70 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/10 active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer animate-[fadeslide_0.3s_ease-out] ${teks} ${cahaya}`}
+          className={`group relative inline-flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 text-[10px] sm:text-xs font-bold text-white/70 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/10 active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer animate-[fadeslide_0.3s_ease-out] ${teks} ${cahaya}`}
         >
-          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white/5 text-white/60 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 ${chip}`}>
+          <span className={`flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-md sm:rounded-lg bg-white/5 text-white/60 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 ${chip}`}>
             {berjalan
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <Ikon className="h-3.5 w-3.5" />}
+              ? <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
+              : <Ikon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
           </span>
           <span className="whitespace-nowrap">{label}</span>
           {/* Penanda jumlah baris yang terpengaruh bila tidak seluruh pilihan berubah */}
           {sebagian && (
-            <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[9.5px] font-black text-white/60">{kena}</span>
+            <span className="rounded bg-white/10 px-1 py-0.2 text-[8.5px] sm:text-[9.5px] font-black text-white/60">{kena}</span>
           )}
           {/* Garis penegas yang tumbuh dari tengah saat kursor menyentuh tombol */}
-          <span className="pointer-events-none absolute inset-x-2.5 bottom-1 h-px origin-center scale-x-0 bg-current opacity-40 transition-transform duration-300 group-hover:scale-x-100" aria-hidden="true" />
+          <span className="pointer-events-none absolute inset-x-2 bottom-0.5 sm:bottom-1 h-px origin-center scale-x-0 bg-current opacity-40 transition-transform duration-300 group-hover:scale-x-100" aria-hidden="true" />
         </button>
       );
     });
@@ -135,12 +135,12 @@ function BilahAksiMassal({ jumlah = 0, ringkasan, sibuk = false, onAksi, onTutup
   const hapusBerjalan = sibuk && aksiBerjalan === "hapus";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 sm:bottom-6 z-40 flex justify-center px-2.5 sm:px-4">
       <div className="pointer-events-auto relative w-full max-w-5xl animate-[modalFadeUp_0.35s_ease-out]">
         {/* Bingkai cahaya berwarna di balik bilah */}
-        <span className="pointer-events-none absolute -inset-[1.5px] rounded-[23px] bg-gradient-to-r from-[#00A5EC]/50 via-[#004F9F]/40 to-[#7C3AED]/50 opacity-80 blur-[3px]" aria-hidden="true" />
+        <span className="pointer-events-none absolute -inset-[1.5px] rounded-[20px] sm:rounded-[23px] bg-gradient-to-r from-[#00A5EC]/50 via-[#004F9F]/40 to-[#7C3AED]/50 opacity-80 blur-[3px]" aria-hidden="true" />
 
-        <div className="relative overflow-hidden rounded-[22px] bg-[#0B1442]/90 shadow-[0_24px_60px_-20px_rgba(11,20,66,0.9)] ring-1 ring-white/10 backdrop-blur-xl">
+        <div className="relative overflow-hidden rounded-[19px] sm:rounded-[22px] bg-[#0B1442]/90 shadow-[0_24px_60px_-20px_rgba(11,20,66,0.9)] ring-1 ring-white/10 backdrop-blur-xl">
           {/* Lampu latar bersudut, mengikuti gaya kartu gelap di modal FAQ */}
           <span className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-[#00A5EC]/25 blur-3xl" aria-hidden="true" />
           <span className="pointer-events-none absolute -left-8 -bottom-16 h-36 w-36 rounded-full bg-[#7C3AED]/20 blur-3xl" aria-hidden="true" />
@@ -150,18 +150,18 @@ function BilahAksiMassal({ jumlah = 0, ringkasan, sibuk = false, onAksi, onTutup
             <span className="pointer-events-none absolute inset-x-0 top-0 h-[3px] animate-pulse bg-gradient-to-r from-transparent via-[#00A5EC] to-transparent" aria-hidden="true" />
           )}
 
-          <div className="relative flex flex-wrap items-center gap-x-1.5 gap-y-2 px-3.5 py-3 sm:px-4">
+          <div className="relative flex flex-wrap items-center gap-x-1 sm:gap-x-1.5 gap-y-1.5 sm:gap-y-2 px-2.5 py-2 sm:px-4 sm:py-3">
             {/* Penanda jumlah pilihan */}
-            <span className="group relative mr-1 inline-flex shrink-0 items-center gap-2.5 rounded-xl bg-gradient-to-br from-white to-slate-100 py-1.5 pl-2 pr-3.5 shadow-lg">
-              <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#0B1442] to-[#004F9F] text-[11px] font-black text-white shadow-sm">
-                {sibuk ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : jumlah}
+            <span className="group relative mr-1 inline-flex shrink-0 items-center gap-1.5 sm:gap-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-white to-slate-100 py-1 pl-1.5 pr-2.5 sm:py-1.5 sm:pl-2 sm:pr-3.5 shadow-lg">
+              <span className="relative flex h-5 w-5 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-md sm:rounded-lg bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-[9.5px] sm:text-[11px] font-black text-white shadow-sm">
+                {sibuk ? <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" /> : jumlah}
                 {!sibuk && (
-                  <span className="absolute -inset-1 animate-ping rounded-xl border border-[#00A5EC]/40" aria-hidden="true" />
+                  <span className="absolute -inset-1 animate-ping rounded-lg border border-[#00A5EC]/40" aria-hidden="true" />
                 )}
               </span>
               <span className="flex flex-col leading-none">
-                <span className="text-[11px] font-black text-[#0B1442]">Terpilih</span>
-                <span className="mt-0.5 text-[9.5px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-[9.5px] sm:text-[11px] font-black text-[#0B1442]">Terpilih</span>
+                <span className="mt-0.5 text-[8px] sm:text-[9.5px] font-bold uppercase tracking-wider text-slate-400">
                   {sibuk ? "Memproses" : "Siap diproses"}
                 </span>
               </span>
@@ -189,14 +189,14 @@ function BilahAksiMassal({ jumlah = 0, ringkasan, sibuk = false, onAksi, onTutup
               disabled={sibuk}
               title={`Hapus ${jumlah} FAQ terpilih`}
               style={{ animationDelay: "340ms", animationFillMode: "backwards" }}
-              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl border border-red-400/25 bg-red-500/10 px-2.5 py-1.5 text-xs font-bold text-red-300 transition-all duration-300 hover:-translate-y-0.5 hover:border-red-400/50 hover:bg-red-500/20 hover:text-red-200 hover:shadow-[0_8px_20px_-8px_rgba(248,113,113,0.7)] active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer animate-[fadeslide_0.3s_ease-out]"
+              className="group relative inline-flex items-center gap-1.5 sm:gap-2 overflow-hidden rounded-lg sm:rounded-xl border border-red-400/25 bg-red-500/10 px-2 py-1 sm:px-2.5 sm:py-1.5 text-[10px] sm:text-xs font-bold text-red-300 transition-all duration-300 hover:-translate-y-0.5 hover:border-red-400/50 hover:bg-red-500/20 hover:text-red-200 hover:shadow-[0_8px_20px_-8px_rgba(248,113,113,0.7)] active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer animate-[fadeslide_0.3s_ease-out]"
             >
               {/* Kilau melintas khas kartu gelap pada modal FAQ */}
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-white/0 via-white/15 to-white/0 transition-transform duration-1000 group-hover:translate-x-full" aria-hidden="true" />
-              <span className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-red-500/15 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-red-500/30">
+              <span className="relative flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-md sm:rounded-lg bg-red-500/15 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-red-500/30">
                 {hapusBerjalan
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <Trash2 className="h-3.5 w-3.5" />}
+                  ? <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
+                  : <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
               </span>
               <span className="relative whitespace-nowrap">Hapus</span>
             </button>
@@ -216,9 +216,9 @@ function BilahAksiMassal({ jumlah = 0, ringkasan, sibuk = false, onAksi, onTutup
               onClick={onTutup}
               disabled={sibuk}
               title="Batalkan pilihan (Esc)"
-              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl text-white/45 transition-all duration-300 hover:rotate-90 hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-40 xl:ml-1.5 max-xl:ml-auto"
+              className="flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg sm:rounded-xl text-white/45 transition-all duration-300 hover:rotate-90 hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-40 xl:ml-1.5 max-xl:ml-auto"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </button>
           </div>
         </div>

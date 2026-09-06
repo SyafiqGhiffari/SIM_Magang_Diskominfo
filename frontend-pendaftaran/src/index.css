@@ -153,3 +153,5 @@ input::-webkit-credentials-auto-fill-button {
   97% { transform: rotate(-4deg); }
   98% { transform: rotate(0deg); }
 }
+
+.swal2-container { z-index: 2147483647 !important; }

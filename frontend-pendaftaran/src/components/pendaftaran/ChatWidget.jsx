@@ -3,11 +3,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
-  X, Send, MessageCircle, ChevronDown,
+  X, MessageCircle, ChevronDown,
   Loader2, Headphones, Zap, Bot, Sparkles,
   ArrowRight, Download, UserRound, ClipboardCheck,
   FileText, CalendarClock, Award, HelpCircle, Building2,
-  ThumbsUp, ThumbsDown, Lightbulb,
+  ThumbsUp, ThumbsDown, Lightbulb, Ban,
+  CheckCheck, Paperclip, Image as ImageIcon, Maximize2, Minimize2,
+  SendHorizontal, Info, MessageSquareText,
 } from "lucide-react";
 import {
   getOrCreateChatSession,
@@ -19,7 +21,11 @@ import {
   useQuickAction as recordQuickActionUsage,
   bukaSaranFaq,
   kirimFeedbackFaq,
+  kirimLampiranChat,
 } from "../../services/chatService";
+import { getFileUrl } from "../../utils/fileUrl";
+import { toastError } from "../../utils/swal";
+import PratinjauLampiran from "./PratinjauLampiran";
 
 // ─── Ikon yang boleh dipilih admin untuk tombol quick action ────────────────
 // Kunci di sini harus sama dengan nilai yang disimpan pada kolom quick_icon.
@@ -39,10 +45,10 @@ const IKON_TERSEDIA = {
 // Tipe "jawaban" sengaja tidak diberi ikon khusus supaya tetap memakai
 // palet warna berputar seperti sebelumnya.
 const GAYA_AKSI = {
-  navigasi: { ikon: ArrowRight,      warna: "#0ea5e9", petunjuk: "Buka halaman" },
-  unduh:    { ikon: Download,        warna: "#8b5cf6", petunjuk: "Unduh berkas" },
-  eskalasi: { ikon: UserRound,       warna: "#ef4444", petunjuk: "Hubungi admin" },
-  status:   { ikon: ClipboardCheck,  warna: "#10b981", petunjuk: "Status saya" },
+  navigasi: { ikon: ArrowRight, warna: "#0ea5e9", petunjuk: "Buka halaman" },
+  unduh: { ikon: Download, warna: "#8b5cf6", petunjuk: "Unduh berkas" },
+  eskalasi: { ikon: UserRound, warna: "#ef4444", petunjuk: "Hubungi admin" },
+  status: { ikon: ClipboardCheck, warna: "#10b981", petunjuk: "Status saya" },
 };
 
 // Mengubah target aksi dari backend menjadi URL yang bisa dibuka browser.
@@ -56,8 +62,102 @@ const bangunUrlBerkas = (target) => {
   return `${dasar}${target}`;
 };
 
+const ukuranBerkas = (b) => {
+  if (!b) return "";
+  if (b < 1024) return `${b} B`;
+  if (b < 1048576) return `${(b / 1024).toFixed(0)} KB`;
+  return `${(b / 1048576).toFixed(1)} MB`;
+};
+
+const potongTeks = (t, n = 60) => (t && t.length > n ? t.slice(0, n) + "..." : t || "");
+
+const labelKutipan = (k) => {
+  if (!k) return "";
+  if (k.dihapus_pada) return "Pesan telah dihapus";
+  if (k.tipe === "gambar") return "Foto";
+  if (k.tipe === "video") return "Video";
+  if (k.tipe === "berkas") return potongTeks(k.file_nama, 30);
+  return potongTeks(k.content);
+};
+
+/* Lampiran & kutipan dipakai di gelembung peserta maupun admin, jadi
+   dipisah agar tidak ditulis dua kali. */
+const IsiLampiran = ({ msg, gelapTeks, onBuka }) => {
+  // Jalur dari backend tersimpan relatif ("uploads/chat/x.jpg").
+  const url = getFileUrl(msg.file_path);
+  if (!url) return null;
+
+  if (msg.tipe === "gambar") {
+    return (
+      <button type="button" onClick={(e) => { e.stopPropagation(); onBuka?.(msg); }}
+        style={{
+          display: "block", width: "100%", marginBottom: 6, borderRadius: 12,
+          overflow: "hidden", border: "none", padding: 0, background: "none", cursor: "zoom-in",
+        }}>
+        <img src={url} alt={msg.file_nama}
+          style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }} />
+      </button>
+    );
+  }
+
+  if (msg.tipe === "video") {
+    return (
+      <video src={url} controls onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxHeight: 220, borderRadius: 12, marginBottom: 6, background: "#000" }} />
+    );
+  }
+
+  return (
+    <button type="button" onClick={(e) => { e.stopPropagation(); onBuka?.(msg); }}
+      style={{
+        display: "flex", alignItems: "center", gap: 9, marginBottom: 6, width: "100%",
+        padding: 8, borderRadius: 12, border: "none", cursor: "pointer",
+        background: gelapTeks ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.05)",
+        color: "inherit", textAlign: "left",
+      }}>
+      <span style={{
+        flexShrink: 0, width: 34, height: 34, borderRadius: 9,
+        background: gelapTeks ? "rgba(255,255,255,0.18)" : "rgba(0,79,159,0.12)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <FileText style={{ width: 15, height: 15 }} />
+      </span>
+      <span style={{ minWidth: 0, flex: 1 }}>
+        <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {msg.file_nama}
+        </span>
+        <span style={{ display: "block", fontSize: 9.5, opacity: 0.65 }}>
+          {ukuranBerkas(msg.file_size)}
+        </span>
+      </span>
+      <Download style={{ width: 13, height: 13, flexShrink: 0, opacity: 0.7 }} />
+    </button>
+  );
+};
+
+const KutipanBalasan = ({ kutipan, gelapTeks }) => {
+  if (!kutipan) return null;
+  return (
+    <div style={{
+      display: "flex", alignItems: "flex-start", marginBottom: 6,
+      padding: "6px 8px", borderRadius: 8,
+      borderLeft: `3px solid ${gelapTeks ? "#00A5EC" : "#004F9F"}`,
+      background: gelapTeks ? "rgba(255,255,255,0.10)" : "#f1f5f9",
+    }}>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 9.5, fontWeight: 800, color: gelapTeks ? "#7DD3FC" : "#004F9F" }}>
+          {kutipan.sender_type === "user" ? "Anda" : "Admin Diskominfo"}
+        </span>
+        <span style={{ display: "block", fontSize: 10.5, opacity: 0.75, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {labelKutipan(kutipan)}
+        </span>
+      </span>
+    </div>
+  );
+};
+
 // ─── Bubble Pesan ────────────────────────────────────────────────────────────
-const MessageBubble = ({ msg, dk, faqId, nilai, onNilai }) => {
+const MessageBubble = ({ msg, dk, faqId, nilai, onNilai, onBukaLampiran }) => {
   const isUser = msg.sender_type === "user";
   const isBot = msg.sender_type === "bot";
 
@@ -66,36 +166,65 @@ const MessageBubble = ({ msg, dk, faqId, nilai, onNilai }) => {
   });
 
   if (isUser) {
+    // Stempel selalu pada barisnya sendiri, rata kanan bawah gelembung.
+    // marginTop negatif menutup jarak bawaan paragraf terakhir TeksKaya.
+    const stempel = (
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4,
+        marginTop: 1, fontSize: 10, fontWeight: 500,
+        color: "rgba(255,255,255,0.5)", lineHeight: 1,
+      }}>
+        <span className="tabular-nums">{time}</span>
+        {!msg.dihapus_pada && (
+          <CheckCheck
+            style={{ width: 14, height: 14 }}
+            color={msg.is_read_admin ? "#53BDEB" : "rgba(255,255,255,0.4)"}
+            strokeWidth={2.4}
+          />
+        )}
+      </div>
+    );
+
     return (
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14, animation: "bubbleIn 0.2s ease-out" }}>
-        <div style={{ maxWidth: "78%" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10, animation: "bubbleIn 0.2s ease-out" }}>
+        <div style={{ maxWidth: "78%", minWidth: 0 }}>
           <div style={{
-            background: "linear-gradient(135deg, #0B1442 0%, #1e40af 60%, #1E3A8A 100%)",
+            background: "linear-gradient(to bottom right, #123C7A, #0B1442)",
             color: "#fff",
-            borderRadius: "18px 18px 4px 18px",
-            padding: "11px 15px",
+            borderRadius: "16px 16px 6px 16px",
+            padding: "8px 12px 6px",
             fontSize: 13,
-            lineHeight: 1.6,
-            boxShadow: "0 4px 20px rgba(11,20,66,0.3)",
+            lineHeight: 1.375,
+            boxShadow: "0 1px 3px rgba(11,20,66,0.14)",
             wordBreak: "break-word",
-            letterSpacing: "0.01em",
           }}>
-            <TeksKaya teks={msg.content} />
+            {msg.dihapus_pada ? (
+              <span style={{ display: "flex", alignItems: "center", gap: 6, fontStyle: "italic", color: "rgba(255,255,255,0.55)" }}>
+                <Ban style={{ width: 13, height: 13, flexShrink: 0 }} /> Pesan ini telah dihapus
+              </span>
+            ) : (
+              <>
+                <KutipanBalasan kutipan={msg.reply_to} gelapTeks />
+                <IsiLampiran msg={msg} gelapTeks onBuka={onBukaLampiran} />
+                {msg.content && <TeksKaya teks={msg.content} />}
+              </>
+            )}
+            {stempel}
           </div>
-          <p style={{ fontSize: 10, textAlign: "right", marginTop: 4, color: dk ? "#475569" : "#94a3b8" }}>
-            {time} <span style={{ color: msg.is_read_admin ? (dk ? "#38bdf8" : "#00a5ec") : "inherit", fontWeight: 800, marginLeft: 2 }}>✓</span>
-          </p>
         </div>
       </div>
     );
   }
 
-  const avatarBg = isBot ? "linear-gradient(135deg, #7c3aed, #a855f7)" : "linear-gradient(135deg, #0369a1, #0ea5e9)";
-  const bubbleBg = isBot ? (dk ? "rgba(124,58,237,0.10)" : "#faf5ff") : (dk ? "rgba(14,165,233,0.08)" : "#f0f9ff");
-  const bubbleBorder = isBot ? (dk ? "rgba(167,139,250,0.25)" : "#e9d5ff") : (dk ? "rgba(14,165,233,0.25)" : "#bae6fd");
-  const bubbleTxt = isBot ? (dk ? "#c4b5fd" : "#6d28d9") : (dk ? "#7dd3fc" : "#0369a1");
-  const label = isBot ? "🤖 Jawaban Otomatis (Bot)" : "💬 Admin Diskominfo";
-  const labelColor = isBot ? (dk ? "#a78bfa" : "#7c3aed") : (dk ? "#38bdf8" : "#0284c7");
+  const avatarBg = isBot
+    ? "linear-gradient(135deg, #004F9F, #00A5EC)"
+    : "linear-gradient(135deg, #0B1442, #004F9F)";
+  const bubbleBg = isBot ? (dk ? "rgba(0,165,236,0.10)" : "#f0f9ff") : (dk ? "rgba(255,255,255,0.05)" : "#ffffff");
+  const bubbleBorder = isBot ? (dk ? "rgba(0,165,236,0.25)" : "#bae6fd") : (dk ? "rgba(255,255,255,0.10)" : "#e2e8f0");
+  const bubbleTxt = isBot ? (dk ? "#e2e8f0" : "#0f172a") : (dk ? "#f1f5f9" : "#334155");
+  const IkonLabel = isBot ? Bot : MessageSquareText;
+  const label = isBot ? "Jawaban Otomatis (Bot)" : "Admin Diskominfo";
+  const labelColor = "#00A5EC";
 
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 9, marginBottom: 14, animation: "bubbleIn 0.2s ease-out" }}>
@@ -103,7 +232,7 @@ const MessageBubble = ({ msg, dk, faqId, nilai, onNilai }) => {
         flexShrink: 0, width: 30, height: 30, borderRadius: "50%",
         background: avatarBg,
         display: "flex", alignItems: "center", justifyContent: "center",
-        marginBottom: isBot ? 36 : 20,
+        marginBottom: isBot ? 32 : 2,
         boxShadow: isBot ? "0 2px 10px rgba(124,58,237,0.35)" : "0 2px 10px rgba(3,105,161,0.3)",
       }}>
         {isBot
@@ -112,26 +241,58 @@ const MessageBubble = ({ msg, dk, faqId, nilai, onNilai }) => {
         }
       </div>
       <div style={{ maxWidth: "78%" }}>
-        <p style={{ fontSize: 10, fontWeight: 700, marginBottom: 5, color: labelColor, letterSpacing: "0.02em" }}>
+        <p style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, marginBottom: 5, color: labelColor, letterSpacing: "0.02em" }}>
+          <IkonLabel style={{ width: 11, height: 11 }} />
           {label}
         </p>
-        <div style={{
-          background: bubbleBg,
-          border: `1px solid ${bubbleBorder}`,
-          color: bubbleTxt,
-          borderRadius: "4px 18px 18px 18px",
-          padding: "11px 15px",
-          fontSize: 13,
-          lineHeight: 1.6,
-          wordBreak: "break-word",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-          letterSpacing: "0.01em",
-        }}>
-          <TeksKaya teks={msg.content} />
-        </div>
+        {(() => {
+        const stempel = (
+          <div style={{
+            display: "flex", justifyContent: "flex-end", marginTop: 1,
+            fontSize: 10, fontWeight: 500, lineHeight: 1,
+            color: dk ? "#64748b" : "#94a3b8",
+          }}>
+            <span className="tabular-nums">{time}</span>
+          </div>
+        );
+
+        return (
+          <div style={{
+            background: bubbleBg,
+            border: `1px solid ${bubbleBorder}`,
+            color: bubbleTxt,
+            borderRadius: "16px 16px 16px 6px",
+            padding: "8px 12px 6px",
+            fontSize: 13,
+            lineHeight: 1.375,
+            wordBreak: "break-word",
+            boxShadow: "0 1px 3px rgba(11,20,66,0.07)",
+          }}>
+            {msg.dihapus_pada ? (
+              <span style={{ display: "flex", alignItems: "center", gap: 6, fontStyle: "italic", opacity: 0.6 }}>
+                <Ban style={{ width: 13, height: 13 }} /> Pesan ini telah dihapus
+              </span>
+            ) : (
+              <>
+                <KutipanBalasan kutipan={msg.reply_to} />
+                <IsiLampiran msg={msg} onBuka={onBukaLampiran} />
+                {msg.content && <TeksKaya teks={msg.content} />}
+              </>
+            )}
+            {stempel}
+          </div>
+        );
+      })()}
         {isBot && (
-          <p style={{ fontSize: 10, marginTop: 4, paddingLeft: 2, color: dk ? "#7c3aed" : "#a78bfa", fontStyle: "italic" }}>
-            ℹ️ Pesan ini dijawab otomatis oleh sistem, bukan oleh admin
+          <p style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            fontSize: 10, fontWeight: 600, marginTop: 5, padding: "3px 8px",
+            borderRadius: 7, lineHeight: 1.4,
+            background: dk ? "rgba(148,163,184,0.12)" : "#f1f5f9",
+            color: dk ? "#94a3b8" : "#64748b",
+          }}>
+            <Info style={{ width: 11, height: 11, flexShrink: 0 }} />
+            Dijawab otomatis oleh sistem, bukan oleh admin
           </p>
         )}
 
@@ -189,10 +350,7 @@ const MessageBubble = ({ msg, dk, faqId, nilai, onNilai }) => {
             )}
           </div>
         )}
-        <p style={{ fontSize: 10, marginTop: isBot ? 2 : 4, paddingLeft: 2, color: dk ? "#475569" : "#94a3b8" }}>
-          {time}
-        </p>
-      </div>
+        </div>
     </div>
   );
 };
@@ -231,8 +389,9 @@ const TypingBubble = ({ dk }) => {
         <Bot style={{ width: 13, height: 13, color: "#fff" }} />
       </div>
       <div style={{ maxWidth: "78%" }}>
-        <p style={{ fontSize: 10, fontWeight: 700, marginBottom: 5, color: dk ? "#a78bfa" : "#7c3aed", letterSpacing: "0.02em" }}>
-          🤖 Jawaban Otomatis (Bot)
+        <p style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, marginBottom: 5, color: "#00A5EC", letterSpacing: "0.02em" }}>
+          <Bot style={{ width: 11, height: 11 }} />
+          Jawaban Otomatis (Bot)
         </p>
         <div style={{
           background: dk ? "rgba(124,58,237,0.10)" : "#faf5ff",
@@ -277,11 +436,21 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
   const [loading, setLoading] = useState(false);
   const [unread, setUnread] = useState(0);
   const [showFaq, setShowFaq] = useState(true);
-  const [error, setError] = useState("");
   const [adminOnline, setAdminOnline] = useState(false);
   const [isBotTyping, setIsBotTyping] = useState(false);
 
+  // ── Lampiran & tampilan ──
+  const [lampiranTertunda, setLampiranTertunda] = useState(null); // berkas menunggu dikirim
+  const [lampiranDibuka, setLampiranDibuka] = useState(null);     // pesan yang dibuka di modal
+  const [mengunggah, setMengunggah] = useState(false);
+  const [menuLampiran, setMenuLampiran] = useState(false);
+  const [diperbesar, setDiperbesar] = useState(false);
+  const gambarRef = useRef(null);
+  const fileRef = useRef(null);
+
   const bottomRef = useRef(null);
+  const wadahPesanRef = useRef(null);
+  const idPesanTerakhirRef = useRef(null);
   const inputRef = useRef(null);
   const pollRef = useRef(null);
   const chatPanelRef = useRef(null);
@@ -318,8 +487,11 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
       const msgRes = await getChatMessages();
       const msgs = msgRes.data.data || [];
       setMessages(msgs);
+      if (msgRes.data?.user_ratings) {
+        setNilaiPerPesan((prev) => ({ ...prev, ...msgRes.data.user_ratings }));
+      }
       prevMsgLen.current = msgs.length;
-    } catch { setError("Gagal memuat chat. Coba lagi."); }
+    } catch { toastError("Gagal memuat chat. Coba lagi."); }
     finally { setLoading(false); }
   }, []);
 
@@ -349,15 +521,15 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
       // Jeda singkat agar indikator mengetik tidak berkedip
       await new Promise((r) => setTimeout(r, 500));
 
-      setMessages((prev) => [
-        ...prev,
-        balasan ?? {
-          id: `qa-b-${qa.id}-${Date.now()}`,
-          sender_type: "bot",
-          content: qa.answer,
-          created_at: waktu,
-        },
-      ]);
+      const botMsg = balasan ?? {
+        id: `qa-b-${qa.id}-${Date.now()}`,
+        sender_type: "bot",
+        content: qa.answer,
+        created_at: waktu,
+      };
+
+      setMessages((prev) => [...prev, botMsg]);
+      setFaqPerPesan((prev) => ({ ...prev, [botMsg.id]: qa.id }));
       setIsBotTyping(false);
 
       // ── Efek samping sesuai tipe aksi ──
@@ -400,7 +572,23 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
     try {
       const res = await getChatMessages();
       const msgs = res.data.data || [];
-      setMessages(msgs);
+
+      // State hanya diganti bila isinya benar-benar berubah. Tanpa ini setiap
+      // putaran polling memicu render ulang dan menyeret gulir ke bawah.
+      setMessages((lama) => {
+        if (!lama || lama.length !== msgs.length) return msgs;
+        const berubah = msgs.some((m, i) =>
+          m.id !== lama[i].id ||
+          m.is_read_admin !== lama[i].is_read_admin ||
+          m.dihapus_pada !== lama[i].dihapus_pada
+        );
+        return berubah ? msgs : lama;
+      });
+
+      if (res.data?.user_ratings) {
+        setNilaiPerPesan((prev) => ({ ...prev, ...res.data.user_ratings }));
+      }
+
       if (!isOpen) {
         const n = msgs.filter((m, i) => i >= prevMsgLen.current && m.sender_type !== "user").length;
         if (n > 0) setUnread(u => { const next = u + n; onUnreadChange?.(next); return next; });
@@ -409,7 +597,14 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
     } catch { /* silent */ }
   }, [isOpen, onUnreadChange]);
 
-  const openChat = () => { setIsOpen(true); setUnread(0); onUnreadChange?.(0); if (!sessionId) initSession(); };
+  const openChat = () => {
+    setIsOpen(true);
+    setUnread(0);
+    onUnreadChange?.(0);
+    // Dinolkan agar percakapan selalu terbuka di posisi paling bawah
+    idPesanTerakhirRef.current = null;
+    if (!sessionId) initSession();
+  };
 
   useEffect(() => {
     if (!openTrigger || openTrigger <= 0) return;
@@ -426,11 +621,31 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
     return () => clearInterval(pollRef.current);
   }, [isOpen, sessionId, pollMessages]);
 
-  useEffect(() => { if (isOpen) bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOpen]);
+  /* Gulir otomatis hanya saat percakapan baru dibuka, atau saat ada pesan baru
+     sementara peserta memang sedang berada di dekat dasar. */
+  useEffect(() => {
+    if (!isOpen || messages.length === 0) return;
+
+    const idTerakhir = messages[messages.length - 1]?.id;
+    const pertamaKali = idPesanTerakhirRef.current === null;
+    if (idPesanTerakhirRef.current === idTerakhir) return;
+    idPesanTerakhirRef.current = idTerakhir;
+
+    const wadah = wadahPesanRef.current;
+    const dekatDasar = wadah
+      ? wadah.scrollHeight - wadah.scrollTop - wadah.clientHeight < 150
+      : true;
+
+    if (pertamaKali || dekatDasar) {
+      bottomRef.current?.scrollIntoView({ behavior: pertamaKali ? "auto" : "smooth" });
+    }
+  }, [messages, isOpen]);
   useEffect(() => { if (isOpen) setTimeout(() => inputRef.current?.focus(), 300); }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    // Modal pratinjau dirender ke document.body, jadi kliknya terbaca
+    // "di luar panel". Tanpa penjaga ini, chat ikut tertutup.
+    if (!isOpen || lampiranDibuka) return;
     const handleOutsideClick = (e) => {
       if (chatPanelRef.current && !chatPanelRef.current.contains(e.target)) {
         setIsOpen(false);
@@ -438,12 +653,14 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
     };
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [isOpen]);
+  }, [isOpen, lampiranDibuka]);
 
   const handleSend = async (content) => {
+    // Bila ada berkas menunggu, kirim sebagai lampiran (teks jadi keterangan)
+    if (lampiranTertunda && content === undefined) return kirimLampiranTertunda();
     const text = (content ?? inputText).trim();
     if (!text || sending) return;
-    setSending(true); setInputText(""); setShowFaq(false); setError("");
+    setSending(true); setInputText(""); setShowFaq(false);
     tempIdCounter.current += 1;
     const temp = { id: `temp-${tempIdCounter.current}`, sender_type: "user", content: text, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, temp]);
@@ -471,9 +688,52 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
       // Bot ragu — tawarkan pilihan
       setSaran(sendRes.data.saran || []);
     } catch {
-      setError("Gagal mengirim pesan. Periksa koneksi Anda.");
+      toastError("Gagal mengirim pesan. Periksa koneksi Anda.");
       setMessages(prev => prev.filter(m => m.id !== temp.id));
     } finally { setSending(false); setTimeout(() => inputRef.current?.focus(), 100); }
+  };
+
+  /* ── Lampiran: pilih dulu, kirim belakangan ──
+     Batas ukuran disamakan dengan simpanLampiran() di chat_lampiran_controller.go */
+  const pilihBerkas = (file) => {
+    if (!file) return;
+    const isVideo = file.type.startsWith("video/");
+    const batas = isVideo ? 20 : 5;
+    if (file.size > batas * 1024 * 1024) {
+      toastError(`Ukuran ${isVideo ? "video" : "berkas"} maksimal ${batas}MB`);
+      return;
+    }
+    const isGambar = file.type.startsWith("image/");
+    setLampiranTertunda({
+      file, isGambar, isVideo,
+      pratinjau: isGambar || isVideo ? URL.createObjectURL(file) : null,
+    });
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const batalkanLampiran = () => {
+    if (lampiranTertunda?.pratinjau) URL.revokeObjectURL(lampiranTertunda.pratinjau);
+    setLampiranTertunda(null);
+  };
+
+  const kirimLampiranTertunda = async () => {
+    if (!lampiranTertunda || mengunggah) return;
+    setMengunggah(true); setShowFaq(false);
+    try {
+      const fd = new FormData();
+      fd.append("file", lampiranTertunda.file);
+      if (inputText.trim()) fd.append("content", inputText.trim());
+      await kirimLampiranChat(fd);
+      setInputText("");
+      batalkanLampiran();
+      const res = await getChatMessages();
+      setMessages(res.data.data || []);
+    } catch (err) {
+      toastError(err.response?.data?.message || "Gagal mengirim lampiran.");
+    } finally {
+      setMengunggah(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
   };
 
   // Peserta menekan salah satu chip saran
@@ -495,7 +755,7 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
       }
       setSaran([]); // chip hilang setelah dipilih
     } catch {
-      setError("Gagal membuka jawaban. Coba lagi.");
+      toastError("Gagal membuka jawaban. Coba lagi.");
     } finally {
       setIsBotTyping(false);
       setSaranSibuk(null);
@@ -623,13 +883,17 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
   return createPortal(
     <div ref={chatPanelRef} style={{
       position: "fixed", bottom: 24, right: 24, zIndex: 9999,
-      width: 382, maxWidth: "calc(100vw - 24px)", maxHeight: "calc(100vh - 48px)",
+      width: diperbesar ? 620 : 382,
+      maxWidth: "calc(100vw - 24px)", maxHeight: "calc(100vh - 48px)",
       display: "flex", flexDirection: "column",
+      transition: "width 0.25s ease",
       animation: "panelUp 0.3s cubic-bezier(0.34,1.2,0.64,1)",
     }}>
       <div style={{
         display: "flex", flexDirection: "column",
-        height: 580, maxHeight: "calc(100vh - 64px)",
+        height: diperbesar ? "calc(100vh - 96px)" : 580,
+        maxHeight: "calc(100vh - 64px)",
+        transition: "height 0.25s ease",
         borderRadius: 22, overflow: "hidden",
         boxShadow: "0 32px 80px rgba(11,20,66,0.32), 0 8px 32px rgba(0,0,0,0.12)",
         border: dk ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.07)",
@@ -638,34 +902,46 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
 
         {/* HEADER */}
         <div style={{
-          background: "linear-gradient(135deg, #030c22 0%, #0B1442 35%, #0d1f5c 65%, #1a3580 100%)",
+          background: "linear-gradient(135deg, #0B1442 0%, #123C7A 55%, #004F9F 100%)",
           flexShrink: 0, position: "relative", overflow: "hidden",
         }}>
-          <div style={{ position: "absolute", top: -30, right: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(0,165,236,0.08)", filter: "blur(30px)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", top: 10, left: -10, width: 80, height: 80, borderRadius: "50%", background: "rgba(124,58,237,0.06)", filter: "blur(20px)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", top: -30, right: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(0,165,236,0.10)", filter: "blur(30px)", pointerEvents: "none" }} />
+          {/* Blob ungu #7c3aed dihapus — tidak ada di palet web manajemen */}
+          <div style={{ position: "absolute", top: 10, left: -10, width: 80, height: 80, borderRadius: "50%", background: "rgba(0,79,159,0.18)", filter: "blur(20px)", pointerEvents: "none" }} />
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px 12px", position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
               <div style={{ position: "relative" }}>
                 <div style={{
                   width: 44, height: 44, borderRadius: "50%",
-                  background: "linear-gradient(135deg, rgba(0,165,236,0.25), rgba(0,79,159,0.35))",
+                  background: "linear-gradient(135deg, rgba(0,165,236,0.25), rgba(0,79,159,0.40))",
                   border: "2px solid rgba(0,165,236,0.45)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   backdropFilter: "blur(10px)",
-                  boxShadow: "0 0 24px rgba(0,165,236,0.2), inset 0 1px 0 rgba(255,255,255,0.1)",
+                  boxShadow: "0 0 24px rgba(0,165,236,0.22), inset 0 1px 0 rgba(255,255,255,0.1)",
                 }}>
                   <Headphones style={{ width: 20, height: 20, color: "#fff" }} />
                 </div>
                 <span style={{
                   position: "absolute", bottom: 1, right: 1,
                   width: 11, height: 11, borderRadius: "50%",
-                  background: adminOnline ? "#22c55e" : "#64748b",
-                  border: "2px solid #0B1442",
-                  boxShadow: adminOnline ? "0 0 8px rgba(34,197,94,0.7)" : "none",
-                  animation: adminOnline ? "onlinePulse 2s ease-in-out infinite" : "none",
-                  transition: "background 0.4s ease",
-                }} />
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {/* Gelombang denyut — hanya saat admin online */}
+                  {adminOnline && (
+                    <span style={{
+                      position: "absolute", inset: 0, borderRadius: "50%",
+                      background: "#4ade80",
+                      animation: "cwPing 1.8s cubic-bezier(0,0,0.2,1) infinite",
+                    }} />
+                  )}
+                  <span style={{
+                    position: "relative", width: "100%", height: "100%", borderRadius: "50%",
+                    background: adminOnline ? "#22c55e" : "#94a3b8",
+                    boxShadow: adminOnline ? "0 0 8px rgba(34,197,94,0.75)" : "none",
+                    transition: "background 0.4s ease",
+                  }} />
+                </span>
               </div>
               <div>
                 <p style={{ color: "#fff", fontWeight: 800, fontSize: 15, lineHeight: 1.2, letterSpacing: "0.01em" }}>
@@ -680,30 +956,47 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
                 </div>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button onClick={() => setDiperbesar(v => !v)}
+              className="cw-hdr-btn"
+              title={diperbesar ? "Perkecil" : "Perbesar"}
               style={{
                 width: 34, height: 34, borderRadius: 11,
                 background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.11)",
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                color: "rgba(255,255,255,0.65)", transition: "all 0.2s",
+                color: "rgba(255,255,255,0.65)",
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.14)"; e.currentTarget.style.color = "#fff"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.color = "rgba(255,255,255,0.65)"; }}
             >
-              <ChevronDown style={{ width: 18, height: 18 }} />
+              {diperbesar
+                ? <Minimize2 className="cw-ikon-zoom" style={{ width: 16, height: 16 }} />
+                : <Maximize2 className="cw-ikon-zoom" style={{ width: 16, height: 16 }} />}
             </button>
+            <button onClick={() => setIsOpen(false)}
+              className="cw-hdr-btn"
+              title="Tutup"
+              style={{
+                width: 34, height: 34, borderRadius: 11,
+                background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.11)",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                color: "rgba(255,255,255,0.65)",
+              }}
+            >
+              <X className="cw-ikon-tutup" style={{ width: 17, height: 17 }} />
+            </button>
+            </div>
           </div>
-          <div style={{ height: 10, background: "linear-gradient(to bottom right, #0B1442 50%, transparent 50%)", marginTop: -1 }} />
         </div>
 
         {/* AREA PESAN */}
-        <div style={{
-          flex: 1, overflowY: "auto", overflowX: "hidden",
-          padding: "18px 16px",
-          scrollbarWidth: "thin",
-          scrollbarColor: dk ? "#2d333b transparent" : "#e2e8f0 transparent",
-          background: dk ? "#0d1117" : "linear-gradient(180deg, #f8faff 0%, #ffffff 100%)",
-        }}>
+        <div
+          ref={wadahPesanRef}
+          style={{
+            flex: 1, overflowY: "auto", overflowX: "hidden",
+            padding: "18px 16px",
+            scrollbarWidth: "thin",
+            scrollbarColor: dk ? "#2d333b transparent" : "#e2e8f0 transparent",
+            background: dk ? "#0d1117" : "linear-gradient(180deg, #f8faff 0%, #ffffff 100%)",
+          }}>
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 14, opacity: 0.6 }}>
               <Loader2 style={{ width: 30, height: 30, color: "#004F9F", animation: "spin 1s linear infinite" }} />
@@ -729,9 +1022,7 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
                   }}>
                     <MessageCircle style={{ width: 26, height: 26, color: "#fff" }} />
                   </div>
-                  <p style={{ fontWeight: 800, fontSize: 15, color: dk ? "#f1f5f9" : "#0f172a", marginBottom: 7 }}>
-                    Halo, {user?.nama?.split(" ")[0] || "Kak"}! 👋
-                  </p>
+                  Halo, {user?.nama?.split(" ")[0] || "Peserta"}
                   <p style={{ fontSize: 12, lineHeight: 1.7, color: dk ? "#64748b" : "#94a3b8", maxWidth: 250, margin: "0 auto" }}>
                     Silakan ketik pertanyaan Anda. Sistem akan menjawab otomatis, atau Admin akan membantu langsung.
                   </p>
@@ -740,9 +1031,9 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
 
               {messages.map((msg, index) => {
                 const prevMsg = messages[index - 1];
-                const showDateSeparator = !prevMsg || 
+                const showDateSeparator = !prevMsg ||
                   new Date(msg.created_at).toDateString() !== new Date(prevMsg.created_at).toDateString();
-                
+
                 return (
                   <div key={msg.id}>
                     {showDateSeparator && (
@@ -764,9 +1055,10 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
                     <MessageBubble
                       msg={msg}
                       dk={dk}
-                      faqId={faqPerPesan[msg.id]}
+                      faqId={msg.faq_id || faqPerPesan[msg.id]}
                       nilai={nilaiPerPesan[msg.id]}
                       onNilai={handleNilai}
+                      onBukaLampiran={setLampiranDibuka}
                     />
                   </div>
                 );
@@ -867,7 +1159,7 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
               )}
 
               {/* QUICK ACTION BUTTONS */}
-              {showFaq && quickActions.length > 0 && messages.length === 0 && (
+              {showFaq && quickActions.length > 0 && (
                 <div style={{ marginTop: 6, animation: "welcomeIn 0.35s ease-out" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                     <div style={{ flex: 1, height: 1, background: dk ? "rgba(255,255,255,0.06)" : "rgba(11,20,66,0.07)" }} />
@@ -952,7 +1244,7 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
               )}
 
               {/* FAQ PERTANYAAN POPULER (tetap ada jika ada chat aktif) */}
-              {showFaq && faqs.length > 0 && quickActions.length === 0 && (
+              {showFaq && faqs.length > 0 && quickActions.length < 3 && (
                 <div style={{ marginTop: 6, animation: "welcomeIn 0.3s ease-out" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                     <div style={{ flex: 1, height: 1, background: dk ? "rgba(255,255,255,0.06)" : "rgba(11,20,66,0.07)" }} />
@@ -988,19 +1280,6 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
                       );
                     })}
                   </div>
-                </div>
-              )}
-
-              {error && (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 8, marginTop: 10,
-                  borderRadius: 12, padding: "9px 13px",
-                  background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
-                }}>
-                  <p style={{ fontSize: 11, color: "#f87171", flex: 1 }}>{error}</p>
-                  <button onClick={() => setError("")} style={{ color: "#f87171", cursor: "pointer", background: "none", border: "none", padding: 0 }}>
-                    <X style={{ width: 13, height: 13 }} />
-                  </button>
                 </div>
               )}
 
@@ -1040,19 +1319,91 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
 
         {/* FAQ TOGGLE */}
         {!loading && faqs.length > 0 && messages.length > 0 && (
-          <div style={{ padding: "5px 16px 2px", borderTop: dk ? "1px solid rgba(255,255,255,0.05)" : "1px solid #f1f5f9", flexShrink: 0 }}>
+          <div style={{ padding: "8px 14px 4px", borderTop: dk ? "1px solid rgba(255,255,255,0.05)" : "1px solid #f1f5f9", flexShrink: 0 }}>
             <button onClick={() => setShowFaq(v => !v)}
               style={{
-                fontSize: 10, fontWeight: 700, cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 5,
-                background: "none", border: "none",
-                color: dk ? "#475569" : "#94a3b8", transition: "color 0.2s", padding: "4px 0",
+                width: "100%", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 7,
+                fontSize: 11, fontWeight: 700, padding: "7px 11px", borderRadius: 11,
+                background: dk ? "rgba(0,165,236,0.08)" : "#f0f9ff",
+                border: dk ? "1px solid rgba(0,165,236,0.20)" : "1px solid #bae6fd",
+                color: dk ? "#7dd3fc" : "#0369a1",
+                transition: "all 0.18s ease",
               }}
-              onMouseEnter={e => e.currentTarget.style.color = dk ? "#94a3b8" : "#64748b"}
-              onMouseLeave={e => e.currentTarget.style.color = dk ? "#475569" : "#94a3b8"}
+              onMouseEnter={e => { e.currentTarget.style.background = dk ? "rgba(0,165,236,0.14)" : "#e0f2fe"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = dk ? "rgba(0,165,236,0.08)" : "#f0f9ff"; }}
             >
-              <Sparkles style={{ width: 10, height: 10 }} />
-              {showFaq ? "Sembunyikan pertanyaan populer" : "Tampilkan pertanyaan populer"}
+              <Sparkles style={{ width: 12, height: 12, flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: "left" }}>
+                {showFaq ? "Sembunyikan pertanyaan populer" : "Lihat pertanyaan populer"}
+              </span>
+              <ChevronDown style={{
+                width: 13, height: 13, flexShrink: 0,
+                transform: showFaq ? "rotate(180deg)" : "none",
+                transition: "transform 0.2s ease",
+              }} />
+            </button>
+          </div>
+        )}
+
+        {/* PRATINJAU LAMPIRAN SEBELUM DIKIRIM */}
+        {lampiranTertunda && (
+          <div style={{
+            flexShrink: 0, display: "flex", alignItems: "center", gap: 12,
+            padding: "11px 14px",
+            borderTop: dk ? "1px solid rgba(255,255,255,0.06)" : "1px solid #f1f5f9",
+            background: dk ? "#161b22" : "#fff",
+            animation: "welcomeIn 0.22s ease-out",
+          }}>
+            {lampiranTertunda.isVideo ? (
+              <video src={lampiranTertunda.pratinjau}
+                style={{
+                  width: 56, height: 56, borderRadius: 14, objectFit: "cover",
+                  background: "#000", flexShrink: 0,
+                  boxShadow: "0 0 0 1px rgba(148,163,184,0.35)",
+                }} />
+            ) : lampiranTertunda.isGambar ? (
+              <img src={lampiranTertunda.pratinjau} alt="Pratinjau"
+                style={{
+                  width: 56, height: 56, borderRadius: 14, objectFit: "cover", flexShrink: 0,
+                  boxShadow: "0 0 0 1px rgba(148,163,184,0.35)",
+                }} />
+            ) : (
+              <span style={{
+                width: 56, height: 56, borderRadius: 14, flexShrink: 0,
+                background: dk ? "rgba(124,58,237,0.16)" : "#f5f3ff",
+                color: "#7c3aed",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <FileText style={{ width: 24, height: 24 }} />
+              </span>
+            )}
+
+            <span style={{ minWidth: 0, flex: 1 }}>
+              <span style={{
+                display: "block", fontSize: 12.5, fontWeight: 700,
+                color: dk ? "#f1f5f9" : "#0B1442",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {lampiranTertunda.file.name}
+              </span>
+              <span style={{ display: "block", fontSize: 10, fontWeight: 500, color: dk ? "#64748b" : "#94a3b8", marginTop: 3 }}>
+                {ukuranBerkas(lampiranTertunda.file.size)} · siap dikirim
+              </span>
+              <span style={{ display: "block", fontSize: 10, fontWeight: 500, color: dk ? "#64748b" : "#94a3b8", marginTop: 2 }}>
+                Tambahkan keterangan di bawah bila perlu
+              </span>
+            </span>
+
+            <button onClick={batalkanLampiran} title="Batalkan lampiran"
+              className="cw-batal-lampiran"
+              style={{
+                width: 30, height: 30, borderRadius: 10, border: "none",
+                background: "transparent", color: dk ? "#64748b" : "#94a3b8",
+                cursor: "pointer", flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+              <X style={{ width: 16, height: 16 }} />
             </button>
           </div>
         )}
@@ -1064,10 +1415,10 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
           borderTop: dk ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(11,20,66,0.07)",
         }}>
           <div style={{
-            display: "flex", alignItems: "flex-end", gap: 9,
+            display: "flex", alignItems: "center", gap: 4,
             background: dk ? "#0d1117" : "#fff",
             border: dk ? "1.5px solid rgba(255,255,255,0.09)" : "1.5px solid #e2e8f0",
-            borderRadius: 16, padding: "9px 11px",
+            borderRadius: 16, padding: "6px 8px",
             transition: "border-color 0.2s, box-shadow 0.2s",
           }}
             ref={node => {
@@ -1076,6 +1427,66 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
               node._focusOut = () => { node.style.borderColor = dk ? "rgba(255,255,255,0.09)" : "#e2e8f0"; node.style.boxShadow = "none"; };
             }}
           >
+            {/* ── Tombol lampiran ── */}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <button type="button" onClick={() => setMenuLampiran(v => !v)} disabled={mengunggah}
+                title="Lampirkan berkas"
+                style={{
+                  width: 36, height: 36, borderRadius: 11, border: "none", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: menuLampiran ? "rgba(0,79,159,0.10)" : "transparent",
+                  color: menuLampiran ? "#004F9F" : (dk ? "#64748b" : "#94a3b8"),
+                  transition: "all 0.2s",
+                }}>
+                {mengunggah
+                  ? <Loader2 style={{ width: 19, height: 19, animation: "spin 1s linear infinite" }} />
+                  : <Paperclip style={{ width: 19, height: 19, transform: menuLampiran ? "rotate(45deg)" : "none", transition: "transform 0.2s" }} />}
+              </button>
+
+              {menuLampiran && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setMenuLampiran(false)} />
+                  <div style={{
+                    position: "absolute", bottom: 44, left: 0, zIndex: 20, width: 178, padding: 6,
+                    borderRadius: 16, overflow: "hidden",
+                    background: dk ? "#1c2128" : "#fff",
+                    border: dk ? "1px solid rgba(255,255,255,0.10)" : "1px solid #e2e8f0",
+                    boxShadow: "0 18px 44px rgba(11,20,66,0.22)",
+                  }}>
+                    {[
+                      // Warna disamakan dengan menu lampiran web manajemen:
+                      // Foto & Video = emerald, Dokumen = violet
+                      { ikon: ImageIcon, teks: "Foto & Video", warna: "#059669", bg: "#ecfdf5", tref: gambarRef },
+                      { ikon: FileText, teks: "Dokumen", warna: "#7c3aed", bg: "#f5f3ff", tref: fileRef },
+                    ].map(({ ikon: Ikon, teks, warna, bg, tref }) => (
+                      <button key={teks} type="button"
+                        onClick={() => { setMenuLampiran(false); tref.current?.click(); }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 10, width: "100%",
+                          padding: "8px 10px", borderRadius: 12, border: "none", background: "transparent",
+                          cursor: "pointer", fontSize: 12, fontWeight: 700,
+                          color: dk ? "#e2e8f0" : "#334155", textAlign: "left",
+                        }}>
+                        <span style={{
+                          width: 28, height: 28, borderRadius: 9, flexShrink: 0,
+                          background: dk ? `${warna}22` : bg, color: warna,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          <Ikon style={{ width: 14, height: 14 }} />
+                        </span>
+                        {teks}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <input ref={gambarRef} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" style={{ display: "none" }}
+                onChange={e => { pilihBerkas(e.target.files?.[0]); e.target.value = ""; }} />
+              <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.zip" style={{ display: "none" }}
+                onChange={e => { pilihBerkas(e.target.files?.[0]); e.target.value = ""; }} />
+            </div>
+
             <textarea
               ref={inputRef}
               value={inputText}
@@ -1083,35 +1494,42 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
               onKeyDown={handleKeyDown}
               onFocus={e => { const p = e.currentTarget.parentNode; p.style.borderColor = "#004F9F"; p.style.boxShadow = "0 0 0 3px rgba(0,79,159,0.1)"; }}
               onBlur={e => { const p = e.currentTarget.parentNode; p.style.borderColor = dk ? "rgba(255,255,255,0.09)" : "#e2e8f0"; p.style.boxShadow = "none"; }}
-              placeholder="Tulis pertanyaan Anda..."
+              placeholder={lampiranTertunda ? "Tambahkan keterangan..." : "Tulis pertanyaan Anda..."}
               rows={1}
               style={{
                 flex: 1, resize: "none", background: "transparent",
-                outline: "none", fontSize: 13, lineHeight: 2.5,
+                outline: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 4px",
                 color: dk ? "#f1f5f9" : "#0f172a",
                 maxHeight: 80, overflowY: "auto", scrollbarWidth: "none",
                 letterSpacing: "0.01em",
               }}
             />
-            <button onClick={() => handleSend()} disabled={!inputText.trim() || sending}
-              style={{
-                flexShrink: 0, width: 36, height: 36, borderRadius: 11,
-                background: inputText.trim() && !sending ? "linear-gradient(135deg, #0B1442, #004F9F)" : (dk ? "rgba(255,255,255,0.05)" : "#e2e8f0"),
-                border: "none", cursor: inputText.trim() && !sending ? "pointer" : "default",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: inputText.trim() && !sending ? "#fff" : (dk ? "#475569" : "#94a3b8"),
-                transition: "all 0.2s cubic-bezier(0.34,1.56,0.64,1)",
-                transform: inputText.trim() && !sending ? "scale(1)" : "scale(0.9)",
-                boxShadow: inputText.trim() && !sending ? "0 4px 16px rgba(11,20,66,0.3)" : "none",
-              }}
-              onMouseEnter={e => { if (inputText.trim() && !sending) e.currentTarget.style.transform = "scale(1.1) translateY(-1px)"; }}
-              onMouseLeave={e => { if (inputText.trim() && !sending) e.currentTarget.style.transform = "scale(1)"; }}
-            >
-              {sending
-                ? <Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} />
-                : <Send style={{ width: 15, height: 15 }} />
-              }
-            </button>
+            {(() => {
+              // Tombol aktif bila ada teks ATAU ada lampiran menunggu.
+              // Saat kosong: latar transparan (tanpa kotak abu-abu), ikon pudar.
+              const siap = (inputText.trim() || lampiranTertunda) && !sending && !mengunggah;
+              return (
+                <button onClick={() => handleSend()} disabled={!siap}
+                  title="Kirim (Enter)"
+                  style={{
+                    flexShrink: 0, width: 36, height: 36, borderRadius: 11,
+                    background: siap ? "linear-gradient(to bottom right, #0B1442, #004F9F)" : "transparent",
+                    border: "none", cursor: siap ? "pointer" : "default",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: siap ? "#fff" : (dk ? "#475569" : "#cbd5e1"),
+                    transition: "all 0.2s cubic-bezier(0.34,1.56,0.64,1)",
+                    boxShadow: siap ? "0 4px 14px rgba(11,20,66,0.28)" : "none",
+                  }}
+                  onMouseEnter={e => { if (siap) e.currentTarget.style.transform = "scale(1.08) translateY(-1px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
+                >
+                  {sending || mengunggah
+                    ? <Loader2 style={{ width: 19, height: 19, animation: "spin 1s linear infinite" }} />
+                    : <SendHorizontal style={{ width: 19, height: 19 }} />
+                  }
+                </button>
+              );
+            })()}
           </div>
           <p style={{ fontSize: 10, textAlign: "center", marginTop: 7, color: dk ? "#2d3748" : "#cbd5e1", letterSpacing: "0.02em" }}>
             Enter untuk kirim &middot; Shift+Enter baris baru
@@ -1119,7 +1537,23 @@ const ChatWidget = ({ dk, user, onUnreadChange, openTrigger }) => {
         </div>
       </div>
 
+      {/* MODAL PRATINJAU LAMPIRAN — sama seperti web manajemen */}
+      {lampiranDibuka && (
+        <PratinjauLampiran pesan={lampiranDibuka} onTutup={() => setLampiranDibuka(null)} />
+      )}
+
       <style>{`
+        .cw-hdr-btn { transition: background .2s ease, color .2s ease, transform .2s ease; }
+        .cw-hdr-btn:hover { background: rgba(255,255,255,0.16) !important; color: #fff !important; }
+        .cw-hdr-btn:active { transform: scale(0.9); }
+        .cw-ikon-tutup { transition: transform .25s cubic-bezier(0.34,1.56,0.64,1); }
+        .cw-hdr-btn:hover .cw-ikon-tutup { transform: rotate(90deg); }
+        .cw-ikon-zoom { transition: transform .25s cubic-bezier(0.34,1.56,0.64,1); }
+        .cw-hdr-btn:hover .cw-ikon-zoom { transform: scale(1.22); }
+        .cw-batal-lampiran { transition: background .18s ease, color .18s ease, transform .18s ease; }
+        .cw-batal-lampiran:hover { background: #fef2f2 !important; color: #dc2626 !important; }
+        .cw-batal-lampiran:active { transform: scale(0.88); }
+        @keyframes cwPing { 75%, 100% { transform: scale(2); opacity: 0; } }
         @keyframes panelUp { from{opacity:0;transform:translateY(28px) scale(0.94)} to{opacity:1;transform:translateY(0) scale(1)} }
         @keyframes welcomeIn { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes iconBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }

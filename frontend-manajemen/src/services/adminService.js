@@ -4,6 +4,12 @@ import api from "./api";
 export const getRingkasanDashboard = (params) =>
   api.get("/manajemen/admin/dashboard/ringkasan", { params });
 
+// ── Hitungan Antrean & Lencana Sidebar ──
+export const getHitunganAntrean = () => api.get("/manajemen/admin/antrean/hitungan");
+
+// ── Pusat Bantuan ──
+export const getHitunganBantuan = () => api.get("/manajemen/admin/bantuan/hitungan");
+
 //kelola pendaftaran
 export const getAllPendaftaran = () => api.get("/manajemen/admin/pendaftaran");
 export const getDetailPendaftaran = (id) => api.get(`/manajemen/admin/pendaftaran/${id}`);

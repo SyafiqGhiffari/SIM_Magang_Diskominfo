@@ -20,23 +20,49 @@ let posisiScrollNav = 0;
 const AvatarProfil = ({ fotoUrl, inisial, nama, size, ring }) => {
   const [gagal, setGagal] = useState(false);
 
-  if (fotoUrl && !gagal) {
+  return (
+    <div
+      className={`${size} shrink-0 aspect-square rounded-full overflow-hidden flex items-center justify-center shadow ${ring}`}
+    >
+      {fotoUrl && !gagal ? (
+        <img
+          src={fotoUrl}
+          alt={nama || "Foto profil"}
+          onError={() => setGagal(true)}
+          className="w-full h-full object-cover object-center rounded-full aspect-square block"
+        />
+      ) : (
+        <div className="w-full h-full bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white flex items-center justify-center font-black rounded-full">
+          {inisial}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Lencana hitungan pada butir menu. Sejajar di ujung baris saat sidebar
+// terbuka; saat diciutkan, butir menu jadi ikon tanpa label sehingga lencana
+// menggantung di sudut adalah bentuk yang lebih tepat.
+const LencanaMenu = ({ jumlah, menggantung = false, aktif = false, isDark = false }) => {
+  if (!jumlah || jumlah < 1) return null;
+
+  if (menggantung) {
     return (
-      <img
-        src={fotoUrl}
-        alt={nama || "Foto profil"}
-        onError={() => setGagal(true)}
-        className={`${size} shrink-0 rounded-full object-cover shadow ${ring}`}
-      />
+      <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+        <span className={`relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ${isDark ? "ring-[#161b22]" : "ring-white"}`} />
+      </span>
     );
   }
 
   return (
-    <div
-      className={`${size} shrink-0 rounded-full bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white flex items-center justify-center font-black shadow ${ring}`}
+    <span
+      className={`ml-auto flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full px-1.5 text-[9.5px] font-black tabular-nums transition-colors duration-200 ${
+        aktif ? "bg-white/20 text-white" : "bg-red-500 text-white"
+      }`}
     >
-      {inisial}
-    </div>
+      {jumlah > 99 ? "99+" : jumlah}
+    </span>
   );
 };
 
@@ -45,12 +71,15 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
   const avatarRef = useRef(null);
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
-  const [menuPos, setMenuPos] = useState({ bottom: 0, left: 0 });
+  const [menuPos, setMenuPos] = useState({ bottom: 0, left: 0, width: null });
   const [flyoutKey, setFlyoutKey] = useState(null);
   const [flyoutPos, setFlyoutPos] = useState({ top: 0, left: 0 });
   const flyoutRef = useRef(null);
   const flyoutBtnRefs = useRef({});
   const navRef = useRef(null);
+
+  const isMobile = window.innerWidth < 768;
+  const isSidebarCollapsed = collapsed && !isMobile;
 
   // useLayoutEffect (bukan useEffect) supaya posisi dikembalikan SEBELUM browser
   // menggambar layar — jadi tidak terlihat berkedip naik lalu turun lagi.
@@ -64,7 +93,26 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
 
   const toggleAvatar = () => {
     const r = triggerRef.current?.getBoundingClientRect();
-    if (r) setMenuPos({ bottom: window.innerHeight - r.bottom, left: r.right + 12 });
+    if (r) {
+      if (isMobile) {
+        const lebarDropdown = 190;
+        const targetLeft = 120; // Pindahkan lebih ke kanan agar melayang di luar sidebar drawer
+        const maxLeft = window.innerWidth - lebarDropdown - 12;
+        const leftPos = Math.max(r.left, Math.min(targetLeft, maxLeft));
+
+        setMenuPos({
+          bottom: window.innerHeight - r.top + 8,
+          left: leftPos,
+          width: lebarDropdown
+        });
+      } else {
+        setMenuPos({
+          bottom: Math.max(12, window.innerHeight - r.bottom),
+          left: r.right + 12,
+          width: null
+        });
+      }
+    }
     setAvatarOpen((p) => !p);
   };
   const [dropdownOverride, setDropdownOverrideState] = useState(dropdownTersimpan);
@@ -92,6 +140,15 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
     document.addEventListener("mousedown", fn);
     return () => document.removeEventListener("mousedown", fn);
   }, []);
+
+  // Posisi menu dihitung sekali saat dibuka. Bila layar berubah ukuran
+  // (rotasi perangkat), menu ditutup daripada menggantung di tempat salah.
+  useEffect(() => {
+    if (!avatarOpen) return;
+    const tutup = () => setAvatarOpen(false);
+    window.addEventListener("resize", tutup);
+    return () => window.removeEventListener("resize", tutup);
+  }, [avatarOpen]);
 
   useEffect(() => {
     if (!flyoutKey) return;
@@ -171,7 +228,7 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
       )}
 
        <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 md:z-auto w-72 shrink-0 flex flex-col border-r transition-all duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed md:static inset-y-0 left-0 z-50 md:z-auto w-56 shrink-0 flex flex-col border-r transition-all duration-300 ease-in-out md:translate-x-0 ${
           collapsed ? "md:w-20" : "md:w-60"
         } ${isOpen ? "translate-x-0" : "-translate-x-full"} ${isDark ? "bg-[#161b22] border-white/10" : "bg-white border-slate-200/80"}`}
       >
@@ -179,42 +236,47 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
         <button
           onClick={onToggleCollapse}
           title={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
-          className="hidden md:flex absolute -right-4 bottom-[93px] z-10 h-10 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-lg transition-all duration-300 cursor-pointer hover:scale-110 hover:shadow-xl active:scale-95"
+          className="hidden md:flex absolute -right-4 bottom-[80px] z-10 h-10 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-lg transition-all duration-300 cursor-pointer hover:scale-110 hover:shadow-xl active:scale-95"
         >
           {collapsed ? <PanelLeftOpen className="w-4.5 h-4.5" /> : <PanelLeftClose className="w-4.5 h-4.5" />}
         </button>
         {/* LOGO */}
-        <div className={`flex items-center justify-between gap-2 px-5 h-17 border-b shrink-0 transition-colors ${isDark ? "border-white/10" : "border-slate-100"} ${collapsed ? "md:justify-center md:px-0" : ""}`}>
+        <div className={`flex items-center justify-between gap-2 px-3 md:px-5 h-12 md:h-17 border-b shrink-0 transition-colors ${isDark ? "border-white/10" : "border-slate-100"} ${collapsed ? "md:justify-center md:px-0" : ""}`}>
           <Link
             to={homePath}
             onClick={onClose}
             className={`flex items-center gap-2 min-w-0 flex-1 rounded-lg transition-colors ${isDark ? "hover:bg-white/5" : "hover:bg-slate-50"} ${collapsed ? "md:flex-none md:justify-center" : ""}`}
           >
-            <img src="/images/icon-diskominfo.png" alt="Diskominfo" className="h-11 w-11 object-contain shrink-0" />
+            <img src="/images/icon-diskominfo.png" alt="Diskominfo" className="h-8 w-8 md:h-11 md:w-11 object-contain shrink-0" />
             <div className={`leading-snug min-w-0 ${collapsed ? "md:hidden" : ""}`}>
-              <p className={`text-[11px] font-bold uppercase tracking-widest ${isDark ? "text-slate-500" : "text-slate-400"}`}>Portal manajemen</p>
-              <h1 className={`text-[13px] font-black tracking-tight leading-tight truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>SIM Magang Diskominfo</h1>
+              <p className={`text-[8.5px] md:text-[11px] font-bold uppercase tracking-widest ${isDark ? "text-slate-500" : "text-slate-400"}`}>Portal manajemen</p>
+              <h1 className={`text-[10.5px] md:text-[13px] font-black tracking-tight leading-tight truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>SIM Magang Diskominfo</h1>
             </div>
           </Link>
           <button
             onClick={onClose}
-            className={`md:hidden flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors cursor-pointer ${isDark ? "text-slate-400 hover:bg-white/10" : "text-slate-500 hover:bg-slate-100"}`}
+            title="Tutup menu"
+            className={`md:hidden group flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all duration-200 cursor-pointer active:scale-90 ${
+              isDark
+                ? "text-slate-400 hover:bg-rose-500/15 hover:text-rose-400"
+                : "text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+            }`}
           >
-            <X className="w-4.5 h-4.5" />
+            <X className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
           </button>
         </div>
 
         <nav
           ref={navRef}
           onScroll={simpanPosisiScroll}
-          className={`flex-1 overflow-y-auto px-4 pt-3 space-y-1.5 ${collapsed ? "md:px-3" : ""}`}
+          className={`flex-1 overflow-y-auto px-2 md:px-4 pt-2 md:pt-3 space-y-0.5 md:space-y-1.5 ${collapsed ? "md:px-3" : ""}`}
         >
           {navItems.map((item, idx) => {
             if (item.type === "section") {
               return (
                 <p
                   key={`section-${idx}`}
-                  className={`text-[10px] font-black uppercase tracking-widest px-3 mb-3 ${idx !== 0 ? "mt-3" : ""} ${isDark ? "text-slate-500" : "text-slate-400"} ${collapsed ? "md:hidden" : ""}`}
+                  className={`text-[8px] md:text-[10px] font-black uppercase tracking-widest px-2.5 md:px-3 mb-1.5 md:mb-3 ${idx !== 0 ? "mt-2.5 md:mt-3" : ""} ${isDark ? "text-slate-500" : "text-slate-400"} ${collapsed ? "md:hidden" : ""}`}
                 >
                   {item.label}
                 </p>
@@ -224,13 +286,17 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
             if (item.type === "dropdown") {
               const isOpen = isDropdownOpen(item);
               const isChildActive = item.children.some((c) => c.key === activeKey);
+              const totalLencanaAnak = (item.children || []).reduce(
+                (a, c) => a + (c.badge || 0),
+                0
+              );
 
               return (
                 <div key={item.key} className="relative" ref={(el) => { dropdownRefs.current[item.key] = el; }}>
                   <button
                     ref={(el) => { flyoutBtnRefs.current[item.key] = el; }}
                     onClick={(e) => {
-                      if (collapsed) {
+                      if (isSidebarCollapsed) {
                         const r = e.currentTarget.getBoundingClientRect();
                         setFlyoutPos({ top: r.top, left: r.right + 12 });
                         setFlyoutKey((prev) => (prev === item.key ? null : item.key));
@@ -238,9 +304,9 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                         toggleDropdown(item);
                       }
                     }}
-                    title={collapsed ? item.label : undefined}
-                    className={`flex items-center gap-3 w-full px-3 py-3 rounded-xl text-[13px] font-bold transition-all text-left cursor-pointer ${
-                        collapsed ? "md:justify-center md:px-0" : ""
+                    title={isSidebarCollapsed ? item.label : undefined}
+                    className={`flex items-center gap-2.5 w-full px-2.5 py-2.5 rounded-lg md:rounded-xl text-[12px] md:text-[13px] font-bold transition-all text-left cursor-pointer ${
+                        isSidebarCollapsed ? "md:justify-center md:px-0" : "md:px-3 md:py-3"
                       } ${
                         isChildActive
                           ? isDark ? "bg-white/5 text-slate-100" : "bg-slate-50 text-[#0B1442]"
@@ -249,16 +315,21 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                           : "text-slate-600 hover:bg-slate-50 hover:text-[#0B1442]"
                       }`}
                     >
-                      {item.icon}
-                      <span className={`flex-1 min-w-0 truncate whitespace-nowrap ${collapsed ? "md:hidden" : ""}`}>{item.label}</span>
-                      <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""} ${collapsed ? "md:hidden" : ""}`} />
+                      <span className="relative shrink-0">
+                        {item.icon}
+                        {isSidebarCollapsed && <LencanaMenu jumlah={totalLencanaAnak} menggantung />}
+                      </span>
+                      <span className={`flex-1 min-w-0 truncate whitespace-nowrap ${isSidebarCollapsed ? "md:hidden" : ""}`}>{item.label}</span>
+                      {/* Saat submenu terlipat, angka dinaikkan ke induk agar tetap terlihat */}
+                      {!isOpen && !isSidebarCollapsed && <LencanaMenu jumlah={totalLencanaAnak} />}
+                      <ChevronDown className={`w-3 h-3 md:w-3.5 md:h-3.5 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""} ${isSidebarCollapsed ? "md:hidden" : ""}`} />
                   </button>
 
                   {/* Submenu accordion — muncul saat parent "Kelola Pengguna" diklik pada sidebar mode normal (tidak diciutkan) */}
-                  {!collapsed && (
+                  {!isSidebarCollapsed && (
                     <div
                       className={`grid transition-[grid-template-rows,opacity,margin] duration-250 ease-out ${
-                        isOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0 mt-0"
+                        isOpen ? "grid-rows-[1fr] opacity-100 mt-0.5" : "grid-rows-[0fr] opacity-0 mt-0"
                       }`}
                     >
                       <div className="overflow-hidden">
@@ -268,7 +339,7 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                               key={child.key}
                               to={child.to}
                               onClick={onClose}
-                              className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-[12.5px] font-bold whitespace-nowrap transition-colors duration-200 ${
+                              className={`flex items-center gap-2 md:gap-2.5 px-2 md:px-2.5 py-2 md:py-2.5 rounded-lg text-[11.5px] md:text-[12.5px] font-bold whitespace-nowrap transition-colors duration-200 ${
                                 activeKey === child.key
                                   ? "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-md"
                                   : isDark
@@ -277,7 +348,8 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                               }`}
                             >
                               {child.icon}
-                              <span className="min-w-0 truncate">{child.label}</span>
+                              <span className="min-w-0 flex-1 truncate">{child.label}</span>
+                              <LencanaMenu jumlah={child.badge} aktif={activeKey === child.key} />
                             </Link>
                           ))}
                         </div>
@@ -286,7 +358,7 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                   )}
 
                   {/* Sidebar menciut (collapsed): submenu tampil sebagai flyout di sebelah kanan */}
-                  {collapsed && flyoutKey === item.key && createPortal(
+                  {isSidebarCollapsed && flyoutKey === item.key && createPortal(
                         <div
                           ref={flyoutRef}
                           style={{ position: "fixed", top: `${flyoutPos.top}px`, left: `${flyoutPos.left}px`, zIndex: 2147483647, transformOrigin: "left top" }}
@@ -310,7 +382,8 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                                 }`}
                               >
                                 {child.icon}
-                                {child.label}
+                                <span className="min-w-0 flex-1 truncate">{child.label}</span>
+                                <LencanaMenu jumlah={child.badge} aktif={activeKey === child.key} />
                               </Link>
                             ))}
                           </div>
@@ -326,9 +399,9 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                 key={item.key}
                 to={item.to}
                 onClick={onClose}
-                title={collapsed ? item.label : undefined}
-                className={`flex items-center gap-3 min-w-0 flex-1 px-3 py-3 rounded-xl text-[13px] font-bold transition-all text-left ${
-                    collapsed ? "md:justify-center md:px-0" : ""
+                title={isSidebarCollapsed ? item.label : undefined}
+                className={`flex items-center gap-2.5 md:gap-3 min-w-0 flex-1 px-2.5 py-2.5 rounded-lg md:rounded-xl text-[12px] md:text-[13px] font-bold transition-all text-left ${
+                    isSidebarCollapsed ? "md:justify-center md:px-0" : "md:px-3 md:py-3"
                   } ${
                     activeKey === item.key
                       ? "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-md"
@@ -337,68 +410,72 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                       : "text-slate-600 hover:bg-slate-50 hover:text-[#0B1442]"
                   }`}
                 >
-                  {item.icon}
-                  <span className={`min-w-0 truncate whitespace-nowrap ${collapsed ? "md:hidden" : ""}`}>{item.label}</span>
+                  <span className="relative shrink-0">
+                    {item.icon}
+                    {isSidebarCollapsed && <LencanaMenu jumlah={item.badge} menggantung />}
+                  </span>
+                  <span className={`min-w-0 truncate whitespace-nowrap ${isSidebarCollapsed ? "md:hidden" : ""}`}>{item.label}</span>
+                  {!isSidebarCollapsed && <LencanaMenu jumlah={item.badge} aktif={activeKey === item.key} />}
               </Link>
             );
           })}
         </nav>
 
         {/* Avatar & Profile */}
-        <div className={`px-4 pb-5 pt-3 border-t ${isDark ? "border-white/10" : "border-slate-100"} ${collapsed ? "md:px-3" : ""}`}>
-          <div className="relative" ref={avatarRef}>
+        <div className={`flex items-center px-3 md:px-5 h-12 md:h-17 border-t shrink-0 transition-colors ${isDark ? "border-white/10" : "border-slate-100"} ${collapsed ? "md:justify-center md:px-0" : ""}`}>
+          <div className="relative w-full" ref={avatarRef}>
             <button
               ref={triggerRef}
               onClick={toggleAvatar}
               title={collapsed ? profile?.nama || profile?.email : undefined}
-              className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all cursor-pointer ${isDark ? "hover:bg-white/5" : "hover:bg-slate-50"} ${collapsed ? "md:justify-center md:px-0" : ""}`}
+              className={`w-full flex items-center gap-2 md:gap-2.5 rounded-lg md:rounded-xl px-1.5 py-1 md:px-2 md:py-1.5 transition-all cursor-pointer ${isDark ? "hover:bg-white/5" : "hover:bg-slate-50"} ${collapsed ? "md:justify-center md:px-0" : ""}`}
             >
               <AvatarProfil
-                key={fotoUrl || "inisial"}
                 fotoUrl={fotoUrl}
                 inisial={initial}
                 nama={profile?.nama}
-                size="h-9 w-9 text-[11px]"
+                size="h-8 w-8 md:h-9 md:w-9 text-[10px] md:text-[11px]"
                 ring={isDark ? "ring-2 ring-white/10" : "ring-2 ring-slate-200"}
               />
               <div className={`flex-1 text-left min-w-0 ${collapsed ? "md:hidden" : ""}`}>
-                <p className={`text-xs font-extrabold truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{profile?.nama || profile?.email || "Memuat..."}</p>
-                <p className={`text-[9px] truncate capitalize ${isDark ? "text-slate-500" : "text-slate-400"}`}>{profile?.jabatan || roleLabel}</p>
+                <p className={`text-[11px] md:text-xs font-extrabold truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{profile?.nama || profile?.email || "Memuat..."}</p>
+                <p className={`text-[8px] md:text-[9px] truncate capitalize ${isDark ? "text-slate-500" : "text-slate-400"}`}>{profile?.jabatan || roleLabel}</p>
               </div>
-              <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${isDark ? "text-slate-500" : "text-slate-400"} ${avatarOpen ? "rotate-180" : ""} ${collapsed ? "md:hidden" : ""}`} />
+              <ChevronDown className={`w-2.5 h-2.5 md:w-3 md:h-3 shrink-0 transition-transform ${isDark ? "text-slate-500" : "text-slate-400"} ${avatarOpen ? "rotate-180" : ""} ${collapsed ? "md:hidden" : ""}`} />
             </button>
 
             {avatarOpen && createPortal(
               <div
                 ref={menuRef}
-                style={{ position: "fixed", bottom: `${menuPos.bottom}px`, left: `${menuPos.left}px`, zIndex: 2147483647, transformOrigin: "left bottom" }}
-                className={`w-56 rounded-2xl border overflow-hidden animate-[avatarMenuPop_0.22s_cubic-bezier(0.34,1.56,0.64,1)] ${isDark ? "bg-[#1c2128] border-white/10 shadow-2xl shadow-black/50" : "bg-white border-slate-200 shadow-2xl shadow-slate-300/60"}`}
+                style={{
+                  position: "fixed",
+                  bottom: `${menuPos.bottom}px`,
+                  left: `${menuPos.left}px`,
+                  width: menuPos.width ? `${menuPos.width}px` : undefined,
+                  zIndex: 2147483647,
+                  transformOrigin: "left bottom",
+                }}
+                className={`${menuPos.width ? "" : "w-56"} max-w-[calc(100vw-1.5rem)] rounded-xl md:rounded-2xl border overflow-hidden animate-[avatarMenuPop_0.22s_cubic-bezier(0.34,1.56,0.64,1)] ${isDark ? "bg-[#1c2128] border-white/10 shadow-2xl shadow-black/50" : "bg-white border-slate-200 shadow-2xl shadow-slate-300/60"}`}
               >
                 <style>{`@keyframes avatarMenuPop{0%{opacity:0;transform:translateY(10px) scale(0.94)}100%{opacity:1;transform:translateY(0) scale(1)}}`}</style>
 
                 {/* Header */}
-                <div className="relative px-3.5 py-3 bg-gradient-to-br from-[#0B1442] via-[#1E3A8A] to-[#00A5EC] overflow-hidden">
+                <div className="relative px-3 md:px-3.5 py-2.5 md:py-3 bg-gradient-to-br from-[#0B1442] via-[#1E3A8A] to-[#00A5EC] overflow-hidden">
                   <div className="pointer-events-none absolute -top-5 -right-5 h-16 w-16 rounded-full bg-white/10 blur-xl" />
                   <div className="pointer-events-none absolute -bottom-6 -left-3 h-14 w-14 rounded-full bg-[#00A5EC]/40 blur-xl" />
-                  <div className="relative flex items-center gap-2.5">
+                  <div className="relative flex items-center gap-2 md:gap-2.5">
                     <div className="relative shrink-0">
                       <AvatarProfil
-                        key={fotoUrl || "inisial"}
                         fotoUrl={fotoUrl}
                         inisial={initial}
                         nama={profile?.nama}
-                        size="h-10 w-10 text-[12px]"
+                        size="h-8 w-8 md:h-10 md:w-10 text-[10px] md:text-[12px]"
                         ring="ring-2 ring-white/30"
                       />
-                      {/* Titik online berkedip */}
-                      <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
-                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                        <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-white" />
-                      </span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[12px] font-bold text-white truncate">{profile?.nama || profile?.email}</p>
-                      <span className="mt-0.5 inline-flex items-center rounded-full bg-white/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white/90 backdrop-blur-sm capitalize">
+                      <p className="text-[11px] md:text-[12px] font-bold text-white truncate">{profile?.nama || profile?.email}</p>
+                      <span className="mt-0.5 inline-flex items-center rounded-full bg-white/15 px-1 md:px-1.5 py-0.5 text-[7px] md:text-[8px] font-bold uppercase tracking-wider text-white/90 backdrop-blur-sm capitalize">
                         {roleLabel || profile?.role}
                       </span>
                     </div>
@@ -406,30 +483,30 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
                 </div>
 
                 {/* Menu items */}
-                <div className="p-1.5">
+                <div className="p-1 md:p-1.5">
                   <Link
                     to={kelolaAkunPath}
                     onClick={() => { setAvatarOpen(false); onClose?.(); }}
-                    className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${isDark ? "text-slate-200 hover:bg-white/5" : "text-slate-700 hover:bg-slate-50"}`}
+                    className={`group flex items-center gap-2 md:gap-2.5 px-2 md:px-2.5 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[11px] md:text-xs font-bold transition-all cursor-pointer ${isDark ? "text-slate-200 hover:bg-white/5" : "text-slate-700 hover:bg-slate-50"}`}
                   >
-                    <span className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${isDark ? "bg-white/5 text-slate-300 group-hover:bg-[#00A5EC]/20 group-hover:text-[#00A5EC]" : "bg-slate-100 text-slate-500 group-hover:bg-[#004F9F]/10 group-hover:text-[#004F9F]"}`}>
-                      <Settings className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
+                    <span className={`flex h-6.5 w-6.5 md:h-7 md:w-7 items-center justify-center rounded-lg transition-all ${isDark ? "bg-white/5 text-slate-300 group-hover:bg-[#00A5EC]/20 group-hover:text-[#00A5EC]" : "bg-slate-100 text-slate-500 group-hover:bg-[#004F9F]/10 group-hover:text-[#004F9F]"}`}>
+                      <Settings className="w-3 h-3 md:w-3.5 md:h-3.5 transition-transform duration-300 group-hover:scale-110" />
                     </span>
                     <span className="flex-1">Kelola Akun</span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" />
+                    <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" />
                   </Link>
 
                   <div className={`my-1 border-t ${isDark ? "border-white/10" : "border-slate-100"}`} />
 
                   <button
                     onClick={handleLogout}
-                    className="group flex w-full items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-red-500 transition-all cursor-pointer hover:bg-red-500/10"
+                    className="group flex w-full items-center gap-2 md:gap-2.5 px-2 md:px-2.5 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[11px] md:text-xs font-bold text-red-500 transition-all cursor-pointer hover:bg-red-500/10"
                   >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/10 text-red-500 transition-all group-hover:bg-red-500 group-hover:text-white">
-                      <LogOut className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                    <span className="flex h-6.5 w-6.5 md:h-7 md:w-7 items-center justify-center rounded-lg bg-red-500/10 text-red-500 transition-all group-hover:bg-red-500 group-hover:text-white">
+                      <LogOut className="w-3 h-3 md:w-3.5 md:h-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
                     </span>
                     <span className="flex-1 text-left">Keluar / Logout</span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" />
+                    <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" />
                   </button>
                 </div>
               </div>,

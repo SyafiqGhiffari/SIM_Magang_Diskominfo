@@ -1,5 +1,14 @@
 import { useEffect } from "react";
-import { Filter as FilterIcon, X, ListFilter, RotateCcw, Check, Monitor, GraduationCap, FileText, Tags } from "lucide-react";
+import { Filter as FilterIcon, X, RotateCcw, Check, Monitor, GraduationCap, FileText, Tags, ArrowUpDown } from "lucide-react";
+
+const sortOptions = [
+  { key: "nama_az", label: "Nama (A-Z)" },
+  { key: "nama_za", label: "Nama (Z-A)" },
+  { key: "kategori_az", label: "Kategori (A-Z)" },
+  { key: "terbaru", label: "Terbaru Dibuat" },
+  { key: "terlama", label: "Terlama Dibuat" },
+  { key: "field_terbanyak", label: "Field Terbanyak" },
+];
 
 const orientasiOptions = [
   { key: "landscape", label: "Landscape" },
@@ -16,36 +25,87 @@ const tipeOptions = [
   { key: "image", label: "Background Gambar" },
 ];
 
-const CheckboxItem = ({ checked, label, onToggle }) => (
+const CheckboxItem = ({ checked, label, onToggle, isDark }) => (
   <button
     type="button"
     onClick={onToggle}
-    className={`group flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-left transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
-      checked ? "border-[#004F9F]/50 bg-blue-50/50 shadow-sm" : "border-slate-200 bg-slate-50/70 hover:border-[#004F9F]/40 hover:bg-white"
+    className={`group flex items-center gap-1.5 sm:gap-2.5 rounded-lg sm:rounded-xl border px-2 py-1.5 sm:px-3.5 sm:py-3 text-left transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
+      checked
+        ? isDark
+          ? "border-[#00A5EC]/45 bg-[#00A5EC]/10 shadow-sm"
+          : "border-[#004F9F]/50 bg-blue-50/50 shadow-sm"
+        : isDark
+          ? "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
+          : "border-slate-200 bg-slate-50/70 hover:border-[#004F9F]/40 hover:bg-white"
     }`}
   >
     <span
-      className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200 ${
-        checked ? "border-[#004F9F] bg-gradient-to-br from-[#0B1442] to-[#004F9F] scale-110" : "border-slate-300 bg-white group-hover:border-[#004F9F]/60"
+      className={`flex h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200 ${
+        checked
+          ? isDark
+            ? "border-[#00A5EC] bg-gradient-to-br from-[#00A5EC] to-[#004F9F] scale-110"
+            : "border-[#004F9F] bg-gradient-to-br from-[#0B1442] to-[#004F9F] scale-110"
+          : isDark
+            ? "border-white/20 bg-white/5 group-hover:border-white/30"
+            : "border-slate-300 bg-white group-hover:border-[#004F9F]/60"
       }`}
     >
-      <Check className={`w-3 h-3 text-white transition-transform duration-200 ${checked ? "scale-100" : "scale-0"}`} strokeWidth={3} />
+      <Check className={`w-2 h-2 sm:w-3 sm:h-3 text-white transition-transform duration-200 ${checked ? "scale-100" : "scale-0"}`} strokeWidth={3} />
     </span>
-    <span className="text-xs font-bold text-slate-700">{label}</span>
+    <span className={`text-[10px] sm:text-xs font-bold ${isDark ? "text-slate-300" : "text-slate-700"}`}>{label}</span>
+  </button>
+);
+
+const RadioItem = ({ checked, label, onSelect, isDark }) => (
+  <button
+    type="button"
+    onClick={onSelect}
+    className={`group flex items-center gap-1.5 sm:gap-2.5 rounded-lg sm:rounded-xl border px-2 py-1.5 sm:px-3.5 sm:py-3 text-left transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
+      checked
+        ? isDark
+          ? "border-[#00A5EC]/45 bg-[#00A5EC]/10 shadow-sm"
+          : "border-[#004F9F]/50 bg-blue-50/50 shadow-sm"
+        : isDark
+          ? "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
+          : "border-slate-200 bg-slate-50/70 hover:border-[#004F9F]/40 hover:bg-white"
+    }`}
+  >
+    <span
+      className={`flex h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
+        checked
+          ? "border-[#004F9F] scale-110"
+          : isDark
+            ? "border-white/20 group-hover:border-white/30"
+            : "border-slate-300 group-hover:border-[#004F9F]/60"
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 sm:h-2.5 sm:w-2.5 rounded-full bg-gradient-to-br transition-transform duration-200 ${checked ? "scale-100" : "scale-0"} ${isDark ? "from-[#00A5EC] to-[#004F9F]" : "from-[#0B1442] to-[#004F9F]"}`} />
+    </span>
+    <span className={`text-[10px] sm:text-xs font-bold ${isDark ? "text-slate-300" : "text-slate-700"}`}>{label}</span>
   </button>
 );
 
 const Section = ({ icon: Icon, title, children, cols = 2 }) => (
   <div>
-    <label className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-      <Icon className="w-3.5 h-3.5" />
+    <label className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-1 sm:mb-2">
+      <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
       {title}
     </label>
-    <div className={`grid gap-2.5 ${cols === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>{children}</div>
+    <div className={`grid gap-1.5 sm:gap-2.5 ${cols === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>{children}</div>
   </div>
 );
 
-const TemplateFilterModal = ({ filters, toggleFilter, kategoriOptions = [], onApply, onReset, onClose }) => {
+const TemplateFilterModal = ({
+  filters,
+  toggleFilter,
+  kategoriOptions = [],
+  onApply,
+  onReset,
+  onClose,
+  sortBy,
+  setSortBy,
+  isDark = false,
+}) => {
   useEffect(() => {
     const handleKeyDown = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handleKeyDown);
@@ -54,68 +114,124 @@ const TemplateFilterModal = ({ filters, toggleFilter, kategoriOptions = [], onAp
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-3 sm:p-4" onClick={onClose}>
       <div
-        className="w-full max-w-lg rounded-3xl bg-white shadow-2xl overflow-hidden animate-[modalFadeUp_0.3s_ease-out] max-h-[90vh] flex flex-col"
+        className={`w-full max-w-sm sm:max-w-lg rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-[modalFadeUp_0.3s_ease-out] max-h-[90vh] flex flex-col ${
+          isDark ? "bg-[#161b22] ring-1 ring-white/10" : "bg-white"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-6 py-6 shrink-0">
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-3.5 py-3 sm:px-6 sm:py-5 shrink-0">
           <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-[#00A5EC]/15 blur-2xl pointer-events-none" />
-          <div className="relative flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md">
-              <FilterIcon className="w-5 h-5 text-white" />
-            </span>
-            <div>
-              <h3 className="text-sm font-black text-white">Filter Template</h3>
-              <p className="text-[11px] text-white/60 mt-0.5">Saring desain template sesuai kebutuhanmu</p>
+          <FilterIcon className="absolute right-6 sm:right-12 top-1/2 -translate-y-1/2 w-14 h-14 sm:w-18 sm:h-18 opacity-[0.06] text-sky-300 pointer-events-none rotate-6" strokeWidth={1} />
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="flex h-7.5 w-7.5 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-lg sm:rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md">
+                <FilterIcon className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-white" />
+              </span>
+              <div>
+                <h3 className="text-xs sm:text-sm font-black text-white">Filter Template</h3>
+                <p className="text-[9.5px] sm:text-[11px] text-white/60 mt-0.5">Saring desain template sesuai kebutuhanmu</p>
+              </div>
             </div>
+            <button
+              onClick={onClose}
+              className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-300 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
+            </button>
           </div>
-          <button onClick={onClose} className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-300 cursor-pointer">
-            <X className="w-4.5 h-4.5" />
-          </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-3.5 sm:space-y-5">
+          {/* Urutan Data (Khusus Tampilan Mobile) */}
+          <div className="block sm:hidden">
+            <Section icon={ArrowUpDown} title="Urutan Data">
+              {sortOptions.map((opt) => (
+                <RadioItem
+                  key={opt.key}
+                  label={opt.label}
+                  checked={sortBy === opt.key}
+                  onSelect={() => setSortBy?.(opt.key)}
+                  isDark={isDark}
+                />
+              ))}
+            </Section>
+          </div>
+
           <Section icon={Monitor} title="Orientasi">
             {orientasiOptions.map((o) => (
-              <CheckboxItem key={o.key} label={o.label} checked={filters.orientasi.includes(o.key)} onToggle={() => toggleFilter("orientasi", o.key)} />
+              <CheckboxItem
+                key={o.key}
+                label={o.label}
+                checked={filters.orientasi.includes(o.key)}
+                onToggle={() => toggleFilter("orientasi", o.key)}
+                isDark={isDark}
+              />
             ))}
           </Section>
 
           <Section icon={GraduationCap} title="Jenis Peserta">
             {pesertaOptions.map((o) => (
-              <CheckboxItem key={o.key} label={o.label} checked={filters.jenis_peserta.includes(o.key)} onToggle={() => toggleFilter("jenis_peserta", o.key)} />
+              <CheckboxItem
+                key={o.key}
+                label={o.label}
+                checked={filters.jenis_peserta.includes(o.key)}
+                onToggle={() => toggleFilter("jenis_peserta", o.key)}
+                isDark={isDark}
+              />
             ))}
           </Section>
 
           <Section icon={FileText} title="Tipe Background">
             {tipeOptions.map((o) => (
-              <CheckboxItem key={o.key} label={o.label} checked={filters.tipe_template.includes(o.key)} onToggle={() => toggleFilter("tipe_template", o.key)} />
+              <CheckboxItem
+                key={o.key}
+                label={o.label}
+                checked={filters.tipe_template.includes(o.key)}
+                onToggle={() => toggleFilter("tipe_template", o.key)}
+                isDark={isDark}
+              />
             ))}
           </Section>
 
           {kategoriOptions.length > 0 && (
             <Section icon={Tags} title="Kategori">
               {kategoriOptions.map((k) => (
-                <CheckboxItem key={k} label={k} checked={filters.kategori.includes(k)} onToggle={() => toggleFilter("kategori", k)} />
+                <CheckboxItem
+                  key={k}
+                  label={k}
+                  checked={filters.kategori.includes(k)}
+                  onToggle={() => toggleFilter("kategori", k)}
+                  isDark={isDark}
+                />
               ))}
             </Section>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 shrink-0">
-          <button onClick={onReset} className="group flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition-all duration-200 hover:bg-slate-50 hover:-translate-y-0.5 active:scale-95 cursor-pointer">
-            <RotateCcw className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-rotate-45" />
+        <div className={`flex items-center gap-2 sm:gap-3 border-t px-3.5 py-2.5 sm:px-6 sm:py-4 shrink-0 ${
+          isDark ? "border-white/5 bg-[#161b22]" : "border-slate-100 bg-slate-50/50"
+        }`}>
+          <button
+            onClick={onReset}
+            className={`group flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg sm:rounded-xl border px-3 py-2 sm:px-4 sm:py-3 text-[11px] sm:text-xs font-bold transition-all duration-200 active:scale-95 cursor-pointer ${
+              isDark
+                ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:-translate-y-0.5"
+            }`}
+          >
+            <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform duration-300 group-hover:-rotate-45" />
             Reset Filter
           </button>
           <button
             onClick={() => { onApply(); onClose(); }}
-            className="group flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-4 py-3 text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+            className="group flex-1 inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-3 py-2 sm:px-4 sm:py-3 text-[11px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg active:scale-95 cursor-pointer"
           >
-            <ListFilter className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12" />
+            <FilterIcon className="w-3.5 h-3.5 sm:w-3.5 sm:h-3.5 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12" />
             Terapkan Filter
           </button>
         </div>

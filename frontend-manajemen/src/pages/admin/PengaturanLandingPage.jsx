@@ -9,6 +9,7 @@ import {
   Palette, Sparkles, Images, Building2, Info, Target,
   ListChecks, Menu as MenuIcon, Phone, ToggleLeft, Search, Eye,
   MousePointerClick, Megaphone, DoorOpen, Link2, MapPin, Share2,
+  Calendar,
 } from "lucide-react";
 import KepalaKartu from "../../components/manajemen/admin/landing/KepalaKartu";
 import StatusSimpan from "../../components/manajemen/admin/landing/StatusSimpan";
@@ -35,20 +36,20 @@ import {
 // Judul kecil untuk kotak pengelompokan di dalam kartu.
 // Didefinisikan di level modul agar tidak dibuat ulang setiap render.
 const JudulGrup = ({ icon: Ikon, teks, ket, isDark }) => (
-  <div className="mb-4 flex items-center gap-2.5">
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#004F9F] to-[#00A5EC] text-white shadow-sm">
-      <Ikon className="h-4 w-4" strokeWidth={2.3} />
+  <div className="mb-2 sm:mb-4 flex items-center gap-1.5 sm:gap-2.5">
+    <span className="flex h-5 w-5 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-md sm:rounded-xl bg-gradient-to-br from-[#004F9F] to-[#00A5EC] text-white shadow-sm">
+      <Ikon className="h-2.5 w-2.5 sm:h-4 sm:w-4" strokeWidth={2.3} />
     </span>
     <div className="min-w-0">
       <p
-        className={`text-[12px] font-black uppercase tracking-wide ${
+        className={`text-[10px] sm:text-[12px] font-black uppercase tracking-wide ${
           isDark ? "text-slate-200" : "text-[#0B1442]"
         }`}
       >
         {teks}
       </p>
       {ket && (
-        <p className={`text-[11px] font-medium ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+        <p className={`text-[8.5px] sm:text-[11px] font-medium ${isDark ? "text-slate-400" : "text-slate-400"}`}>
           {ket}
         </p>
       )}
@@ -84,40 +85,48 @@ const hitungStats = (form, grup) => {
       label: "Kolom Terisi",
       value: terisi,
       caption: `dari ${total} kolom pengaturan`,
+      mobileCaption: `dari ${total} kolom`,
       gradient: "from-emerald-500 to-emerald-700",
       lightGradient: "from-emerald-300 to-white",
       iconBg: "bg-emerald-50",
       iconColor: "text-emerald-600",
+      iconBgDark: "bg-emerald-950/60 text-emerald-400",
     },
     {
       icon: CircleDashed,
       label: "Masih Kosong",
       value: kosong,
       caption: kosong > 0 ? "Perlu segera dilengkapi" : "Semua sudah lengkap",
+      mobileCaption: kosong > 0 ? "Perlu diisi" : "Sudah lengkap",
       gradient: "from-amber-500 to-amber-700",
       lightGradient: "from-amber-300 to-white",
       iconBg: "bg-amber-50",
       iconColor: "text-amber-600",
+      iconBgDark: "bg-amber-950/60 text-amber-400",
     },
     {
       icon: Gauge,
       label: "Kelengkapan",
       value: `${persen}%`,
       caption: "Kesiapan tampil ke publik",
+      mobileCaption: "Kesiapan publik",
       gradient: "from-[#004F9F] to-[#0B1442]",
       lightGradient: "from-blue-300 to-white",
       iconBg: "bg-blue-50",
       iconColor: "text-blue-600",
+      iconBgDark: "bg-blue-950/60 text-sky-400",
     },
     {
       icon: LayoutPanelTop,
       label: "Bagian Aktif",
       value: grup?.tabs?.length || 0,
       caption: grup?.judul || "-",
+      mobileCaption: grup?.judul || "-",
       gradient: "from-slate-600 to-slate-800",
       lightGradient: "from-slate-300 to-white",
       iconBg: "bg-slate-100",
       iconColor: "text-slate-600",
+      iconBgDark: "bg-slate-800 text-slate-300",
     },
   ];
 };
@@ -371,43 +380,50 @@ const PengaturanLandingPage = () => {
   }
 
   // Kolom isian: sudut lebih membulat, latar lembut, cincin fokus bercahaya.
-  const inputClass = `mt-1.5 w-full rounded-xl border px-4 py-3 text-sm font-medium outline-none transition-all duration-200 ${
+  const inputClass = `mt-1 sm:mt-1.5 w-full rounded-lg sm:rounded-xl border px-2.5 py-1.5 sm:px-4 sm:py-3 text-[11px] sm:text-sm font-medium outline-none transition-all duration-200 ${
     isDark
-      ? "border-white/10 bg-white/5 text-slate-100 placeholder-slate-500 hover:border-white/20 focus:border-[#00A5EC] focus:bg-white/[0.07] focus:ring-4 focus:ring-[#00A5EC]/20"
-      : "border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-300 hover:border-slate-300 hover:bg-white focus:border-[#004F9F] focus:bg-white focus:ring-4 focus:ring-[#00A5EC]/15"
+      ? "border-white/10 bg-[#0d1117] text-slate-100 placeholder-slate-500 hover:border-white/20 focus:border-[#00A5EC] focus:bg-[#161b22] focus:ring-4 focus:ring-[#00A5EC]/15"
+      : "border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-400 hover:border-slate-300 hover:bg-white focus:border-[#004F9F] focus:bg-white focus:ring-4 focus:ring-[#00A5EC]/15"
   }`;
 
-  const labelClass = `flex items-center gap-1.5 text-[10.5px] font-black uppercase tracking-wider ${
+  const labelClass = `flex items-center gap-1 sm:gap-1.5 text-[8.5px] sm:text-[10.5px] font-bold uppercase tracking-wider ${
     isDark ? "text-slate-400" : "text-slate-400"
   } before:h-1 before:w-1 before:rounded-full before:bg-[#00A5EC]/70 before:content-['']`;
 
   // Kartu isian utama.
-  const cardClass = `relative space-y-5 overflow-hidden rounded-3xl border p-6 shadow-sm transition-all duration-300 hover:shadow-xl ${
+  const cardClass = `relative space-y-2.5 sm:space-y-5 overflow-hidden rounded-xl sm:rounded-3xl border p-3 sm:p-6 shadow-sm transition-all duration-300 hover:shadow-lg ${
     isDark
-      ? "border-white/10 bg-gradient-to-b from-[#111c33] to-[#0f172a] hover:border-[#00A5EC]/25"
+      ? "border-white/10 bg-[#161b22] hover:border-[#00A5EC]/25"
       : "border-slate-200/80 bg-white hover:border-[#00A5EC]/35"
   }`;
-  const cardClassPolos = cardClass.replace("space-y-5 ", "");
+  const cardClassPolos = cardClass.replace("space-y-2.5 sm:space-y-5 ", "");
 
   // Kotak pengelompokan di dalam kartu (sub-bagian).
-  const grupClass = `rounded-2xl border p-5 transition-all duration-300 ${
+  const grupClass = `rounded-lg sm:rounded-2xl border p-2.5 sm:p-5 transition-all duration-300 ${
     isDark
-      ? "border-white/10 bg-white/[0.03] hover:border-white/20"
-      : "border-slate-200/70 bg-gradient-to-br from-slate-50 to-white hover:border-[#00A5EC]/30 hover:shadow-sm"
+      ? "border-white/10 bg-white/[0.02] hover:border-white/20"
+      : "border-slate-200/70 bg-slate-50/50 hover:border-[#00A5EC]/30 hover:shadow-sm"
   }`;
 
   return (
     <AdminLayout>
-      <div className="space-y-6 animate-[fadeslide_0.35s_ease-out]">
+      <div className="space-y-3.5 sm:space-y-6 animate-[fadeslide_0.35s_ease-out]">
         <div>
-          <p className={`text-[10.5px] font-black uppercase tracking-widest ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+          <p className={`text-[9px] sm:text-[10.5px] font-black uppercase tracking-widest ${isDark ? "text-slate-500" : "text-slate-400"}`}>
             Pengaturan Landing Page
           </p>
-          <h2 className={`mt-1 text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+          <h2 className={`mt-0.5 sm:mt-1 text-lg sm:text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
             {grup.judul}
           </h2>
-          <p className={`mt-1.5 max-w-xl text-xs leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-            {grup.desc}
+          <p className={`mt-0.5 sm:mt-1.5 max-w-xl text-[10.5px] sm:text-xs leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+            <span className="inline sm:hidden">
+              {tab === "identitas"
+                ? "Atur nama situs, logo, dan favicon situs."
+                : tab === "seo"
+                ? "Atur judul, meta deskripsi, dan gambar berbagi."
+                : grup.desc}
+            </span>
+            <span className="hidden sm:inline">{grup.desc}</span>
           </p>
         </div>
 
@@ -429,27 +445,27 @@ const PengaturanLandingPage = () => {
         <>
       {/* ── Pratinjau hasil pencarian: lebar penuh, di atas seluruh kartu ── */}
       {tab === "seo" && (
-        <div className={`${cardClassPolos} mb-5`}>
+        <div className={`${cardClassPolos} mb-3 sm:mb-5`}>
           <KepalaKartu
             icon={Eye}
-            judul="Pratinjau Hasil Akhir"
-            sub="Perkiraan tampilan situs Anda di halaman pencarian Google"
+            judul="Pratinjau Google"
+            sub="Perkiraan hasil pencarian"
             isDark={isDark}
           />
           <div
-            className={`mt-5 rounded-2xl border p-5 ${
-              isDark ? "border-white/10 bg-white/[0.03]" : "border-slate-100 bg-slate-50"
+            className={`mt-2 sm:mt-5 rounded-lg sm:rounded-2xl border p-2 sm:p-5 ${
+              isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-100 bg-slate-50"
             }`}
           >
-            <p className="text-[11.5px] font-medium text-emerald-700">
+            <p className="text-[9px] sm:text-[11.5px] font-medium text-emerald-600 dark:text-emerald-400">
               simmagang.ponorogo.go.id
             </p>
-            <p className="mt-1 break-words text-lg font-medium leading-snug text-blue-700">
+            <p className="mt-0.5 sm:mt-1 break-words text-[11.5px] sm:text-lg font-medium leading-snug text-blue-700 dark:text-sky-400">
               {form.seo_title || "Judul halaman belum diisi"}
             </p>
             <p
-              className={`mt-1.5 text-[13px] leading-relaxed ${
-                isDark ? "text-slate-400" : "text-slate-600"
+              className={`mt-0.5 sm:mt-1.5 text-[9px] sm:text-[13px] leading-snug sm:leading-relaxed ${
+                isDark ? "text-slate-300" : "text-slate-600"
               }`}
             >
               {form.seo_description || "Deskripsi singkat belum diisi."}
@@ -458,14 +474,14 @@ const PengaturanLandingPage = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 items-start gap-3 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         {/* ── Kolom kiri: seluruh form isian ── */}
-        <div className="min-w-0 space-y-5">
+        <div className="min-w-0 space-y-3 sm:space-y-5">
         {/* ── TAB IDENTITAS ── */}
         {tab === "identitas" && (
           <div className={cardClass}>
-            <KepalaKartu icon={Palette} judul="Identitas & Branding" sub="Nama, tagline, logo, dan favicon situs" isDark={isDark} />
-            <div className="grid gap-4 md:grid-cols-2">
+            <KepalaKartu icon={Palette} judul="Identitas & Branding" sub="Nama, logo, dan favicon" isDark={isDark} />
+            <div className="grid gap-2 sm:gap-4 md:grid-cols-2">
               <div>
                 <label className={labelClass}>Nama Situs</label>
                 <input className={inputClass} value={form.nama_situs} onChange={(e) => ubah("nama_situs", e.target.value)} />
@@ -487,58 +503,54 @@ const PengaturanLandingPage = () => {
             </div>
 
             <div className={grupClass}>
-              <JudulGrup isDark={isDark} icon={Images} teks="Berkas Gambar" ket="Seret berkas ke kotak atau klik untuk memilih" />
+              <JudulGrup isDark={isDark} icon={Images} teks="Berkas Gambar" ket="Pilih berkas gambar logo dan favicon situs" />
 
               {/* Penjelasan sederhana agar pengguna awam tidak bingung */}
-              <div className="mb-4 grid gap-3 sm:grid-cols-2">
+              <div className="mb-2 sm:mb-4 grid grid-cols-2 gap-1.5 sm:gap-3">
                 <div
-                  className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 ${
+                  className={`group relative overflow-hidden rounded-lg sm:rounded-2xl border p-2 sm:p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
                     isDark
-                      ? "border-[#00A5EC]/25 bg-[#00A5EC]/[0.07]"
+                      ? "border-[#00A5EC]/25 bg-[#00A5EC]/[0.05]"
                       : "border-sky-200 bg-gradient-to-br from-sky-50 to-white"
                   }`}
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#004F9F] to-[#00A5EC] text-white shadow-sm">
-                    <Images className="h-4 w-4" strokeWidth={2.4} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className={`text-[12px] font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
-                      Apa itu Logo Situs?
-                    </p>
-                    <p className={`mt-1 text-[11.5px] leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                      Gambar lambang instansi yang tampil di <b>pojok kiri atas halaman</b> (navbar)
-                      dan di bagian bawah halaman (footer). Ini yang paling sering dilihat
-                      pengunjung. Sebaiknya gunakan gambar dengan latar transparan (PNG/SVG)
-                      agar menyatu dengan warna halaman.
+                  <div className="flex items-center gap-1.5 sm:gap-2.5">
+                    <span className="flex h-5 w-5 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-md sm:rounded-xl bg-gradient-to-br from-[#004F9F] to-[#00A5EC] text-white shadow-sm transition-transform duration-300 group-hover:scale-105">
+                      <Images className="h-2.5 w-2.5 sm:h-4 sm:w-4" strokeWidth={2.4} />
+                    </span>
+                    <p className={`text-[9.5px] sm:text-[12px] font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                      Logo Situs
                     </p>
                   </div>
+                  <p className={`mt-1 text-[8px] sm:text-[11.5px] leading-tight sm:leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                    <span className="inline sm:hidden">Lambang di navbar & footer (PNG transparan).</span>
+                    <span className="hidden sm:inline">Gambar lambang instansi di navbar & footer. Gunakan latar transparan (PNG/SVG).</span>
+                  </p>
                 </div>
 
                 <div
-                  className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 ${
+                  className={`group relative overflow-hidden rounded-lg sm:rounded-2xl border p-2 sm:p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
                     isDark
-                      ? "border-white/10 bg-white/[0.04]"
+                      ? "border-white/10 bg-white/[0.02]"
                       : "border-slate-200 bg-gradient-to-br from-slate-50 to-white"
                   }`}
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1442] to-[#1E3A8A] text-white shadow-sm">
-                    <Info className="h-4 w-4" strokeWidth={2.4} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className={`text-[12px] font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
-                      Apa itu Favicon?
-                    </p>
-                    <p className={`mt-1 text-[11.5px] leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                      Ikon mungil yang muncul di <b>tab browser</b>, di daftar bookmark, dan saat
-                      situs disimpan di layar utama ponsel. Ukurannya sangat kecil, jadi pakai
-                      gambar sederhana &mdash; cukup lambang saja tanpa tulisan, berbentuk persegi
-                      (misal 512 &times; 512 piksel).
+                  <div className="flex items-center gap-1.5 sm:gap-2.5">
+                    <span className="flex h-5 w-5 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-md sm:rounded-xl bg-gradient-to-br from-[#0B1442] to-[#1E3A8A] text-white shadow-sm transition-transform duration-300 group-hover:scale-105">
+                      <Info className="h-2.5 w-2.5 sm:h-4 sm:w-4" strokeWidth={2.4} />
+                    </span>
+                    <p className={`text-[9.5px] sm:text-[12px] font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                      Favicon
                     </p>
                   </div>
+                  <p className={`mt-1 text-[8px] sm:text-[11.5px] leading-tight sm:leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                    <span className="inline sm:hidden">Ikon kecil tab browser (PNG/ICO persegi).</span>
+                    <span className="hidden sm:inline">Ikon mungil di tab browser & bookmark. Gunakan gambar lambang persegi (PNG/ICO).</span>
+                  </p>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-2 sm:gap-4 md:grid-cols-2">
                 <DropZoneGambar
                   judul="Logo Situs"
                   ket="Tampil di navbar & footer. JPG, PNG, WEBP, atau SVG."
@@ -546,7 +558,7 @@ const PengaturanLandingPage = () => {
                   accept=".jpg,.jpeg,.png,.webp,.svg"
                   maksMb={2}
                   muat="contain"
-                  rasio="h-36"
+                  rasio="h-22 sm:h-36"
                   mengunggah={mengunggah === "logo"}
                   onPilih={(file) => unggah("logo", file)}
                   onHapus={() => hapusFile("logo")}
@@ -559,7 +571,7 @@ const PengaturanLandingPage = () => {
                   accept=".png,.ico,.svg"
                   maksMb={2}
                   muat="contain"
-                  rasio="h-36"
+                  rasio="h-22 sm:h-36"
                   mengunggah={mengunggah === "favicon"}
                   onPilih={(file) => unggah("favicon", file)}
                   onHapus={() => hapusFile("favicon")}
@@ -641,11 +653,11 @@ const PengaturanLandingPage = () => {
 
         {/* ── TAB TENTANG & PROFIL ── */}
         {tab === "tentang" && (
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-6">
             <div className={cardClass}>
               <KepalaKartu icon={Info} judul="Tentang Instansi" sub="Deskripsi singkat yang tampil di beranda" isDark={isDark} />
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-2 sm:gap-4 md:grid-cols-2">
                 <div>
                   <label className={labelClass}>Badge</label>
                   <input className={inputClass} value={form.about_badge} onChange={(e) => ubah("about_badge", e.target.value)} placeholder="Mengenal Kami" />
@@ -686,7 +698,7 @@ const PengaturanLandingPage = () => {
                 url={urlFotoKantor}
                 accept=".jpg,.jpeg,.png,.webp"
                 maksMb={5}
-                rasio="h-52"
+                rasio="h-28 sm:h-52"
                 mengunggah={mengunggah === "foto-kantor"}
                 onPilih={(file) => unggah("foto-kantor", file)}
                 onHapus={() => hapusFile("foto-kantor")}
@@ -699,7 +711,7 @@ const PengaturanLandingPage = () => {
             <div className={cardClass}>
               <KepalaKartu icon={ListChecks} judul="Visi & Misi" sub="Cita-cita dan langkah nyata instansi" isDark={isDark} />
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-2 sm:gap-4 md:grid-cols-2">
                 <div>
                   <label className={labelClass}>Judul Visi</label>
                   <input className={inputClass} value={form.visi_judul} onChange={(e) => ubah("visi_judul", e.target.value)} />
@@ -715,7 +727,7 @@ const PengaturanLandingPage = () => {
                 <EditorTeksKaya rows={3} isDark={isDark} nilai={form.visi_teks} onUbah={(v) => ubah("visi_teks", v)} />
               </div>
 
-              <p className={`text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+              <p className={`text-[9.5px] sm:text-[11px] font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                 Poin-poin Misi dikelola pada tab <b>Konten Daftar → Misi Instansi</b>.
               </p>
 
@@ -734,7 +746,7 @@ const PengaturanLandingPage = () => {
         {tab === "kontak" && (
           <div className={cardClass}>
             <KepalaKartu icon={Phone} judul="Kontak & Media Sosial" sub="Informasi yang tampil di bagian footer" isDark={isDark} />
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-2 sm:gap-4 md:grid-cols-2">
               <div>
                 <label className={labelClass}>Email Resmi</label>
                 <input className={inputClass} value={form.email_resmi} onChange={(e) => ubah("email_resmi", e.target.value)} />
@@ -759,10 +771,10 @@ const PengaturanLandingPage = () => {
                 <label className={labelClass}>Alamat Lengkap</label>
                 <textarea rows={2} className={inputClass} value={form.alamat_lengkap} onChange={(e) => ubah("alamat_lengkap", e.target.value)} />
               </div>
-              <div className="mt-4">
+              <div className="mt-2.5 sm:mt-4">
                 <label className={labelClass}>URL Embed Google Maps</label>
                 <textarea rows={3} className={inputClass} value={form.embed_maps} onChange={(e) => ubah("embed_maps", e.target.value)} />
-                <p className={`mt-1 text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                <p className={`mt-1 text-[9.5px] sm:text-[11px] font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                   Ambil dari Google Maps → Bagikan → Sematkan peta, lalu salin isi atribut <code>src</code> saja.
                 </p>
               </div>
@@ -770,7 +782,7 @@ const PengaturanLandingPage = () => {
 
             <div className={grupClass}>
               <JudulGrup isDark={isDark} icon={Share2} teks="Media Sosial" ket="Kosongkan untuk menyembunyikan ikonnya" />
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-2 sm:gap-4 md:grid-cols-2">
                 {[
                   ["link_instagram", "Instagram"],
                   ["link_facebook", "Facebook"],
@@ -800,21 +812,29 @@ const PengaturanLandingPage = () => {
             <KepalaKartu icon={ToggleLeft} judul="Status Pendaftaran" sub="Buka atau tutup pendaftaran beserta kuotanya" isDark={isDark} />
 
             <div
-              className={`relative overflow-hidden rounded-2xl border px-5 py-4 text-sm ${
+              className={`relative overflow-hidden rounded-xl sm:rounded-2xl border px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-[11px] sm:text-sm transition-colors duration-300 ${
                 statusEfektif
-                  ? "border-emerald-200 bg-gradient-to-r from-emerald-50 to-white text-emerald-700"
+                  ? isDark
+                    ? "border-emerald-500/30 bg-emerald-950/40 text-emerald-300"
+                    : "border-emerald-200 bg-gradient-to-r from-emerald-50 to-white text-emerald-700"
+                  : isDark
+                  ? "border-amber-500/30 bg-amber-950/40 text-amber-300"
                   : "border-amber-200 bg-gradient-to-r from-amber-50 to-white text-amber-700"
               }`}
             >
               <span
-                className={`absolute inset-y-0 left-0 w-1.5 ${
+                className={`absolute inset-y-0 left-0 w-1 sm:w-1.5 ${
                   statusEfektif ? "bg-emerald-500" : "bg-amber-500"
                 }`}
               />
-              <strong className="font-black">
+              <strong className="font-black text-[11px] sm:text-sm">
                 Status saat ini: {statusEfektif ? "Pendaftaran DIBUKA" : "Pendaftaran DITUTUP"}
               </strong>
-              {!statusEfektif && alasanDitutup && <p className="mt-1">{alasanDitutup}</p>}
+              {!statusEfektif && alasanDitutup && (
+                <p className={`mt-0.5 sm:mt-1 text-[9.5px] sm:text-xs leading-relaxed ${isDark ? "text-amber-200/80" : "text-amber-700"}`}>
+                  {alasanDitutup}
+                </p>
+              )}
             </div>
 
             <Sakelar
@@ -826,17 +846,39 @@ const PengaturanLandingPage = () => {
               isDark={isDark}
             />
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-2 sm:gap-4 md:grid-cols-2">
               <div>
                 <label className={labelClass}>Tanggal Buka (opsional)</label>
-                <input type="date" className={inputClass} value={form.tanggal_buka} onChange={(e) => ubah("tanggal_buka", e.target.value)} />
+                <div className="mt-1 sm:mt-1.5 relative group/date flex items-center">
+                  <input
+                    type="date"
+                    className={`${inputClass} !mt-0 pr-9 sm:pr-10 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:inset-y-0 [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:z-10`}
+                    style={{ colorScheme: isDark ? "dark" : "light" }}
+                    value={form.tanggal_buka}
+                    onChange={(e) => ubah("tanggal_buka", e.target.value)}
+                  />
+                  <Calendar className={`pointer-events-none absolute right-2.5 sm:right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors duration-200 ${
+                    isDark ? "text-slate-200 group-hover/date:text-[#00A5EC]" : "text-slate-400 group-hover/date:text-[#004F9F]"
+                  }`} />
+                </div>
               </div>
               <div>
                 <label className={labelClass}>Tanggal Tutup (opsional)</label>
-                <input type="date" className={inputClass} value={form.tanggal_tutup} onChange={(e) => ubah("tanggal_tutup", e.target.value)} />
+                <div className="mt-1 sm:mt-1.5 relative group/date flex items-center">
+                  <input
+                    type="date"
+                    className={`${inputClass} !mt-0 pr-9 sm:pr-10 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:inset-y-0 [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:z-10`}
+                    style={{ colorScheme: isDark ? "dark" : "light" }}
+                    value={form.tanggal_tutup}
+                    onChange={(e) => ubah("tanggal_tutup", e.target.value)}
+                  />
+                  <Calendar className={`pointer-events-none absolute right-2.5 sm:right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors duration-200 ${
+                    isDark ? "text-slate-200 group-hover/date:text-[#00A5EC]" : "text-slate-400 group-hover/date:text-[#004F9F]"
+                  }`} />
+                </div>
               </div>
             </div>
-            <p className={`-mt-2 text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+            <p className={`-mt-1 sm:-mt-2 text-[9px] sm:text-[11px] font-medium ${isDark ? "text-slate-400" : "text-slate-400"}`}>
               Kosongkan kedua tanggal jika ingin mengatur buka/tutup sepenuhnya secara manual.
             </p>
 
@@ -858,7 +900,7 @@ const PengaturanLandingPage = () => {
               />
 
               {form.banner_aktif && (
-                <div className="mt-4 space-y-4">
+                <div className="mt-2.5 sm:mt-4 space-y-2.5 sm:space-y-4">
                   <div>
                     <label className={labelClass}>Teks Banner</label>
                     <textarea rows={2} className={inputClass} value={form.banner_teks} onChange={(e) => ubah("banner_teks", e.target.value)} />
@@ -866,9 +908,9 @@ const PengaturanLandingPage = () => {
                   <div>
                     <label className={labelClass}>Tipe Banner</label>
                     <select className={inputClass} value={form.banner_tipe} onChange={(e) => ubah("banner_tipe", e.target.value)}>
-                      <option value="info">Info (biru)</option>
-                      <option value="sukses">Sukses (hijau)</option>
-                      <option value="peringatan">Peringatan (kuning)</option>
+                      <option value="info" className={isDark ? "bg-[#161b22] text-slate-100" : ""}>Info (biru)</option>
+                      <option value="sukses" className={isDark ? "bg-[#161b22] text-slate-100" : ""}>Sukses (hijau)</option>
+                      <option value="peringatan" className={isDark ? "bg-[#161b22] text-slate-100" : ""}>Peringatan (kuning)</option>
                     </select>
                   </div>
                 </div>
@@ -881,9 +923,9 @@ const PengaturanLandingPage = () => {
 
         {/* ── TAB SEO & BERBAGI ── */}
         {tab === "seo" && (
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-6">
             <div className={cardClass}>
-              <KepalaKartu icon={Search} judul="SEO Halaman" sub="Judul, deskripsi, dan kata kunci pencarian" isDark={isDark} />
+              <KepalaKartu icon={Search} judul="SEO Halaman" sub="Judul & meta deskripsi" isDark={isDark} />
 
               <div>
                 <label className={labelClass}>Judul Halaman (Title Tag)</label>
@@ -894,9 +936,9 @@ const PengaturanLandingPage = () => {
                   onChange={(e) => ubah("seo_title", e.target.value)}
                   placeholder="Portal Pendaftaran | SIM Magang Diskominfo Ponorogo"
                 />
-                <p className={`mt-1 text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-                  Tampil di tab browser dan sebagai judul biru di hasil Google.
-                  Idealnya 50-60 karakter. Terpakai: {form.seo_title.length}/70.
+                <p className={`mt-1 text-[8.5px] sm:text-[11px] ${isDark ? "text-slate-400" : "text-slate-400"}`}>
+                  <span className="inline sm:hidden">Maks 50-60 kar · Terpakai: {form.seo_title.length}/70</span>
+                  <span className="hidden sm:inline">Tampil di tab browser & judul Google (50-60 karakter). Terpakai: {form.seo_title.length}/70.</span>
                 </p>
               </div>
 
@@ -909,9 +951,9 @@ const PengaturanLandingPage = () => {
                   value={form.seo_description}
                   onChange={(e) => ubah("seo_description", e.target.value)}
                 />
-                <p className={`mt-1 text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-                  Teks abu-abu di bawah judul pada hasil pencarian. Idealnya 120-155
-                  karakter. Terpakai: {form.seo_description.length}/200.
+                <p className={`mt-1 text-[8.5px] sm:text-[11px] ${isDark ? "text-slate-400" : "text-slate-400"}`}>
+                  <span className="inline sm:hidden">Maks 120-155 kar · Terpakai: {form.seo_description.length}/200</span>
+                  <span className="hidden sm:inline">Teks di bawah judul pada hasil pencarian (120-155 karakter). Terpakai: {form.seo_description.length}/200.</span>
                 </p>
               </div>
 
@@ -929,19 +971,19 @@ const PengaturanLandingPage = () => {
             </div>
 
             <div className={cardClass}>
-              <KepalaKartu icon={Images} judul="Gambar Berbagi" sub="Tampil saat tautan dibagikan ke media sosial" isDark={isDark} />
-              <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                Gambar ini muncul ketika alamat web dibagikan di WhatsApp, Facebook, atau
-                Twitter. Ukuran ideal 1200 × 630 piksel.
+              <KepalaKartu icon={Share2} judul="Gambar Berbagi" sub="Pratinjau media sosial (OG)" isDark={isDark} />
+              <p className={`text-[9px] sm:text-xs leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                <span className="inline sm:hidden">Pratinjau link WA & medsos (1200 × 630 px).</span>
+                <span className="hidden sm:inline">Tampil saat link dibagikan di WhatsApp, medsos, dsb. Rekomendasi 1200 × 630 px.</span>
               </p>
 
               <DropZoneGambar
-                judul="Gambar Saat Link Dibagikan (OG Image)"
-                ket="JPG, PNG, atau WEBP. Gambar lama otomatis dihapus saat diganti."
+                judul="Gambar Link (OG Image)"
+                ket="JPG, PNG, atau WEBP. Gambar lama otomatis diganti."
                 url={urlOgImage}
                 accept=".jpg,.jpeg,.png,.webp"
                 maksMb={5}
-                rasio="h-52"
+                rasio="h-28 sm:h-52"
                 mengunggah={mengunggah === "og-image"}
                 onPilih={(file) => unggah("og-image", file)}
                 onHapus={() => hapusFile("og-image")}

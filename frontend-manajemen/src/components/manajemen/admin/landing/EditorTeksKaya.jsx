@@ -27,7 +27,7 @@ const TombolFormat = ({ ikon: Ikon, judul, onKlik, kelas }) => (
     onClick={onKlik}
     className={kelas}
   >
-    <Ikon className="h-3.5 w-3.5" strokeWidth={2.6} />
+    <Ikon className="h-3 w-3 sm:h-3.5 sm:w-3.5" strokeWidth={2.6} />
   </button>
 );
 
@@ -126,31 +126,31 @@ const EditorTeksKaya = ({
     bungkus(cocok.tanda, cocok.contoh);
   };
 
-  const kelasTombol = `flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg transition-all duration-200 active:scale-90 ${
+  const kelasTombol = `flex h-5.5 w-5.5 sm:h-7 sm:w-7 cursor-pointer items-center justify-center rounded-md sm:rounded-lg transition-all duration-200 active:scale-90 ${
     isDark
       ? "text-slate-400 hover:bg-[#00A5EC]/15 hover:text-[#00A5EC]"
       : "text-slate-400 hover:bg-[#00A5EC]/10 hover:text-[#004F9F]"
   }`;
 
-  const pemisah = `mx-1 h-4 w-px ${isDark ? "bg-white/10" : "bg-slate-200"}`;
+  const pemisah = `mx-0.5 sm:mx-1 h-3 sm:h-4 w-px ${isDark ? "bg-white/10" : "bg-slate-200"}`;
 
   return (
     <div
-      className={`group mt-1.5 overflow-hidden rounded-xl border transition-all duration-200 ${
+      className={`group mt-1 sm:mt-1.5 overflow-hidden rounded-lg sm:rounded-xl border transition-all duration-200 ${
         fokus
           ? isDark
-            ? "border-[#00A5EC] bg-white/[0.07] ring-4 ring-[#00A5EC]/20"
+            ? "border-[#00A5EC] bg-[#0d1117] ring-4 ring-[#00A5EC]/15"
             : "border-[#004F9F] bg-white ring-4 ring-[#00A5EC]/15"
           : isDark
-          ? "border-white/10 bg-white/5 hover:border-white/20"
+          ? "border-white/10 bg-[#0d1117] hover:border-white/20"
           : "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
       }`}
     >
       {/* ── Toolbar ringkas: meredup saat kolom tidak dipakai ── */}
       <div
-        className={`flex items-center gap-0.5 border-b px-2 py-1.5 transition-opacity duration-200 ${
+        className={`flex items-center gap-0.5 border-b px-1 sm:px-2 py-0.5 sm:py-1.5 transition-opacity duration-200 ${
           fokus || pratinjau ? "opacity-100" : "opacity-55 group-hover:opacity-100"
-        } ${isDark ? "border-white/10 bg-white/[0.03]" : "border-slate-200/80 bg-slate-50/80"}`}
+        } ${isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-200/80 bg-slate-50/80"}`}
       >
         {TOMBOL_INLINE.map((t) => (
           <TombolFormat
@@ -177,7 +177,7 @@ const EditorTeksKaya = ({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setPratinjau((v) => !v)}
-          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10.5px] font-black uppercase tracking-wide transition-all duration-200 active:scale-95 ${
+          className={`inline-flex cursor-pointer items-center gap-1 sm:gap-1.5 rounded-md sm:rounded-lg px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[8.5px] sm:text-[10.5px] font-black uppercase tracking-wide transition-all duration-200 active:scale-95 ${
             pratinjau
               ? "bg-gradient-to-r from-[#004F9F] to-[#00A5EC] text-white shadow-sm"
               : isDark
@@ -186,9 +186,9 @@ const EditorTeksKaya = ({
           }`}
         >
           {pratinjau ? (
-            <PenLine className="h-3 w-3" strokeWidth={2.8} />
+            <PenLine className="h-2 w-2 sm:h-3 sm:w-3" strokeWidth={2.8} />
           ) : (
-            <Eye className="h-3 w-3" strokeWidth={2.8} />
+            <Eye className="h-2 w-2 sm:h-3 sm:w-3" strokeWidth={2.8} />
           )}
           {pratinjau ? "Tulis" : "Pratinjau"}
         </button>
@@ -197,10 +197,10 @@ const EditorTeksKaya = ({
       {/* ── Area tulis / pratinjau ── */}
       {pratinjau ? (
         <div
-          className={`px-4 py-3 text-sm leading-relaxed ${
+          className={`px-2.5 sm:px-4 py-1.5 sm:py-3 text-[11px] sm:text-sm leading-relaxed ${
             isDark ? "text-slate-200" : "text-slate-700"
           }`}
-          style={{ minHeight: rows * 22.5 }}
+          style={{ minHeight: rows * 18 }}
         >
           {isi.trim() ? (
             <TeksKaya teks={isi} />
@@ -219,10 +219,10 @@ const EditorTeksKaya = ({
           onKeyDown={handleKeyDown}
           onFocus={() => setFokus(true)}
           onBlur={() => setFokus(false)}
-          className={`w-full resize-y border-0 bg-transparent px-4 py-3 text-sm font-medium leading-relaxed outline-none ${
+          className={`w-full resize-y border-0 bg-transparent px-2.5 sm:px-4 py-1.5 sm:py-3 text-[11px] sm:text-sm font-medium leading-relaxed outline-none ${
             isDark
               ? "text-slate-100 placeholder-slate-500"
-              : "text-slate-700 placeholder-slate-300"
+              : "text-slate-700 placeholder-slate-400"
           }`}
         />
       )}

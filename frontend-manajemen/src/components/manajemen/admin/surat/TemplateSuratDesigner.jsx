@@ -93,17 +93,17 @@ const bawaanBaru = {
 
 // ── Kelas gaya (fungsi, bukan komponen, supaya identitas komponen tetap stabil) ──
 const clsInput = (isDark) =>
-  `w-full rounded-xl border px-3 py-2.5 text-sm font-medium outline-none transition-all duration-200 ${
+  `w-full rounded-lg sm:rounded-xl border px-2.5 py-1.5 sm:px-3 sm:py-2.5 text-xs sm:text-sm font-medium outline-none transition-all duration-200 ${
     isDark
       ? "bg-slate-900/60 border-slate-700 text-slate-100 hover:border-slate-600 focus:border-[#00A5EC] focus:ring-4 focus:ring-[#00A5EC]/15"
       : "bg-white border-slate-200 text-slate-800 hover:border-slate-300 focus:border-[#004F9F] focus:ring-4 focus:ring-[#00A5EC]/15"
   }`;
 const clsLabel = (isDark) =>
-  `block text-[10.5px] font-black uppercase tracking-wider mb-1.5 ${
+  `block text-[9px] sm:text-[10.5px] font-black uppercase tracking-wider mb-1 sm:mb-1.5 ${
     isDark ? "text-slate-400" : "text-slate-400"
   }`;
 const clsKartu = (isDark) =>
-  `rounded-2xl border p-4 transition-all duration-200 ${
+  `rounded-xl sm:rounded-2xl border p-3 sm:p-4 transition-all duration-200 ${
     isDark
       ? "bg-slate-900/40 border-slate-700/60 hover:border-slate-600"
       : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-md"
@@ -111,10 +111,10 @@ const clsKartu = (isDark) =>
 
   /* Judul seksi — pola sama dengan SectionTitle pada modal kelola surat */
   const JudulKartu = ({ isDark, icon: Icon, children }) => (
-    <div className="mb-2.5 flex items-center gap-2.5">
-      <span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-[#00A5EC] to-[#004F9F]" />
-      {Icon && <Icon className="h-3.5 w-3.5 text-[#004F9F]" />}
-      <p className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? "text-slate-400" : "text-slate-400"}`}>
+    <div className="mb-2 sm:mb-2.5 flex items-center gap-2 sm:gap-2.5">
+      <span className="h-3 sm:h-3.5 w-1 rounded-full bg-gradient-to-b from-[#00A5EC] to-[#004F9F]" />
+      {Icon && <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#004F9F]" />}
+      <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? "text-slate-400" : "text-slate-400"}`}>
         {children}
       </p>
       <span className={`h-px flex-1 bg-gradient-to-r to-transparent ${isDark ? "from-slate-700" : "from-slate-200"}`} />
@@ -166,7 +166,7 @@ const Pilihan = ({ isDark, label, value, onChange, opsi = [] }) => {
       >
         <span className="truncate">{terpilih?.label ?? "Pilih..."}</span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 transition-transform duration-300 ${buka ? "rotate-180 text-[#00A5EC]" : "opacity-50"}`}
+          className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 transition-transform duration-300 ${buka ? "rotate-180 text-[#00A5EC]" : "opacity-50"}`}
         />
       </button>
 
@@ -187,7 +187,7 @@ const Pilihan = ({ isDark, label, value, onChange, opsi = [] }) => {
                 setBuka(false);
                 onChange?.({ target: { value: o.nilai } });
               }}
-              className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold transition-all duration-150 ${
+              className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-left text-[11px] sm:text-xs font-bold transition-all duration-150 ${
                 aktif
                   ? "bg-gradient-to-r from-[#004F9F] to-[#00A5EC] text-white"
                   : isDark
@@ -196,7 +196,7 @@ const Pilihan = ({ isDark, label, value, onChange, opsi = [] }) => {
               }`}
             >
               <span className="truncate">{o.label}</span>
-              {aktif && <Check className="h-3.5 w-3.5 shrink-0" />}
+              {aktif && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />}
             </button>
           );
         })}
@@ -282,7 +282,7 @@ const Angka = ({ isDark, label, value, onChange, step = 1, satuan = "mm" }) => (
 
 const Saklar = ({ isDark, label, checked, onChange }) => (
   <label
-    className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold cursor-pointer transition-all duration-200 hover:-translate-y-0.5 active:scale-95 ${
+    className={`inline-flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold cursor-pointer transition-all duration-200 hover:-translate-y-0.5 active:scale-95 ${
       checked
         ? isDark
           ? "border-[#00A5EC]/50 bg-[#00A5EC]/10 text-slate-100"
@@ -292,7 +292,7 @@ const Saklar = ({ isDark, label, checked, onChange }) => (
           : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
     }`}
   >
-    <input type="checkbox" className="w-3.5 h-3.5 accent-[#004F9F]" checked={Boolean(checked)} onChange={onChange} />
+    <input type="checkbox" className="w-3 h-3 sm:w-3.5 sm:h-3.5 accent-[#004F9F]" checked={Boolean(checked)} onChange={onChange} />
     {label}
   </label>
 );
@@ -473,6 +473,19 @@ const [form, setForm] = useState(() => {
   const [memuatPratinjau, setMemuatPratinjau] = useState(false);
   const [pratinjauUrl, setPratinjauUrl] = useState("");
   const [otomatis, setOtomatis] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+  const [zoom, setZoom] = useState(() => (window.innerWidth < 1024 ? 50 : 100));
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      setZoom(mobile ? 50 : 100);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Peta blok (kotak-kotak yang bisa digeser) dari backend
   const [peta, setPeta] = useState(null);
@@ -484,7 +497,6 @@ const [form, setForm] = useState(() => {
   const [pdfDoc, setPdfDoc] = useState(null);
   const [numPages, setNumPages] = useState(1);
   const [pageNum, setPageNum] = useState(1);
-  const [zoom, setZoom] = useState(100);
   const [docError, setDocError] = useState(false);
 
   const urlRef = useRef("");
@@ -612,7 +624,6 @@ const [form, setForm] = useState(() => {
       muatPratinjau(id, kategori);
     }, 1200);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sidik, otomatis, idTpl, kategori, muatPratinjau]);
 
   // Muat dokumen PDF saat berada di mode PDF.
@@ -672,7 +683,7 @@ const [form, setForm] = useState(() => {
       batal = true;
       if (tugasRender) tugasRender.cancel();
     };
-  }, [pdfDoc, pageNum, zoom]);
+  }, [pdfDoc, pageNum, zoom, showMobilePreview]);
 
   const simpanManual = async () => {
     const id = await simpan();
@@ -866,6 +877,250 @@ const [form, setForm] = useState(() => {
     }
   };
 
+  const renderPanelPratinjau = () => {
+    return (
+      <div className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${isDark ? "bg-[#0b0f19]" : "bg-slate-100"}`}>
+        {/* Toolbar pratinjau */}
+        <div className={`flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5 sm:px-5 sm:py-3 ${isDark ? "border-slate-800 bg-slate-900/40" : "border-slate-100 bg-white"}`}>
+          {!isMobile && (
+            <div className="flex min-w-0 items-center gap-2">
+              <span className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg ${isDark ? "bg-slate-800 text-[#00A5EC]" : "bg-blue-50 text-[#004F9F]"}`}>
+                <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              </span>
+              <div className="min-w-0">
+                <p className={`text-[11px] sm:text-xs font-black leading-tight ${isDark ? "text-slate-200" : "text-[#0B1442]"}`}>Pratinjau Surat</p>
+                <p className={`text-[9.5px] sm:text-[10.5px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                  {mode === "geser"
+                    ? "Tarik kotak untuk menata"
+                    : "Memakai data contoh, bukan data peserta asli"}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            {/* Pemilih mode pratinjau */}
+            <div className={`flex items-center gap-0.5 rounded-full border p-0.5 sm:p-1 shadow-sm ${isDark ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-slate-50"}`}>
+              <button
+                type="button"
+                onClick={() => setMode("geser")}
+                title="Mode geser (tata langsung di pratinjau)"
+                className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[9.5px] sm:text-[10.5px] font-bold transition-all duration-200 active:scale-95 ${
+                  mode === "geser"
+                    ? "bg-gradient-to-r from-[#004F9F] to-[#00A5EC] text-white shadow-sm"
+                    : isDark
+                      ? "text-slate-400 hover:text-slate-200"
+                      : "text-slate-500 hover:text-[#004F9F]"
+                }`}
+              >
+                <Move className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Geser
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("pdf")}
+                title="Tampilkan PDF apa adanya"
+                className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[9.5px] sm:text-[10.5px] font-bold transition-all duration-200 active:scale-95 ${
+                  mode === "pdf"
+                    ? "bg-gradient-to-r from-[#004F9F] to-[#00A5EC] text-white shadow-sm"
+                    : isDark
+                      ? "text-slate-400 hover:text-slate-200"
+                      : "text-slate-500 hover:text-[#004F9F]"
+                }`}
+              >
+                <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> PDF
+              </button>
+            </div>
+
+            <PilihanMini
+              isDark={isDark}
+              value={kategori}
+              onChange={(e) => setKategori(e.target.value)}
+              opsi={[
+                { nilai: "mahasiswa", label: "Contoh mahasiswa" },
+                { nilai: "siswa", label: "Contoh siswa" },
+              ]}
+            />
+            <button
+              onClick={simpanManual}
+              disabled={memuatPratinjau || menyimpan}
+              title="Segarkan pratinjau"
+              className={`flex h-7.5 w-7.5 sm:h-9 sm:w-9 cursor-pointer items-center justify-center rounded-xl transition-all duration-200 hover:scale-110 disabled:cursor-not-allowed disabled:opacity-40 ${
+                isDark ? "text-slate-400 hover:bg-slate-800 hover:text-[#00A5EC]" : "text-slate-500 hover:bg-slate-100 hover:text-[#004F9F]"
+              }`}
+            >
+              {memuatPratinjau || menyimpan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Area surat */}
+        <div
+          className="relative min-h-0 flex-1 overflow-auto p-4 sm:p-6"
+          style={
+            isDark
+              ? undefined
+              : {
+                  backgroundColor: "#eef1f6",
+                  backgroundImage: "radial-gradient(circle, #d8dee8 1px, transparent 1px)",
+                  backgroundSize: "18px 18px",
+                }
+          }
+        >
+          {mode === "geser" ? (
+            <PratinjauInteraktifSurat
+              pratinjauUrl={pratinjauUrl}
+              peta={peta}
+              tataLetak={tataLetak}
+              setTataLetak={setTataLetak}
+              isDark={isDark}
+              memuat={memuatPratinjau || menyimpan}
+            />
+          ) : pratinjauUrl ? (
+            <div className="relative flex h-full min-h-0 w-full flex-col">
+              {/* Bilah alat mengambang */}
+              <div className="pointer-events-none absolute inset-x-2 sm:inset-x-4 top-2 sm:top-3 z-20 flex items-start justify-between gap-2">
+                <div className={`pointer-events-auto flex items-center gap-0.5 rounded-full border px-1 py-0.5 sm:px-1.5 sm:py-1 shadow-lg backdrop-blur-md ${
+                  isDark ? "border-slate-700 bg-slate-900/95" : "border-slate-200 bg-white/95"
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => setZoom((z) => Math.max(50, z - 25))}
+                    className={`flex h-6 w-6 sm:h-7 sm:w-7 cursor-pointer items-center justify-center rounded-full transition-all duration-200 hover:scale-115 active:scale-90 ${
+                      isDark ? "text-slate-300 hover:bg-slate-800 hover:text-[#00A5EC]" : "text-slate-600 hover:bg-slate-100 hover:text-[#004F9F]"
+                    }`}
+                  >
+                    <ZoomOut className="h-3.5 w-3.5" />
+                  </button>
+                  <span className={`px-1 text-[9px] sm:text-[10px] font-bold tabular-nums ${isDark ? "text-slate-200" : "text-[#0B1442]"}`}>{zoom}%</span>
+                  <button
+                    type="button"
+                    onClick={() => setZoom((z) => Math.min(200, z + 25))}
+                    className={`flex h-6 w-6 sm:h-7 sm:w-7 cursor-pointer items-center justify-center rounded-full transition-all duration-200 hover:scale-115 active:scale-90 ${
+                      isDark ? "text-slate-300 hover:bg-slate-800 hover:text-[#00A5EC]" : "text-slate-600 hover:bg-slate-100 hover:text-[#004F9F]"
+                    }`}
+                  >
+                    <ZoomIn className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                <div className="pointer-events-auto flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={cetakPratinjau}
+                    title="Cetak surat"
+                    className={`flex h-6.5 w-6.5 sm:h-8 sm:w-8 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer ${
+                      isDark
+                        ? "border-slate-700 bg-slate-900/95 text-slate-300 hover:bg-slate-800 hover:text-[#00A5EC]"
+                        : "border-slate-200 bg-white/95 text-slate-600 hover:bg-slate-100 hover:text-[#004F9F]"
+                    }`}
+                  >
+                    <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </button>
+                  <a
+                    href={pratinjauUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`flex h-6.5 w-6.5 sm:h-8 sm:w-8 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer ${
+                      isDark
+                        ? "border-slate-700 bg-slate-900/95 text-slate-300 hover:bg-slate-800 hover:text-[#00A5EC]"
+                        : "border-slate-200 bg-white/95 text-slate-600 hover:bg-slate-100 hover:text-[#004F9F]"
+                    }`}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </a>
+                </div>
+              </div>
+
+              {numPages > 1 && (
+                <div className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/40 bg-white/85 px-3 py-1 shadow-lg backdrop-blur-md">
+                  <button
+                    type="button"
+                    onClick={() => setPageNum((p) => Math.max(1, p - 1))}
+                    disabled={pageNum === 1}
+                    className="cursor-pointer rounded-full p-1 text-slate-500 transition-all hover:text-[#004F9F] disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <span className={`px-1 text-[10.5px] font-bold ${isDark ? "text-slate-300" : "text-[#0B1442]"}`}>
+                    Hal {pageNum}/{numPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPageNum((p) => Math.min(numPages, p + 1))}
+                    disabled={pageNum === numPages}
+                    className="cursor-pointer rounded-full p-1 text-slate-500 transition-all hover:text-[#004F9F] disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Canvas PDF */}
+              <div className="min-h-0 flex-1 overflow-auto">
+                <div className="flex min-h-full min-w-full items-center justify-center p-4">
+                  {docError ? (
+                    <span className="m-auto text-xs font-bold text-rose-500">Gagal memuat PDF pratinjau.</span>
+                  ) : !pdfDoc ? (
+                    /* Skeleton dokumen + overlay spinner (mirip mode geser) */
+                    <div className="relative mx-auto w-full max-w-sm animate-[fadeslide_0.3s_ease-out]" style={{ aspectRatio: "210 / 297" }}>
+                      {/* Skeleton kertas */}
+                      <div className="absolute inset-0 rounded-xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
+                        <div className="flex flex-col gap-2 p-6 pt-8 opacity-30">
+                          <div className="mx-auto mb-2 h-3 w-24 rounded bg-slate-300" />
+                          <div className="mx-auto mb-1 h-2.5 w-48 rounded bg-slate-200" />
+                          <div className="mx-auto mb-4 h-2 w-36 rounded bg-slate-200" />
+                          <div className="h-2 w-full rounded bg-slate-200" />
+                          <div className="h-2 w-5/6 rounded bg-slate-200" />
+                          <div className="h-2 w-full rounded bg-slate-200" />
+                          <div className="mt-3 h-2 w-3/4 rounded bg-slate-200" />
+                          <div className="h-2 w-full rounded bg-slate-200" />
+                          <div className="h-2 w-4/5 rounded bg-slate-200" />
+                          <div className="mt-3 h-2 w-full rounded bg-slate-200" />
+                          <div className="h-2 w-2/3 rounded bg-slate-200" />
+                        </div>
+                      </div>
+                      {/* Overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 backdrop-blur-[1px]">
+                        <div className="flex flex-col items-center gap-3 text-slate-500">
+                          <div className={`h-9 w-9 animate-spin rounded-full border-[3px] border-slate-300 ${isDark ? "border-t-[#00A5EC]" : "border-t-[#004F9F]"}`} />
+                          <span className="text-xs font-bold">Menyusun ulang pratinjau…</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <canvas
+                      ref={canvasRef}
+                      className="rounded-xl bg-white shadow-2xl ring-1 ring-black/5 animate-[fadeslide_0.3s_ease-out]"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              {memuatPratinjau || menyimpan ? (
+                <div className="flex flex-col items-center gap-3 text-slate-400">
+                  <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-300 border-t-[#004F9F]" />
+                  <span className="text-[11px] font-bold">Memuat pratinjau...</span>
+                </div>
+              ) : (
+                <div className="flex max-w-xs flex-col items-center gap-2.5 text-center px-4">
+                  <span className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-sm ${isDark ? "bg-slate-800 text-slate-500" : "bg-white text-slate-400"}`}>
+                    <FileText className="h-6 w-6" />
+                  </span>
+                  <span className={`text-[11px] font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>PDF belum tersedia</span>
+                  <span className="text-[9.5px] leading-relaxed text-slate-400">
+                    Isi nama template lalu tekan <span className="font-bold text-[#004F9F]">Simpan Template</span>, pratinjau langsung muncul di sini.
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-md animate-[backdropFade_0.25s_ease-out]"
@@ -876,62 +1131,63 @@ const [form, setForm] = useState(() => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* ================= Header ================= */}
-        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-6 py-3.5">
+        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-3.5 py-2.5 sm:px-6 sm:py-3.5">
           <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#00A5EC]/20 blur-3xl" />
           <FileText
-            className="pointer-events-none absolute right-16 top-1/2 h-24 w-24 -translate-y-1/2 rotate-6 text-sky-300 opacity-[0.06]"
+            className="pointer-events-none absolute right-16 top-1/2 h-24 w-24 -translate-y-1/2 rotate-6 text-sky-300 opacity-[0.06] hidden sm:block"
             strokeWidth={1}
           />
 
-          <div className="relative flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3.5">
+          <div className="relative flex items-center justify-between gap-2.5 sm:gap-3">
+            <div className="relative flex items-center gap-2 sm:gap-3.5 min-w-0">
               <span className="relative shrink-0">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-lg">
-                  <Palette className="h-5 w-5" />
+                <span className="flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-2xl border border-white/20 bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-lg">
+                  <Palette className="h-4 w-4 sm:h-5 sm:w-5" />
                 </span>
-                <span className="pointer-events-none absolute -inset-1 animate-pulse rounded-2xl border-2 border-[#00A5EC]/30" />
+                <span className="pointer-events-none absolute -inset-0.5 sm:-inset-1 animate-pulse rounded-lg sm:rounded-2xl border border-[#00A5EC]/30" />
               </span>
               <div className="min-w-0">
-                <div className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#00A5EC]">
-                  <Sparkles className="h-2.5 w-2.5 animate-pulse" />
-                  {idTpl ? "Perbarui Template Surat" : "Buat Template Surat"}
+                <div className="mb-0.5 inline-flex items-center gap-1 sm:gap-1.5 rounded-full border border-white/10 bg-white/5 px-1.5 sm:px-2 py-0.5 text-[7.5px] sm:text-[9px] font-bold uppercase tracking-widest text-[#00A5EC]">
+                  <Sparkles className="h-2 w-2 sm:h-2.5 sm:w-2.5 animate-pulse" />
+                  {idTpl ? "Perbarui Template" : "Buat Template"}
                 </div>
-                <h3 className="truncate text-base font-black leading-tight text-white">
+                <h3 className="truncate text-xs sm:text-base font-black leading-tight text-white">
                   {form.nama?.trim() || (idTpl ? "Template Tanpa Nama" : "Template Surat Baru")}
                 </h3>
                 {/* Keterangan + badge status sejajar, dipisah jarak lebar */}
-                <div className="mt-1 flex flex-wrap items-center gap-x-8 gap-y-2">
-                  <p className="flex min-w-0 items-center gap-1.5 text-[11px] text-white/60">
-                    <Move className="h-3 w-3 shrink-0" />
-                    <span className="truncate">Geser langsung blok pada pratinjau, atau atur angka presisi di panel kiri</span>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-3 sm:gap-x-8 gap-y-1">
+                  <p className="flex min-w-0 items-center gap-1 text-[8.5px] sm:text-[11px] text-white/60">
+                    <Move className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+                    <span className="truncate hidden sm:inline">Geser langsung blok pada pratinjau, atau atur angka presisi di panel kiri</span>
+                    <span className="truncate inline sm:hidden">Atur kop, redaksi, & tata letak PDF</span>
                   </p>
 
-                  <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-1 sm:gap-2.5">
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 backdrop-blur-sm ${
+                      className={`inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[7.5px] sm:text-[10px] font-bold ring-1 backdrop-blur-sm ${
                         form.status === "publish"
                           ? "bg-emerald-400/20 text-emerald-100 ring-emerald-300/30"
                           : "bg-amber-400/20 text-amber-100 ring-amber-300/30"
                       }`}
                     >
-                      <FileText className="h-3 w-3" />
+                      <FileText className="h-2 w-2 sm:h-3 sm:w-3" />
                       {form.status === "publish" ? "Publish" : "Draft"}
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
-                      <Info className="h-3 w-3" />
-                      {form.jenis_peserta === "mahasiswa" ? "Mahasiswa" : form.jenis_peserta === "siswa" ? "Siswa" : "Semua peserta"}
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-1.5 sm:px-2 py-0.5 text-[7.5px] sm:text-[10px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
+                      <Info className="h-2 w-2 sm:h-3 sm:w-3" />
+                      {form.jenis_peserta === "mahasiswa" ? "Mahasiswa" : form.jenis_peserta === "siswa" ? "Siswa" : "Semua"}
                     </span>
-                    <span className="hidden items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm md:inline-flex">
-                      <Ruler className="h-3 w-3" />
-                      A4 · 210 × 297 mm
+                    <span className="hidden items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[8px] sm:text-[10px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm md:inline-flex">
+                      <Ruler className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                      A4
                     </span>
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 backdrop-blur-sm ${
+                      className={`inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[7.5px] sm:text-[10px] font-bold ring-1 backdrop-blur-sm ${
                         otomatis ? "bg-sky-400/20 text-sky-100 ring-sky-300/30" : "bg-white/10 text-white/70 ring-white/15"
                       }`}
                     >
-                      <RefreshCw className="h-3 w-3" />
-                      {otomatis ? "Simpan otomatis" : "Simpan manual"}
+                      <RefreshCw className="h-2 w-2 sm:h-3 sm:w-3" />
+                      {otomatis ? "Auto" : "Manual"}
                     </span>
                   </div>
                 </div>
@@ -939,10 +1195,10 @@ const [form, setForm] = useState(() => {
             </div>
             <button
               onClick={tutup}
-              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white/60 transition-all duration-300 hover:rotate-90 hover:bg-white/10 hover:text-white"
+              className="flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white/60 transition-all duration-300 hover:rotate-90 hover:bg-white/10 hover:text-white"
               aria-label="Tutup modal template surat"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
           </div>
         </div>
@@ -950,26 +1206,31 @@ const [form, setForm] = useState(() => {
         {/* ================= Body ================= */}
         <div className={`grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[minmax(0,44%)_minmax(0,56%)] ${isDark ? "bg-slate-950/20" : "bg-slate-50/40"}`}>
           {/* ── Panel kiri ── */}
-          <div className={`flex min-h-0 min-w-0 flex-col border-r ${isDark ? "border-slate-800" : "border-slate-200"}`}>
-            <div className={`flex shrink-0 gap-1 overflow-x-auto border-b px-5 py-3 ${isDark ? "border-slate-800 bg-slate-900/40" : "border-slate-100 bg-white"}`}>
+          <div className={`flex min-h-0 min-w-0 flex-1 flex-col border-r ${isDark ? "border-slate-800" : "border-slate-200"}`}>
+            <div className={`flex shrink-0 gap-1 overflow-x-auto border-b px-3 py-2 sm:px-5 sm:py-3 ${isDark ? "border-slate-800 bg-slate-900/40" : "border-slate-100 bg-white"}`}>
               {TABS.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
+                  className={`flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-1 sm:px-3 sm:py-1.5 text-[9.5px] sm:text-[11px] font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
                     tab === t.id
-                      ? "bg-gradient-to-r from-[#004F9F] to-[#00A5EC] text-white shadow-sm"
+                      ? "bg-gradient-to-r from-[#0B1442] via-[#0D2A63] to-[#004F9F] text-white shadow-md shadow-[#0B1442]/20 ring-1 ring-white/10"
                       : isDark
                         ? "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                         : "text-slate-500 hover:bg-slate-100 hover:text-[#004F9F]"
                   }`}
                 >
-                  {t.icon} {t.label}
+                  {t.id === "info" && <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                  {t.id === "kop" && <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                  {t.id === "redaksi" && <Type className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                  {t.id === "tataletak" && <Ruler className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                  {t.id === "gambar" && <ImageIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                  {t.label}
                 </button>
               ))}
             </div>
 
-            <div className={`min-h-0 flex-1 space-y-5 overflow-y-auto p-6 ${isDark ? "bg-slate-950/20" : "bg-slate-50/40"}`}>
+            <div className={`min-h-0 flex-1 space-y-3 sm:space-y-5 overflow-y-auto p-3 sm:p-6 ${isDark ? "bg-slate-950/20" : "bg-slate-50/40"}`}>
               {tab === "info" && (
                 <>
                   <Teks label="Nama Template" placeholder="Template Resmi Diskominfo" {...pTeks("nama")} />
@@ -1238,212 +1499,13 @@ const [form, setForm] = useState(() => {
           </div>
 
           {/* ── Panel pratinjau ── */}
-          <div className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${isDark ? "bg-slate-950/40" : "bg-slate-100"}`}>
-            <div className={`flex shrink-0 items-center justify-between gap-2 border-b px-5 py-3 ${isDark ? "border-slate-800 bg-slate-900/40" : "border-slate-100 bg-white"}`}>
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${isDark ? "bg-slate-800 text-[#00A5EC]" : "bg-blue-50 text-[#004F9F]"}`}>
-                  <Eye className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className={`text-xs font-black leading-tight ${isDark ? "text-slate-200" : "text-[#0B1442]"}`}>Pratinjau Surat</p>
-                  <p className={`text-[10.5px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-                    {mode === "geser"
-                      ? "Tarik kotak untuk menata, Ctrl + scroll mouse untuk zoom"
-                      : "Memakai data contoh, bukan data peserta asli"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex shrink-0 items-center gap-2">
-                {/* Pemilih mode pratinjau */}
-                <div className={`flex items-center gap-0.5 rounded-full border p-1 shadow-sm ${isDark ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-slate-50"}`}>
-                  <button
-                    type="button"
-                    onClick={() => setMode("geser")}
-                    title="Mode geser (tata langsung di pratinjau)"
-                    className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-[10.5px] font-bold transition-all duration-200 active:scale-95 ${
-                      mode === "geser"
-                        ? "bg-gradient-to-r from-[#004F9F] to-[#00A5EC] text-white shadow-sm"
-                        : isDark
-                          ? "text-slate-400 hover:text-slate-200"
-                          : "text-slate-500 hover:text-[#004F9F]"
-                    }`}
-                  >
-                    <Move className="h-3.5 w-3.5" /> Geser
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode("pdf")}
-                    title="Tampilkan PDF apa adanya"
-                    className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-[10.5px] font-bold transition-all duration-200 active:scale-95 ${
-                      mode === "pdf"
-                        ? "bg-gradient-to-r from-[#004F9F] to-[#00A5EC] text-white shadow-sm"
-                        : isDark
-                          ? "text-slate-400 hover:text-slate-200"
-                          : "text-slate-500 hover:text-[#004F9F]"
-                    }`}
-                  >
-                    <FileText className="h-3.5 w-3.5" /> PDF
-                  </button>
-                </div>
-
-                <PilihanMini
-                  isDark={isDark}
-                  value={kategori}
-                  onChange={(e) => setKategori(e.target.value)}
-                  opsi={[
-                    { nilai: "mahasiswa", label: "Contoh mahasiswa" },
-                    { nilai: "siswa", label: "Contoh siswa" },
-                  ]}
-                />
-                <button
-                  onClick={simpanManual}
-                  disabled={memuatPratinjau || menyimpan}
-                  title="Segarkan pratinjau"
-                  className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl transition-all duration-200 hover:scale-110 disabled:cursor-not-allowed disabled:opacity-40 ${
-                    isDark ? "text-slate-400 hover:bg-slate-800 hover:text-[#00A5EC]" : "text-slate-500 hover:bg-slate-100 hover:text-[#004F9F]"
-                  }`}
-                >
-                  {memuatPratinjau || menyimpan ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div
-              className="relative min-h-0 flex-1 overflow-hidden p-6"
-              style={
-                isDark
-                  ? undefined
-                  : {
-                      backgroundColor: "#eef1f6",
-                      backgroundImage: "radial-gradient(circle, #d8dee8 1px, transparent 1px)",
-                      backgroundSize: "18px 18px",
-                    }
-              }
-            >
-              {mode === "geser" ? (
-                <PratinjauInteraktifSurat
-                  pratinjauUrl={pratinjauUrl}
-                  peta={peta}
-                  tataLetak={tataLetak}
-                  setTataLetak={setTataLetak}
-                  isDark={isDark}
-                  memuat={memuatPratinjau || menyimpan}
-                />
-              ) : pratinjauUrl ? (
-                <div className="relative flex h-full min-h-0 w-full flex-col">
-                  {/* Bilah alat mengambang: zoom di KIRI, cetak & tab baru di KANAN */}
-                  <div className="pointer-events-none absolute inset-x-4 top-3 z-20 flex items-start justify-between gap-2">
-                    <div className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-white/40 bg-white/80 px-1.5 py-1 shadow-lg backdrop-blur-md dark:border-slate-700/60">
-                      <button
-                        type="button"
-                        onClick={() => setZoom((z) => Math.max(50, z - 25))}
-                        title="Perkecil"
-                        className="cursor-pointer rounded-full p-1.5 text-slate-500 transition-all duration-200 hover:scale-110 hover:bg-slate-100 hover:text-[#004F9F]"
-                      >
-                        <ZoomOut className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="w-10 text-center text-[11px] font-bold tabular-nums text-[#0B1442]">{zoom}%</span>
-                      <button
-                        type="button"
-                        onClick={() => setZoom((z) => Math.min(200, z + 25))}
-                        title="Perbesar"
-                        className="cursor-pointer rounded-full p-1.5 text-slate-500 transition-all duration-200 hover:scale-110 hover:bg-slate-100 hover:text-[#004F9F]"
-                      >
-                        <ZoomIn className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-
-                    <div className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-white/40 bg-white/80 px-1.5 py-1 shadow-lg backdrop-blur-md dark:border-slate-700/60">
-                      <button
-                        type="button"
-                        onClick={cetakPratinjau}
-                        title="Cetak surat"
-                        className="cursor-pointer rounded-full p-1.5 text-slate-500 transition-all duration-200 hover:scale-110 hover:bg-slate-100 hover:text-[#004F9F]"
-                      >
-                        <Printer className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => window.open(pratinjauUrl, "_blank", "noopener")}
-                        title="Buka di tab baru"
-                        className="cursor-pointer rounded-full p-1.5 text-slate-500 transition-all duration-200 hover:scale-110 hover:bg-slate-100 hover:text-[#004F9F]"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {numPages > 1 && (
-                    <div className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/40 bg-white/85 px-3 py-1 shadow-lg backdrop-blur-md">
-                      <button
-                        type="button"
-                        onClick={() => setPageNum((p) => Math.max(1, p - 1))}
-                        disabled={pageNum === 1}
-                        className="cursor-pointer rounded-full p-1 text-slate-500 transition-all hover:text-[#004F9F] disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        <ChevronLeft className="h-3.5 w-3.5" />
-                      </button>
-                      <span className={`px-1 text-[10.5px] font-bold ${isDark ? "text-slate-300" : "text-[#0B1442]"}`}>
-                        Hal {pageNum}/{numPages}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setPageNum((p) => Math.min(numPages, p + 1))}
-                        disabled={pageNum === numPages}
-                        className="cursor-pointer rounded-full p-1 text-slate-500 transition-all hover:text-[#004F9F] disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="min-h-0 flex-1 overflow-auto">
-                    <div className="flex min-h-full w-fit min-w-full items-start justify-center">
-                      {docError ? (
-                        <span className="m-auto text-xs font-bold text-rose-500">Gagal memuat PDF pratinjau.</span>
-                      ) : !pdfDoc ? (
-                        <div className="m-auto flex flex-col items-center gap-3 text-slate-400">
-                          <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-slate-300 border-t-[#004F9F]" />
-                          <span className="text-xs font-bold">Memuat pratinjau...</span>
-                        </div>
-                      ) : (
-                        <canvas
-                          ref={canvasRef}
-                          className="rounded-xl bg-white shadow-2xl ring-1 ring-black/5 animate-[fadeslide_0.3s_ease-out]"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex h-full w-full items-center justify-center">
-                  {memuatPratinjau || menyimpan ? (
-                    <div className="flex flex-col items-center gap-3 text-slate-400">
-                      <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-slate-300 border-t-[#004F9F]" />
-                      <span className="text-xs font-bold">Memuat pratinjau...</span>
-                    </div>
-                  ) : (
-                    <div className="flex max-w-xs flex-col items-center gap-3 text-center">
-                      <span className={`flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm ${isDark ? "bg-slate-800 text-slate-500" : "bg-white text-slate-400"}`}>
-                        <FileText className="h-8 w-8" />
-                      </span>
-                      <span className={`text-xs font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>PDF belum tersedia</span>
-                      <span className="text-[10.5px] leading-relaxed text-slate-400">
-                        Isi nama template lalu tekan <span className="font-bold text-[#004F9F]">Simpan Template</span>, pratinjau langsung muncul di sini.
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-                    </div>
+          {!isMobile && renderPanelPratinjau()}
         </div>
 
         {/* ================= Footer ================= */}
-        <div className={`flex shrink-0 flex-wrap items-center justify-between gap-3 border-t px-6 py-4 ${isDark ? "border-slate-800 bg-slate-900/40" : "border-slate-100 bg-white"}`}>
-          <div className="hidden min-w-0 max-w-xl items-start gap-2 sm:flex">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#004F9F] to-[#00A5EC] text-white shadow-sm">
+        <div className={`flex shrink-0 flex-wrap items-center justify-between gap-2.5 sm:gap-3 border-t px-3.5 sm:px-6 py-2.5 sm:py-4 ${isDark ? "border-slate-800 bg-slate-900/40" : "border-slate-100 bg-white"}`}>
+          <div className="hidden min-w-0 max-w-xl items-center gap-2.5 sm:flex">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] text-white shadow-sm ring-1 ring-white/20">
               <RefreshCw className="h-3.5 w-3.5" />
             </span>
             <p className={`text-[10.5px] font-semibold leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
@@ -1452,34 +1514,119 @@ const [form, setForm] = useState(() => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <label
-              className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-bold transition-all duration-200 ${
-                isDark
-                  ? "border-slate-700 text-slate-300 hover:bg-slate-800"
-                  : "border-slate-200 text-slate-600 hover:border-[#004F9F]/30 hover:text-[#004F9F]"
-              }`}
-            >
-              <input
-                type="checkbox"
-                className="h-3.5 w-3.5 accent-[#004F9F]"
-                checked={otomatis}
-                onChange={(e) => setOtomatis(e.target.checked)}
-              />
-              Simpan otomatis
-            </label>
-            <button
-              type="button"
-              onClick={simpanManual}
-              disabled={menyimpan}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-[#004F9F] to-[#00A5EC] px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#004F9F]/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-            >
-              {menyimpan ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Simpan Template
-            </button>
+          <div className="flex w-full sm:w-auto items-center justify-between sm:justify-end gap-2">
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => {
+                  setZoom(50);
+                  setShowMobilePreview(true);
+                }}
+                className={`inline-flex cursor-pointer items-center gap-1 rounded-lg sm:rounded-xl border px-2.5 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs font-bold transition-all duration-200 active:scale-95 ${
+                  isDark
+                    ? "border-slate-700 bg-slate-800 text-[#00A5EC] hover:bg-slate-700"
+                    : "border-slate-200 bg-blue-50 text-[#004F9F] hover:bg-blue-100/50"
+                }`}
+              >
+                <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Pratinjau
+              </button>
+            )}
+
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <label
+                className={`inline-flex cursor-pointer items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border px-2 py-1.5 sm:px-2.5 sm:py-2 text-[10px] sm:text-[11px] font-bold transition-all duration-200 ${
+                  isDark
+                    ? "border-slate-700 text-slate-300 hover:bg-slate-800"
+                    : "border-slate-200 text-slate-600 hover:border-[#004F9F]/30 hover:text-[#004F9F]"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="h-3 w-3 sm:h-3.5 sm:w-3.5 accent-[#004F9F]"
+                  checked={otomatis}
+                  onChange={(e) => setOtomatis(e.target.checked)}
+                />
+                {isMobile ? "Auto" : "Simpan otomatis"}
+              </label>
+              <button
+                type="button"
+                onClick={tutup}
+                className={`rounded-lg sm:rounded-xl border px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer ${
+                  isDark
+                    ? "border-slate-700 bg-slate-800/60 text-slate-300 hover:border-slate-600 hover:bg-slate-700/80 hover:text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100/80 hover:text-slate-900"
+                }`}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={simpanManual}
+                disabled={menyimpan}
+                className="group/save inline-flex cursor-pointer items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] via-[#0D2A63] to-[#004F9F] bg-[length:200%_100%] bg-left px-3.5 py-1.5 sm:px-5 sm:py-2.5 text-[11px] sm:text-xs font-bold text-white shadow-lg shadow-[#0B1442]/25 transition-all duration-300 hover:-translate-y-0.5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {menyimpan ? (
+                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform duration-300 group-hover/save:scale-110 group-hover/save:-rotate-6" />
+                )}
+                {isMobile ? "Simpan" : "Simpan Template"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Mobile Preview Modal */}
+      {showMobilePreview && isMobile && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-[backdropFade_0.25s_ease-out]"
+          onClick={() => setShowMobilePreview(false)}
+        >
+          <div
+            className={`flex h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl shadow-2xl ring-1 ring-slate-900/5 animate-[modalFadeUp_0.3s_ease-out] ${isDark ? "bg-[#0B1220]" : "bg-white"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-5 py-4 text-white">
+              <div className="relative flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">
+                    <Eye className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-black text-white">Pratinjau Surat</h3>
+                    <p className="truncate text-[10px] text-white/60">Tekan Tutup untuk kembali ke Form</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMobilePreview(false)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 hover:bg-white/20 cursor-pointer transition-all duration-200 hover:scale-110 hover:rotate-90 active:scale-90"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="min-h-0 flex-1 overflow-hidden flex flex-col bg-slate-100">
+              {renderPanelPratinjau()}
+            </div>
+
+            {/* Footer */}
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t px-5 py-3.5 bg-white dark:bg-[#0B1220]">
+              <button
+                type="button"
+                onClick={() => setShowMobilePreview(false)}
+                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+              >
+                Kembali ke Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

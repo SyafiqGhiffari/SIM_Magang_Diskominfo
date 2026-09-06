@@ -86,14 +86,14 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
       items: typeof next === "function" ? next(prev.items) : next,
     }));
 
-  const inputClass = `w-full rounded-xl border px-4 py-3 text-sm font-medium outline-none transition-all duration-200 ${
+  const inputClass = `w-full rounded-lg sm:rounded-xl border px-2.5 py-1.5 sm:px-4 sm:py-3 text-[10.5px] sm:text-sm font-medium outline-none transition-all duration-200 ${
     isDark
-      ? "border-white/10 bg-white/5 text-slate-100 placeholder-slate-500 hover:border-white/20 focus:border-[#00A5EC] focus:ring-4 focus:ring-[#00A5EC]/20"
-      : "border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-300 hover:border-slate-300 hover:bg-white focus:border-[#004F9F] focus:bg-white focus:ring-4 focus:ring-[#00A5EC]/15"
+      ? "border-white/10 bg-[#0d1117] text-slate-100 placeholder-slate-500 hover:border-white/20 focus:border-[#00A5EC] focus:bg-[#161b22] focus:ring-4 focus:ring-[#00A5EC]/15"
+      : "border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-400 hover:border-slate-300 hover:bg-white focus:border-[#004F9F] focus:bg-white focus:ring-4 focus:ring-[#00A5EC]/15"
   }`;
 
   const labelClass =
-    "flex items-center gap-1.5 text-[10.5px] font-black uppercase tracking-wider text-slate-400 before:h-1 before:w-1 before:rounded-full before:bg-[#00A5EC]/70 before:content-['']";
+    "flex items-center gap-1 sm:gap-1.5 text-[7.5px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-400 before:h-1 before:w-1 before:rounded-full before:bg-[#00A5EC]/70 before:content-['']";
 
   // ── SIMPAN OTOMATIS per item ──
   const { status, jadwalkan } = useAutoSimpanBaris(async (k) => {
@@ -189,27 +189,27 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* ── Pemilih jenis konten ── */}
+    <div className="space-y-4 sm:space-y-6">
+      {/* ── Pemilih jenis konten (Horizontal Scrollable Bar) ── */}
       <div
-        className={`relative overflow-hidden rounded-3xl border shadow-sm ${
+        className={`relative overflow-hidden rounded-xl sm:rounded-2xl border shadow-sm ${
           isDark
-            ? "border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01]"
+            ? "border-white/10 bg-[#161b22]"
             : "border-slate-200/80 bg-white"
         }`}
       >
         <div
-          className={`flex items-center gap-2 border-b px-5 py-3 ${
+          className={`flex items-center gap-2 border-b px-3 py-2 sm:px-5 sm:py-2.5 ${
             isDark ? "border-white/10" : "border-slate-100"
           }`}
         >
-          <span className="text-[10.5px] font-black uppercase tracking-[0.14em] text-slate-400">
+          <span className="text-[9px] sm:text-[10.5px] font-black uppercase tracking-[0.14em] text-slate-400">
             Jenis Konten
           </span>
-          <span className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
+          <span className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent dark:from-white/10" />
         </div>
 
-        <div className="flex flex-wrap gap-2 p-3">
+        <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto p-1.5 sm:p-2">
           {JENIS.map((j) => {
             const ini = jenis === j.key;
             const Ikon = j.ikon;
@@ -218,21 +218,21 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
               <button
                 key={j.key}
                 onClick={() => setJenis(j.key)}
-                className={`group/pil relative flex items-center gap-2 overflow-hidden rounded-2xl px-4 py-2.5 text-[12px] font-bold transition-[color,background-color,box-shadow,transform] duration-300 ease-out active:scale-95 ${
+                className={`group/pil relative flex shrink-0 items-center gap-1.5 sm:gap-2 overflow-hidden rounded-lg sm:rounded-xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-[10.5px] sm:text-xs font-bold transition-all duration-200 active:scale-95 whitespace-nowrap ${
                   ini
-                    ? "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-lg shadow-[#0B1442]/25 -translate-y-0.5"
+                    ? "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-md shadow-[#0B1442]/25"
                     : isDark
-                    ? "text-slate-400 hover:-translate-y-0.5 hover:bg-white/[0.06] hover:text-slate-100"
-                    : "text-slate-500 hover:-translate-y-0.5 hover:bg-slate-50 hover:text-[#0B1442] hover:shadow-md"
+                    ? "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-[#0B1442]"
                 }`}
               >
                 <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-white/0 via-white/25 to-white/0 transition-transform duration-1000 group-hover/pil:translate-x-full" />
                 {sedangMemuat ? (
-                  <Loader2 className="relative h-3.5 w-3.5 animate-spin text-[#7DD3FC]" strokeWidth={2.8} />
+                  <Loader2 className="relative h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin text-[#7DD3FC]" strokeWidth={2.8} />
                 ) : (
                   <Ikon
-                    className={`relative h-3.5 w-3.5 ${ini ? "text-[#7DD3FC]" : ""}`}
-                    strokeWidth={2.5}
+                    className={`relative h-3 w-3 sm:h-3.5 sm:w-3.5 ${ini ? "text-[#7DD3FC]" : "text-slate-400"}`}
+                    strokeWidth={2.4}
                   />
                 )}
                 <span className="relative">{j.label}</span>
@@ -244,12 +244,12 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
 
       {pertamaKali ? (
         /* ── Rangka semu: hanya saat pemuatan paling awal ── */
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {RANGKA.map((n) => (
             <div
               key={n}
-              className={`h-40 animate-pulse rounded-3xl border ${
-                isDark ? "border-white/10 bg-white/[0.03]" : "border-slate-200/80 bg-slate-100/70"
+              className={`h-32 sm:h-40 animate-pulse rounded-xl sm:rounded-3xl border ${
+                isDark ? "border-white/10 bg-[#161b22]/50" : "border-slate-200/80 bg-slate-100/70"
               }`}
               style={{ animationDelay: `${n * 120}ms` }}
             />
@@ -258,43 +258,43 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
       ) : (
         /* ── Isi: data lama tetap terlihat (diredupkan) selama data baru dimuat ── */
         <div
-          className={`space-y-6 transition-opacity duration-200 ease-out ${
+          className={`space-y-4 sm:space-y-6 transition-opacity duration-200 ease-out ${
             memuat ? "pointer-events-none opacity-45" : "opacity-100"
           }`}
         >
           {/* ── Ringkasan jenis aktif ── */}
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
-              <IkonJenis className="h-4 w-4" strokeWidth={2.3} />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <span className="flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg sm:rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
+              <IkonJenis className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2.3} />
             </span>
             <div className="min-w-0">
               <h4
-                className={`text-sm font-black tracking-tight ${
+                className={`text-xs sm:text-sm font-black tracking-tight ${
                   isDark ? "text-slate-100" : "text-[#0B1442]"
                 }`}
               >
                 {metaTampil.label}
               </h4>
-              <p className="text-[11px] font-medium text-slate-400">
+              <p className="text-[9.5px] sm:text-[11px] font-medium text-slate-400">
                 {daftar.length} item · {jumlahAktif} tampil di halaman publik
               </p>
             </div>
-            <span className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
+            <span className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent dark:from-white/10" />
           </div>
 
           {/* ── Daftar item ── */}
-          <div key={data.jenis} className="space-y-4 animate-[fadeslide_0.28s_ease-out]">
+          <div key={data.jenis} className="space-y-3 sm:space-y-4 animate-[fadeslide_0.28s_ease-out]">
             {daftar.length === 0 && (
               <div
-                className={`flex flex-col items-center gap-2 rounded-3xl border-2 border-dashed px-6 py-14 text-center ${
+                className={`flex flex-col items-center gap-2 rounded-xl sm:rounded-3xl border-2 border-dashed px-4 py-8 sm:px-6 sm:py-14 text-center ${
                   isDark
-                    ? "border-white/10 text-slate-500"
+                    ? "border-white/10 bg-[#161b22] text-slate-500"
                     : "border-slate-200 bg-white text-slate-400"
                 }`}
               >
-                <Inbox className="h-8 w-8 opacity-40" strokeWidth={1.6} />
-                <p className="text-sm font-bold">Belum ada item untuk {metaTampil.label}</p>
-                <p className="text-[11.5px] font-medium opacity-70">
+                <Inbox className="h-6 w-6 sm:h-8 sm:w-8 opacity-40" strokeWidth={1.6} />
+                <p className="text-xs sm:text-sm font-bold">Belum ada item untuk {metaTampil.label}</p>
+                <p className="text-[10px] sm:text-[11.5px] font-medium opacity-70">
                   Tambahkan item pertama melalui formulir di bawah.
                 </p>
               </div>
@@ -303,9 +303,9 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
             {daftar.map((k, i) => (
               <div
                 key={k.id}
-                className={`group/item relative overflow-hidden rounded-3xl border shadow-sm transition-all duration-300 hover:shadow-lg ${
+                className={`group/item relative overflow-hidden rounded-xl sm:rounded-3xl border shadow-sm transition-all duration-300 hover:shadow-lg ${
                   isDark
-                    ? "border-white/10 bg-[#0f172a] hover:border-[#00A5EC]/25"
+                    ? "border-white/10 bg-[#161b22] hover:border-[#00A5EC]/25"
                     : "border-slate-200/80 bg-white hover:border-[#00A5EC]/35"
                 } ${!k.is_active ? "opacity-75" : ""}`}
               >
@@ -314,24 +314,24 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
                   className={`absolute inset-y-0 left-0 w-1 transition-colors duration-300 ${
                     k.is_active
                       ? "bg-gradient-to-b from-[#004F9F] to-[#00A5EC]"
-                      : "bg-slate-200"
+                      : "bg-slate-200 dark:bg-white/10"
                   }`}
                 />
 
                 {/* ─ Kepala baris ─ */}
                 <div
-                  className={`flex items-center gap-3 border-b py-3 pl-6 pr-4 ${
+                  className={`flex items-center gap-1.5 sm:gap-3 border-b py-2 px-2.5 sm:py-3 sm:pl-6 sm:pr-4 ${
                     isDark
-                      ? "border-white/10 bg-white/[0.03]"
+                      ? "border-white/10 bg-[#0d1117]/40"
                       : "border-slate-100 bg-slate-50/60"
                   }`}
                 >
-                  <span className="flex h-7 min-w-7 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] px-2 text-[11px] font-black text-white shadow-sm">
+                  <span className="flex h-5.5 min-w-5.5 sm:h-7 sm:min-w-7 shrink-0 items-center justify-center rounded-md sm:rounded-xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] px-1.5 sm:px-2 text-[9px] sm:text-[11px] font-black text-white shadow-sm">
                     {String(i + 1).padStart(2, "0")}
                   </span>
 
                   <p
-                    className={`min-w-0 flex-1 truncate text-[12.5px] font-bold ${
+                    className={`min-w-0 flex-1 break-words line-clamp-2 text-[11px] sm:text-[12.5px] font-bold leading-snug ${
                       isDark ? "text-slate-200" : "text-slate-600"
                     }`}
                   >
@@ -340,58 +340,58 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
                     )}
                   </p>
 
-                  <BadgeSimpan status={status[k.id]} />
+                  <BadgeSimpan status={status[k.id]} isDark={isDark} />
 
                   {/* penggeser urutan */}
                   <div
-                    className={`flex items-center rounded-xl border p-0.5 ${
-                      isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white"
+                    className={`flex items-center rounded-md sm:rounded-xl border p-0.5 ${
+                      isDark ? "border-white/10 bg-[#0d1117]" : "border-slate-200 bg-white"
                     }`}
                   >
                     <button
                       onClick={() => geser(i, -1)}
                       disabled={i === 0}
                       title="Naikkan urutan"
-                      className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-25 ${
+                      className={`flex h-5 w-5 sm:h-6 sm:w-6 cursor-pointer items-center justify-center rounded-sm sm:rounded-lg transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-25 ${
                         isDark
                           ? "text-slate-400 hover:bg-[#00A5EC]/15 hover:text-[#00A5EC]"
                           : "text-slate-400 hover:bg-[#00A5EC]/10 hover:text-[#004F9F]"
                       }`}
                     >
-                      <ChevronUp className="h-3.5 w-3.5" strokeWidth={3} />
+                      <ChevronUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" strokeWidth={3} />
                     </button>
-                    <span className={`h-4 w-px ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+                    <span className={`h-3 sm:h-4 w-px ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
                     <button
                       onClick={() => geser(i, 1)}
                       disabled={i === daftar.length - 1}
                       title="Turunkan urutan"
-                      className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-25 ${
+                      className={`flex h-5 w-5 sm:h-6 sm:w-6 cursor-pointer items-center justify-center rounded-sm sm:rounded-lg transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-25 ${
                         isDark
                           ? "text-slate-400 hover:bg-[#00A5EC]/15 hover:text-[#00A5EC]"
                           : "text-slate-400 hover:bg-[#00A5EC]/10 hover:text-[#004F9F]"
                       }`}
                     >
-                      <ChevronDown className="h-3.5 w-3.5" strokeWidth={3} />
+                      <ChevronDown className="h-3 w-3 sm:h-3.5 sm:w-3.5" strokeWidth={3} />
                     </button>
                   </div>
 
                   <button
                     onClick={() => hapus(k)}
                     title="Hapus item"
-                    className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-red-50 text-red-500 opacity-0 transition-all duration-200 hover:bg-red-100 hover:text-red-600 focus:opacity-100 active:scale-90 group-hover/item:opacity-100"
+                    className="flex h-5.5 w-5.5 sm:h-7 sm:w-7 shrink-0 cursor-pointer items-center justify-center rounded-md sm:rounded-xl bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 opacity-100 sm:opacity-0 transition-all duration-200 hover:bg-red-100 dark:hover:bg-red-900/50 hover:text-red-600 focus:opacity-100 active:scale-90 sm:group-hover/item:opacity-100"
                   >
-                    <Trash2 className="h-3.5 w-3.5" strokeWidth={2.6} />
+                    <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" strokeWidth={2.6} />
                   </button>
                 </div>
 
                 {/* ─ Isi baris ─ */}
-                <div className="space-y-4 py-5 pl-6 pr-5">
-                  <div className="grid gap-4 md:grid-cols-4">
+                <div className="space-y-2.5 sm:space-y-4 p-2.5 sm:py-5 sm:pl-6 sm:pr-5">
+                  <div className="grid gap-2 sm:gap-4 md:grid-cols-4">
                     {metaTampil.pakaiIcon && (
                       <div>
                         <label className={labelClass}>{metaTampil.labelIcon || "Ikon"}</label>
                         <input
-                          className={`mt-2 ${inputClass}`}
+                          className={`mt-0.5 sm:mt-2 ${inputClass}`}
                           value={k.icon || ""}
                           onChange={(e) => ubahBaris(k.id, "icon", e.target.value)}
                         />
@@ -402,7 +402,7 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
                         {metaTampil.pakaiDeskripsi ? "Judul" : "Teks"}
                       </label>
                       <input
-                        className={`mt-2 ${inputClass}`}
+                        className={`mt-0.5 sm:mt-2 ${inputClass}`}
                         value={k.judul || ""}
                         onChange={(e) => ubahBaris(k.id, "judul", e.target.value)}
                       />
@@ -412,7 +412,7 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
                   {metaTampil.pakaiDeskripsi && (
                     <div>
                       <label className={labelClass}>Deskripsi</label>
-                      <div className="mt-2">
+                      <div className="mt-0.5 sm:mt-2">
                         <EditorTeksKaya
                           rows={2}
                           isDark={isDark}
@@ -426,16 +426,16 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
 
                 {/* ─ Kaki baris: pengaturan tampil ─ */}
                 <div
-                  className={`flex flex-wrap items-center justify-between gap-3 border-t py-3 pl-6 pr-5 ${
+                  className={`flex flex-wrap items-center justify-between gap-2 sm:gap-3 border-t py-2 px-2.5 sm:py-3 sm:pl-6 sm:pr-5 ${
                     isDark
-                      ? "border-white/10 bg-white/[0.02]"
+                      ? "border-white/10 bg-[#0d1117]/30"
                       : "border-slate-100 bg-slate-50/60"
                   }`}
                 >
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     {metaTampil.pakaiKategori && (
                       <>
-                        <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-400">
+                        <span className="text-[7.5px] sm:text-[10.5px] font-black uppercase tracking-wider text-slate-400">
                           Kategori
                         </span>
                         <DropdownPilih
@@ -443,7 +443,7 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
                           nilai={k.kategori || "umum"}
                           opsi={KATEGORI}
                           onUbah={(v) => ubahBaris(k.id, "kategori", v)}
-                          lebar="w-52"
+                          lebar="w-36 sm:w-52"
                         />
                       </>
                     )}
@@ -453,31 +453,35 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
                   <button
                     type="button"
                     onClick={() => ubahBaris(k.id, "is_active", !k.is_active)}
-                    className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all duration-200 active:scale-95 ${
+                    className={`inline-flex cursor-pointer items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border px-2 py-1 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-bold transition-all duration-200 active:scale-95 ${
                       k.is_active
-                        ? "border-[#00A5EC]/40 bg-[#00A5EC]/[0.08] text-[#004F9F]"
+                        ? isDark
+                          ? "border-[#00A5EC]/40 bg-[#00A5EC]/10 text-sky-300 shadow-sm"
+                          : "border-[#00A5EC]/40 bg-[#00A5EC]/[0.08] text-[#004F9F] shadow-sm"
                         : isDark
-                        ? "border-white/10 bg-white/5 text-slate-400"
-                        : "border-slate-200 bg-white text-slate-400"
+                        ? "border-white/10 bg-[#0d1117] text-slate-400 hover:border-white/20"
+                        : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
                     }`}
                   >
                     <span
-                      className={`relative flex h-4 w-8 items-center rounded-full transition-colors duration-300 ${
+                      className={`relative flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full p-[3px] transition-colors duration-200 ${
                         k.is_active
                           ? "bg-gradient-to-r from-[#004F9F] to-[#00A5EC]"
+                          : isDark
+                          ? "bg-white/15"
                           : "bg-slate-300"
                       }`}
                     >
                       <span
-                        className={`absolute h-3 w-3 rounded-full bg-white shadow transition-all duration-300 ${
-                          k.is_active ? "left-[18px]" : "left-0.5"
+                        className={`h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                          k.is_active ? "translate-x-4" : "translate-x-0"
                         }`}
                       />
                     </span>
                     {k.is_active ? (
-                      <Eye className="h-3.5 w-3.5" strokeWidth={2.6} />
+                      <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" strokeWidth={2.6} />
                     ) : (
-                      <EyeOff className="h-3.5 w-3.5" strokeWidth={2.6} />
+                      <EyeOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" strokeWidth={2.6} />
                     )}
                     {k.is_active ? "Tampil" : "Disembunyikan"}
                   </button>
@@ -488,37 +492,37 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
 
           {/* ── Form tambah ── */}
           <div
-            className={`relative overflow-hidden rounded-3xl border-2 border-dashed transition-all duration-300 ${
+            className={`relative overflow-hidden rounded-xl sm:rounded-3xl border-2 border-dashed transition-all duration-300 ${
               isDark
-                ? "border-white/15 bg-white/[0.03] hover:border-[#00A5EC]/40"
+                ? "border-white/15 bg-[#161b22] hover:border-[#00A5EC]/40"
                 : "border-slate-300 bg-gradient-to-br from-slate-50 to-white hover:border-[#00A5EC]/50"
             }`}
           >
-            <div className="flex items-center gap-3 px-6 pt-6">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
-                <Plus className="h-4.5 w-4.5" strokeWidth={2.6} />
+            <div className="flex items-center gap-2 sm:gap-3 px-3 pt-3 sm:px-6 sm:pt-6">
+              <span className="flex h-7 w-7 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
+                <Plus className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" strokeWidth={2.6} />
               </span>
               <div>
                 <h4
-                  className={`text-[13.5px] font-black tracking-tight ${
+                  className={`text-xs sm:text-[13.5px] font-black tracking-tight ${
                     isDark ? "text-slate-100" : "text-[#0B1442]"
                   }`}
                 >
                   Tambah Item — {metaTampil.label}
                 </h4>
-                <p className="text-[11px] font-medium text-slate-400">
+                <p className="text-[8.5px] sm:text-[11px] font-medium text-slate-400">
                   Setelah ditambahkan, setiap perubahan tersimpan otomatis.
                 </p>
               </div>
             </div>
 
-            <div className="space-y-4 px-6 py-5">
-              <div className="grid gap-4 md:grid-cols-4">
+            <div className="space-y-2.5 sm:space-y-4 p-3 sm:px-6 sm:py-5">
+              <div className="grid gap-2 sm:gap-4 md:grid-cols-4">
                 {metaTampil.pakaiIcon && (
                   <div>
                     <label className={labelClass}>{metaTampil.labelIcon || "Ikon"}</label>
                     <input
-                      className={`mt-2 ${inputClass}`}
+                      className={`mt-0.5 sm:mt-2 ${inputClass}`}
                       value={baru.icon}
                       onChange={(e) => setBaru((f) => ({ ...f, icon: e.target.value }))}
                       placeholder={metaTampil.labelIcon ? "05" : "🎓"}
@@ -530,7 +534,7 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
                     {metaTampil.pakaiDeskripsi ? "Judul" : "Teks"}
                   </label>
                   <input
-                    className={`mt-2 ${inputClass}`}
+                    className={`mt-0.5 sm:mt-2 ${inputClass}`}
                     value={baru.judul}
                     onChange={(e) => setBaru((f) => ({ ...f, judul: e.target.value }))}
                     placeholder="Tulis isi item di sini…"
@@ -541,7 +545,7 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
               {metaTampil.pakaiDeskripsi && (
                 <div>
                   <label className={labelClass}>Deskripsi</label>
-                  <div className="mt-2">
+                  <div className="mt-0.5 sm:mt-2">
                     <EditorTeksKaya
                       rows={2}
                       isDark={isDark}
@@ -554,13 +558,13 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
             </div>
 
             <div
-              className={`flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4 ${
-                isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-200/70 bg-white/60"
+              className={`flex flex-wrap items-center justify-between gap-2 sm:gap-3 border-t px-3 py-2.5 sm:px-6 sm:py-4 ${
+                isDark ? "border-white/10 bg-[#0d1117]/30" : "border-slate-200/70 bg-white/60"
               }`}
             >
               {metaTampil.pakaiKategori ? (
-                <div className="flex items-center gap-3">
-                  <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-400">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-[7.5px] sm:text-[10.5px] font-black uppercase tracking-wider text-slate-400">
                     Kategori
                   </span>
                   <DropdownPilih
@@ -568,7 +572,7 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
                     nilai={baru.kategori}
                     opsi={KATEGORI}
                     onUbah={(v) => setBaru((f) => ({ ...f, kategori: v }))}
-                    lebar="w-52"
+                    lebar="w-36 sm:w-52"
                   />
                 </div>
               ) : (
@@ -578,13 +582,13 @@ const KelolaKontenLanding = ({ onNotif, isDark }) => {
               <button
                 onClick={tambah}
                 disabled={menambah || memuat}
-                className="group/tambah relative inline-flex cursor-pointer items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-[#0B1442]/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                className="group/tambah relative inline-flex cursor-pointer items-center gap-1 sm:gap-2 overflow-hidden rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-3.5 py-1.5 sm:px-6 sm:py-2.5 text-[10.5px] sm:text-sm font-bold text-white shadow-md shadow-[#0B1442]/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ml-auto sm:ml-0"
               >
                 <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-white/0 via-white/20 to-white/0 transition-transform duration-1000 group-hover/tambah:translate-x-full" />
                 {menambah ? (
-                  <Loader2 className="relative h-4 w-4 animate-spin" strokeWidth={2.5} />
+                  <Loader2 className="relative h-3 w-3 sm:h-4 sm:w-4 animate-spin" strokeWidth={2.5} />
                 ) : (
-                  <Plus className="relative h-4 w-4" strokeWidth={2.8} />
+                  <Plus className="relative h-3 w-3 sm:h-4 sm:w-4" strokeWidth={2.8} />
                 )}
                 <span className="relative">{menambah ? "Menambahkan…" : "Tambah Item"}</span>
               </button>

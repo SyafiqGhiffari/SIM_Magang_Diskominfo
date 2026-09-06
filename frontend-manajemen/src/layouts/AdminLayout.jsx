@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-// SESUDAH
-import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette, CalendarCheck, ClipboardList, BarChart3, FileSignature, MailCheck, LayoutTemplate, Inbox, MessagesSquare, Globe, Image as ImageIcon, ListTree, ToggleLeft } from "lucide-react";
+import { FileText, Users, HelpCircle, Building2, UserCog, GraduationCap, CalendarClock, Award, ScrollText, Palette, CalendarCheck, ClipboardList, BarChart3, FileSignature, MailCheck, MessageSquareText, MessagesSquare, Globe, Image as ImageIcon, ListTree, ToggleLeft, ClipboardCheck, SlidersHorizontal, FileSpreadsheet } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
-import ChatFloatingWidget from "../components/manajemen/admin/chat/ChatFloatingWidget";
+import { getHitunganAntrean } from "../services/adminService";
 import { useManajemenTheme } from "../context/useManajemenTheme";
 import { logoutAdmin, getMe } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
-import { clearAuthData } from "../utils/authStorage";
+import { clearAuthData, getUser, updateAuthUser } from "../utils/authStorage";
 
 const navItems = [
   {
@@ -29,7 +28,7 @@ const navItems = [
     icon: <FileSignature className="w-[18px] h-[18px] shrink-0" />,
     children: [
       { key: "surat-penerimaan", to: "/admin/surat-penerimaan", label: "Daftar Surat", icon: <MailCheck className="w-4 h-4 shrink-0" /> },
-      { key: "surat-template", to: "/admin/surat-penerimaan/template", label: "Template Surat", icon: <LayoutTemplate className="w-4 h-4 shrink-0" /> },
+      { key: "surat-template", to: "/admin/surat-penerimaan/template", label: "Template Surat", icon: <Palette className="w-4 h-4 shrink-0" /> },
     ],
   },
   {
@@ -38,8 +37,8 @@ const navItems = [
     label: "Pusat Bantuan",
     icon: <MessagesSquare className="w-[18px] h-[18px] shrink-0" />,
     children: [
+      { key: "bantuan-pesan", to: "/admin/bantuan", label: "Chat & Pertanyaan", icon: <MessageSquareText className="w-4 h-4 shrink-0" /> },
       { key: "faq", to: "/admin/faq", label: "FAQ & Quick Action", icon: <HelpCircle className="w-4 h-4 shrink-0" /> },
-      { key: "pertanyaan", to: "/admin/pertanyaan", label: "Pertanyaan Masuk", icon: <Inbox className="w-4 h-4 shrink-0" /> },
       { key: "analitik-faq", to: "/admin/analitik-faq", label: "Analitik FAQ", icon: <BarChart3 className="w-4 h-4 shrink-0" /> },
     ],
   },
@@ -64,6 +63,17 @@ const navItems = [
       { key: "presensi-data", to: "/admin/presensi", label: "Data Presensi", icon: <ClipboardList className="w-4 h-4 shrink-0" /> },
       { key: "presensi-rekap", to: "/admin/presensi/rekap", label: "Rekap & Laporan", icon: <BarChart3 className="w-4 h-4 shrink-0" /> },
       { key: "jam-kerja", to: "/admin/jam-kerja", label: "Jam Kerja & Libur", icon: <CalendarClock className="w-4 h-4 shrink-0" /> },
+    ],
+  },
+  {
+    type: "dropdown",
+    key: "penilaian",
+    label: "Penilaian Magang",
+    icon: <ClipboardCheck className="w-[18px] h-[18px] shrink-0" />,
+    children: [
+      { key: "penilaian-rekap", to: "/admin/penilaian", label: "Rekap Nilai Peserta", icon: <FileSpreadsheet className="w-4 h-4 shrink-0" /> },
+      { key: "penilaian-bobot", to: "/admin/penilaian/bobot", label: "Pengaturan Bobot", icon: <SlidersHorizontal className="w-4 h-4 shrink-0" /> },
+      { key: "penilaian-template", to: "/admin/penilaian/template", label: "Template Rapor", icon: <Palette className="w-4 h-4 shrink-0" /> },
     ],
   },
   {
@@ -101,12 +111,14 @@ const tabTitles = {
   mentor: { title: "Kelola Mentor", desc: "Kelola akun mentor dan penugasan bidangnya" },
   peserta: { title: "Kelola Peserta", desc: "Kelola akun peserta magang yang telah diterima" },
   faq: { title: "FAQ & Quick Action", desc: "Kelola jawaban otomatis chatbot" },
-  pertanyaan: { title: "Pertanyaan Masuk", desc: "Pertanyaan peserta yang belum terjawab" },
   "analitik-faq": { title: "Analitik FAQ", desc: "Performa jawaban otomatis dan celah pengetahuan chatbot" },
   akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
   "jam-kerja": { title: "Jam Kerja & Hari Libur", desc: "Atur jam kerja harian dan hari libur untuk presensi peserta" },
   "presensi-data": { title: "Data Presensi", desc: "Pantau kehadiran harian peserta magang" },
   "presensi-rekap": { title: "Rekap & Laporan Presensi", desc: "Rekap kehadiran peserta per bulan dan ekspor laporan" },
+  "penilaian-rekap": { title: "Rekapitulasi Nilai Magang", desc: "Pantau dan ekspor rekapitulasi nilai akhir seluruh peserta magang" },
+  "penilaian-bobot": { title: "Pengaturan Bobot Penilaian", desc: "Atur proporsi persentase dari 4 pilar kompetensi magang" },
+  "penilaian-template": { title: "Template Rapor & Transkrip", desc: "Kelola desain, kop, penandatangan, dan tata letak transkrip nilai resmi" },
   "sertifikat-daftar": { title: "Kelola Sertifikat", desc: "Terbitkan dan kelola sertifikat magang peserta" },
   "sertifikat-template": { title: "Template Sertifikat", desc: "Kelola desain template sertifikat magang" },
   "landing-identitas": { title: "Identitas & SEO", desc: "Atur nama situs, logo, favicon, dan optimasi mesin pencari" },
@@ -114,19 +126,90 @@ const tabTitles = {
   "landing-profil": { title: "Konten & Profil", desc: "Atur profil instansi, visi misi, persyaratan, alur, dan benefit" },
   "landing-navigasi": { title: "Navigasi & Kontak", desc: "Atur menu navigasi, informasi kontak, dan media sosial" },
   "landing-status": { title: "Status Pendaftaran", desc: "Buka atau tutup pendaftaran magang dan atur banner pengumuman" },
+  "bantuan-pesan": { title: "Chat & Pertanyaan", desc: "Balas pesan peserta dan pertanyaan dari situs publik" },
 };
 
 const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(() => getUser() || null);
   const { isDark, setIsDark } = useManajemenTheme();
+  const [hitunganAntrean, setHitunganAntrean] = useState({
+    pendaftaran: 0,
+    surat_penerimaan: 0,
+    peserta: 0,
+    sertifikat: 0,
+    bantuan: 0,
+  });
+
+  useEffect(() => {
+    const ambil = async () => {
+      try {
+        const res = await getHitunganAntrean();
+        if (res.data?.data) {
+          setHitunganAntrean(res.data.data);
+        }
+      } catch {
+        /* diam — lencana bukan hal kritis */
+      }
+    };
+    ambil();
+    const t = setInterval(ambil, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Lencana disuntikkan ke salinan navItems agar daftar menu tetap statis
+  const navItemsWithBadge = useMemo(
+    () =>
+      navItems.map((item) => {
+        if (item.key === "pendaftaran") {
+          return { ...item, badge: hitunganAntrean.pendaftaran || 0 };
+        }
+        if (item.key === "surat") {
+          return {
+            ...item,
+            children: item.children.map((c) =>
+              c.key === "surat-penerimaan" ? { ...c, badge: hitunganAntrean.surat_penerimaan || 0 } : c
+            ),
+          };
+        }
+        if (item.key === "bantuan") {
+          return {
+            ...item,
+            children: item.children.map((c) =>
+              c.key === "bantuan-pesan" ? { ...c, badge: hitunganAntrean.bantuan || 0 } : c
+            ),
+          };
+        }
+        if (item.key === "pengguna") {
+          return {
+            ...item,
+            children: item.children.map((c) =>
+              c.key === "peserta" ? { ...c, badge: hitunganAntrean.peserta || 0 } : c
+            ),
+          };
+        }
+        if (item.key === "sertifikat") {
+          return {
+            ...item,
+            children: item.children.map((c) =>
+              c.key === "sertifikat-daftar" ? { ...c, badge: hitunganAntrean.sertifikat || 0 } : c
+            ),
+          };
+        }
+        return item;
+      }),
+    [hitunganAntrean]
+  );
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await getMe();
-        setProfile(res.data.data);
+        if (res.data?.data) {
+          setProfile(res.data.data);
+          updateAuthUser(res.data.data);
+        }
       } catch {
         navigate("/login");
       }
@@ -164,10 +247,12 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
     location.pathname.startsWith("/admin/peserta") ? "peserta" :
     location.pathname.startsWith("/admin/analitik-faq") ? "analitik-faq" :
     location.pathname.startsWith("/admin/faq") ? "faq" :
-    location.pathname.startsWith("/admin/pertanyaan") ? "pertanyaan" :
     location.pathname.startsWith("/admin/jam-kerja") ? "jam-kerja" :
     location.pathname.startsWith("/admin/presensi/rekap") ? "presensi-rekap" :
     location.pathname.startsWith("/admin/presensi") ? "presensi-data" :
+    location.pathname.startsWith("/admin/penilaian/template") ? "penilaian-template" :
+    location.pathname.startsWith("/admin/penilaian/bobot") ? "penilaian-bobot" :
+    location.pathname.startsWith("/admin/penilaian") ? "penilaian-rekap" :
     location.pathname.startsWith("/admin/sertifikat/template") ? "sertifikat-template" :
     location.pathname.startsWith("/admin/sertifikat") ? "sertifikat-daftar" :
     location.pathname.startsWith("/admin/landing/tampilan") ? "landing-tampilan" :
@@ -175,6 +260,7 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
     location.pathname.startsWith("/admin/landing/navigasi") ? "landing-navigasi" :
     location.pathname.startsWith("/admin/landing/status") ? "landing-status" :
     location.pathname.startsWith("/admin/landing") ? "landing-identitas" :
+    location.pathname.startsWith("/admin/bantuan") ? "bantuan-pesan" :
     location.pathname.startsWith("/admin/akun") ? "akun" : "dashboard";
 
   const currentTab = tabTitles[activeKey] || tabTitles.dashboard;
@@ -182,7 +268,7 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
   return (
     <>
       <ManajemenShell
-        navItems={navItems}
+        navItems={navItemsWithBadge}
         activeKey={activeKey}
         handleLogout={handleLogout}
         roleLabel="Admin"
@@ -197,7 +283,6 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
       >
         {children}
       </ManajemenShell>
-      <ChatFloatingWidget isDark={isDark} />
     </>
   );
 };

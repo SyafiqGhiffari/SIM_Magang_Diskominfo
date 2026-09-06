@@ -25,6 +25,7 @@ import TabStatusVerifikasi from "../../components/pendaftaran/TabStatusVerifikas
 import TabRevisiBerkas from "../../components/pendaftaran/TabRevisiBerkas";
 import TabKelolaAkun from "../../components/pendaftaran/TabKelolaAkun";
 import ChatWidget from "../../components/pendaftaran/ChatWidget";
+import { kirimDenyut } from "../../services/chatService";
 
 const REVISI_DOC_FIELD_MAP = [
   { key: "pas_foto", field: "file_pas_foto", pattern: /pas\s*foto/i, isImage: true, label: "Pas Foto" },
@@ -110,6 +111,15 @@ const DashboardPendaftaran = () => {
       localStorage.setItem("dash_theme", "light");
     }
   }, [isDark]);
+
+  // Denyut keberadaan — memberi tahu server bahwa peserta sedang membuka
+  // dasbor, sehingga admin melihat statusnya online di halaman Chat.
+  useEffect(() => {
+    const denyut = () => { kirimDenyut().catch(() => {}); };
+    denyut();
+    const t = setInterval(denyut, 60000);
+    return () => clearInterval(t);
+  }, []);
 
   const [clock, setClock] = useState(new Date());
   useEffect(() => {
