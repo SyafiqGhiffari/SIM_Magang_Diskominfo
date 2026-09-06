@@ -137,7 +137,8 @@ export const PengaturanBobotPenilaianPage = () => {
             Pengaturan Bobot Penilaian
           </h2>
           <p className={`mt-1 sm:mt-1.5 text-[11px] sm:text-xs max-w-4xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-            Konfigurasikan proporsi bobot persentase dari 4 pilar kompetensi yang menjadi dasar kalkulasi nilai akhir dan transkrip resmi magang Diskominfo.
+            <span className="inline sm:hidden">Atur proporsi persentase 4 pilar kompetensi nilai magang.</span>
+            <span className="hidden sm:inline">Konfigurasikan proporsi bobot persentase dari 4 pilar kompetensi yang menjadi dasar kalkulasi nilai akhir dan transkrip resmi magang Diskominfo.</span>
           </p>
         </div>
 

@@ -16,6 +16,7 @@ export const BobotStatsCards = ({ stats = {}, bobot = {}, isDark = false }) => {
   const statCards = [
     {
       icon: Users,
+      mobileLabel: "Peserta Dinilai",
       label: "Total Peserta Dinilai",
       desktopLabel: "Total Peserta Dinilai",
       value: stats.totalPeserta ?? 0,
@@ -28,6 +29,7 @@ export const BobotStatsCards = ({ stats = {}, bobot = {}, isDark = false }) => {
     },
     {
       icon: GraduationCap,
+      mobileLabel: "Transkrip Terbit",
       label: "Transkrip Diterbitkan",
       desktopLabel: "Transkrip Diterbitkan",
       value: stats.transkripTerbit ?? 0,
@@ -40,6 +42,7 @@ export const BobotStatsCards = ({ stats = {}, bobot = {}, isDark = false }) => {
     },
     {
       icon: Sparkles,
+      mobileLabel: "Rata-Rata",
       label: "Rata-Rata Nilai Akhir",
       desktopLabel: "Rata-Rata Nilai Akhir",
       value: stats.rataRataNilai ?? "0.00",
@@ -52,6 +55,7 @@ export const BobotStatsCards = ({ stats = {}, bobot = {}, isDark = false }) => {
     },
     {
       icon: Layers,
+      mobileLabel: "Indikator",
       label: "Indikator Penilaian",
       desktopLabel: "Total Indikator Penilaian",
       value: `${totalIndikator} Butir`,
@@ -81,11 +85,12 @@ export const BobotStatsCards = ({ stats = {}, bobot = {}, isDark = false }) => {
           <div className="relative flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p
-                className={`text-[10px] sm:text-sm font-bold tracking-wide truncate ${
+                className={`text-[10px] sm:text-sm font-bold tracking-wide leading-tight sm:leading-snug break-words ${
                   isDark ? "text-slate-400" : "text-slate-500"
                 }`}
               >
-                {c.label}
+                <span className="inline sm:hidden">{c.mobileLabel || c.label}</span>
+                <span className="hidden sm:inline">{c.label}</span>
               </p>
               <h3
                 className={`mt-0.5 sm:mt-1.5 text-xl sm:text-4xl font-black tracking-tight ${

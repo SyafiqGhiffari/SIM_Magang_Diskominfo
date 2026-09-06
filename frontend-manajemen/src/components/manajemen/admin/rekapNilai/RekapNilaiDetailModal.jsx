@@ -32,10 +32,10 @@ const PesertaAvatarModal = ({ nama, foto }) => {
           src={url}
           alt={nama || "Peserta"}
           onError={() => setError(true)}
-          className="h-9 w-9 sm:h-13 sm:w-13 rounded-xl sm:rounded-2xl object-cover border border-white/20 shadow-md"
+          className="h-8 w-8 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl object-cover border border-white/20 shadow-md"
         />
       ) : (
-        <span className="flex h-9 w-9 sm:h-13 sm:w-13 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-[11px] sm:text-[14px] font-black text-white border border-white/20 shadow-md">
+        <span className="flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-[10px] sm:text-[14px] font-black text-white border border-white/20 shadow-md">
           {getInisial(nama)}
         </span>
       )}
@@ -46,9 +46,9 @@ const PesertaAvatarModal = ({ nama, foto }) => {
 
 /* Judul seksi dengan garis pemisah */
 const SectionTitle = ({ children, isDark }) => (
-  <div className="mb-1.5 sm:mb-2.5 flex items-center gap-1.5 sm:gap-2.5">
-    <span className="h-2.5 sm:h-3.5 w-1 rounded-full bg-gradient-to-b from-[#00A5EC] to-[#004F9F]" />
-    <p className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? "text-slate-400" : "text-slate-400"}`}>
+  <div className="mb-1 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+    <span className="h-2 sm:h-3 w-1 rounded-full bg-gradient-to-b from-[#00A5EC] to-[#004F9F]" />
+    <p className={`text-[7.5px] sm:text-[9.5px] font-bold uppercase tracking-[0.12em] ${isDark ? "text-slate-400" : "text-slate-400"}`}>
       {children}
     </p>
     <span className={`h-px flex-1 bg-gradient-to-r ${isDark ? "from-white/10 to-transparent" : "from-slate-200 to-transparent"}`} />
@@ -93,22 +93,22 @@ const PillarStatCard = ({ icon: Icon, label, bobot, value, tone = "netral", dela
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-xl sm:rounded-2xl ring-1 ${t.ring} ${t.bg} px-2.5 py-2.5 sm:px-3.5 sm:py-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md animate-[fadeslide_0.3s_ease-out]`}
+      className={`group relative overflow-hidden rounded-lg sm:rounded-2xl ring-1 ${t.ring} ${t.bg} px-2 py-2 sm:px-3.5 sm:py-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md animate-[fadeslide_0.3s_ease-out]`}
       style={{ animationDelay: `${delay}ms`, animationFillMode: "backwards" }}
     >
       <div className="flex items-center justify-between gap-1">
-        <span className={`text-sm sm:text-[18px] font-black leading-none tabular-nums ${t.text}`}>
+        <span className={`text-xs sm:text-[18px] font-black leading-none tabular-nums ${t.text}`}>
           {value != null ? Number(value).toFixed(1) : "-"}
         </span>
-        <span className={`flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-md sm:rounded-xl ${t.chip} transition-transform duration-300 group-hover:scale-110`}>
+        <span className={`flex h-4.5 w-4.5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-md sm:rounded-xl ${t.chip} transition-transform duration-300 group-hover:scale-110`}>
           <Icon className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
         </span>
       </div>
-      <div className="mt-1.5 flex items-center justify-between gap-1">
-        <p className="text-[7.5px] sm:text-[9.5px] font-bold uppercase tracking-[0.05em] sm:tracking-[0.1em] text-slate-400 truncate">
+      <div className="mt-1 sm:mt-1.5 flex items-center justify-between gap-1">
+        <p className="text-[7px] sm:text-[9.5px] font-bold uppercase tracking-[0.04em] sm:tracking-[0.1em] text-slate-400 truncate">
           {label}
         </p>
-        <span className="text-[8px] sm:text-[9px] font-extrabold text-slate-400">
+        <span className="text-[7.5px] sm:text-[9px] font-extrabold text-slate-400">
           {bobot}%
         </span>
       </div>
@@ -359,60 +359,60 @@ export const RekapNilaiDetailModal = ({
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2.5">
                   {/* Presensi */}
-                  <div className={`rounded-xl border p-2.5 sm:p-3 transition-all ${
+                  <div className={`rounded-lg sm:rounded-xl border p-2 sm:p-3 transition-all ${
                     isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
                   }`}>
-                    <div className="flex items-center justify-between text-slate-400 mb-1">
-                      <span className="text-[8px] sm:text-[9.5px] font-bold uppercase tracking-wider">Kehadiran</span>
-                      <Clock className="w-3 h-3 text-sky-500" />
+                    <div className="flex items-center justify-between text-slate-400 mb-0.5 sm:mb-1">
+                      <span className="text-[7.5px] sm:text-[9.5px] font-bold uppercase tracking-wider">Kehadiran</span>
+                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-sky-500" />
                     </div>
-                    <div className={`text-sm sm:text-base font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                    <div className={`text-xs sm:text-base font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
                       {autoAdmin.skor_absensi != null ? Number(autoAdmin.skor_absensi).toFixed(1) : "0.0"}
                     </div>
-                    <p className="text-[7.5px] sm:text-[9.5px] text-slate-400 mt-0.5">Presensi harian</p>
+                    <p className="text-[7px] sm:text-[9.5px] text-slate-400 mt-0.5 truncate">Presensi harian</p>
                   </div>
 
                   {/* Logbook */}
-                  <div className={`rounded-xl border p-2.5 sm:p-3 transition-all ${
+                  <div className={`rounded-lg sm:rounded-xl border p-2 sm:p-3 transition-all ${
                     isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
                   }`}>
-                    <div className="flex items-center justify-between text-slate-400 mb-1">
-                      <span className="text-[8px] sm:text-[9.5px] font-bold uppercase tracking-wider">Logbook</span>
-                      <BookOpen className="w-3 h-3 text-emerald-500" />
+                    <div className="flex items-center justify-between text-slate-400 mb-0.5 sm:mb-1">
+                      <span className="text-[7.5px] sm:text-[9.5px] font-bold uppercase tracking-wider">Logbook</span>
+                      <BookOpen className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500" />
                     </div>
-                    <div className={`text-sm sm:text-base font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                    <div className={`text-xs sm:text-base font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
                       {autoAdmin.skor_logbook != null ? Number(autoAdmin.skor_logbook).toFixed(1) : "0.0"}
                     </div>
-                    <p className="text-[7.5px] sm:text-[9.5px] text-slate-400 mt-0.5">Jurnal harian disetujui</p>
+                    <p className="text-[7px] sm:text-[9.5px] text-slate-400 mt-0.5 truncate">Jurnal harian</p>
                   </div>
 
                   {/* Tugas */}
-                  <div className={`rounded-xl border p-2.5 sm:p-3 transition-all ${
+                  <div className={`rounded-lg sm:rounded-xl border p-2 sm:p-3 transition-all ${
                     isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
                   }`}>
-                    <div className="flex items-center justify-between text-slate-400 mb-1">
-                      <span className="text-[8px] sm:text-[9.5px] font-bold uppercase tracking-wider">Tugas</span>
-                      <CheckSquare className="w-3 h-3 text-amber-500" />
+                    <div className="flex items-center justify-between text-slate-400 mb-0.5 sm:mb-1">
+                      <span className="text-[7.5px] sm:text-[9.5px] font-bold uppercase tracking-wider">Tugas</span>
+                      <CheckSquare className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-500" />
                     </div>
-                    <div className={`text-sm sm:text-base font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                    <div className={`text-xs sm:text-base font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
                       {autoAdmin.skor_tugas != null ? Number(autoAdmin.skor_tugas).toFixed(1) : "0.0"}
                     </div>
-                    <p className="text-[7.5px] sm:text-[9.5px] text-slate-400 mt-0.5">Penugasan mentor</p>
+                    <p className="text-[7px] sm:text-[9.5px] text-slate-400 mt-0.5 truncate">Tugas mentor</p>
                   </div>
 
                   {/* Laporan Akhir */}
-                  <div className={`rounded-xl border p-2.5 sm:p-3 transition-all ${
+                  <div className={`rounded-lg sm:rounded-xl border p-2 sm:p-3 transition-all ${
                     isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
                   }`}>
-                    <div className="flex items-center justify-between text-slate-400 mb-1">
-                      <span className="text-[8px] sm:text-[9.5px] font-bold uppercase tracking-wider">Laporan</span>
-                      <FileText className="w-3 h-3 text-purple-500" />
+                    <div className="flex items-center justify-between text-slate-400 mb-0.5 sm:mb-1">
+                      <span className="text-[7.5px] sm:text-[9.5px] font-bold uppercase tracking-wider">Laporan</span>
+                      <FileText className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-500" />
                     </div>
-                    <div className={`text-sm sm:text-base font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                    <div className={`text-xs sm:text-base font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
                       {autoAdmin.skor_laporan != null ? Number(autoAdmin.skor_laporan).toFixed(1) : "0.0"}
                     </div>
-                    <p className="text-[7.5px] sm:text-[9.5px] text-slate-400 mt-0.5">
-                      {penilaian.laporan_akhir_disetujui ? "Disetujui Mentor" : "Belum Disetujui"}
+                    <p className="text-[7px] sm:text-[9.5px] text-slate-400 mt-0.5 truncate">
+                      {penilaian.laporan_akhir_disetujui ? "Disetujui" : "Belum Disetujui"}
                     </p>
                   </div>
                 </div>
@@ -421,26 +421,26 @@ export const RekapNilaiDetailModal = ({
               {/* 3. Catatan Evaluasi Mentor */}
               <div>
                 <SectionTitle isDark={isDark}>Catatan Evaluasi Mentor</SectionTitle>
-                <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-4 ${
+                <div className={`rounded-xl sm:rounded-2xl border p-2.5 sm:p-4 ${
                   isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
                 }`}>
-                  <div className="flex items-start gap-2.5">
-                    <span className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl ${
+                  <div className="flex items-start gap-2 sm:gap-2.5">
+                    <span className={`flex h-6 w-6 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl ${
                       isDark ? "bg-[#00A5EC]/15 text-[#00A5EC]" : "bg-[#004F9F]/10 text-[#004F9F]"
                     }`}>
-                      <MessageSquareQuote className="w-4 h-4" />
+                      <MessageSquareQuote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#0B1442] dark:text-slate-100">
-                        <UserCog className="w-3.5 h-3.5 text-[#00A5EC]" />
+                      <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[#0B1442] dark:text-slate-100">
+                        <UserCog className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#00A5EC]" />
                         <span>Catatan Mentor Pembimbing:</span>
                       </div>
                       {penilaian.catatan_mentor ? (
-                        <p className="mt-1 text-[11px] sm:text-xs leading-relaxed italic text-slate-600 dark:text-slate-300">
+                        <p className="mt-1 text-[10px] sm:text-xs leading-relaxed italic text-slate-600 dark:text-slate-300">
                           "{penilaian.catatan_mentor}"
                         </p>
                       ) : (
-                        <p className="mt-1 text-[11px] sm:text-xs italic text-slate-400">
+                        <p className="mt-1 text-[10px] sm:text-xs italic text-slate-400">
                           Belum ada catatan evaluasi khusus dari mentor pembimbing.
                         </p>
                       )}
@@ -450,15 +450,15 @@ export const RekapNilaiDetailModal = ({
               </div>
 
               {/* 4. Banner Catatan Informasi */}
-              <div className={`flex items-start gap-1.5 sm:gap-2.5 rounded-lg sm:rounded-2xl border px-2.5 py-2 sm:px-3.5 sm:py-3 ${
+              <div className={`flex items-center gap-2 sm:gap-2.5 rounded-lg sm:rounded-2xl border px-2.5 py-2 sm:px-3.5 sm:py-3 ${
                 isDark
                   ? "border-[#00A5EC]/20 bg-[#00A5EC]/[0.05]"
                   : "border-[#004F9F]/15 bg-[#004F9F]/[0.04]"
               }`}>
-                <span className={`flex h-4.5 w-4.5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded ${
+                <span className={`flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-md sm:rounded-lg ${
                   isDark ? "bg-[#00A5EC]/20 text-[#00A5EC]" : "bg-[#004F9F]/10 text-[#004F9F]"
                 }`}>
-                  <Info className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
+                  <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </span>
                 <p className={`text-[8.5px] sm:text-[11px] font-medium leading-relaxed ${
                   isDark ? "text-slate-300" : "text-slate-500"
@@ -488,7 +488,7 @@ export const RekapNilaiDetailModal = ({
             <button
               type="button"
               onClick={onClose}
-              className={`px-3.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl border text-[10.5px] sm:text-xs font-bold transition-colors cursor-pointer ${
+              className={`px-3 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold transition-colors cursor-pointer ${
                 isDark
                   ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
                   : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
@@ -501,12 +501,19 @@ export const RekapNilaiDetailModal = ({
               type="button"
               onClick={onDownloadPdf}
               disabled={downloadingPdf || !hasScore}
-              className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#00A5EC] px-4 py-1.5 sm:px-5 sm:py-2.5 text-[10px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="group relative inline-flex items-center justify-center gap-1.5 sm:gap-2 overflow-hidden rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#00A5EC] px-3.5 py-1.5 sm:px-5 sm:py-2.5 text-[10px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent group-hover:animate-[shine_0.9s_ease-out]" />
               <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 relative shrink-0" />
               <span className="relative">
-                {downloadingPdf ? "Menyiapkan PDF..." : "Unduh Transkrip Nilai (PDF)"}
+                {downloadingPdf ? (
+                  "Menyiapkan PDF..."
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">Unduh Transkrip Nilai (PDF)</span>
+                    <span className="inline sm:hidden">Unduh PDF</span>
+                  </>
+                )}
               </span>
             </button>
           </div>

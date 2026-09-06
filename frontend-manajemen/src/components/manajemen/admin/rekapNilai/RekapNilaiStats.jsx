@@ -4,6 +4,7 @@ export const RekapNilaiStats = ({ stats, isDark }) => {
   const statCards = [
     {
       icon: Users,
+      mobileLabel: "Peserta Aktif",
       label: "Total Peserta Aktif",
       desktopLabel: "Total Peserta Aktif",
       value: stats.total,
@@ -16,6 +17,7 @@ export const RekapNilaiStats = ({ stats, isDark }) => {
     },
     {
       icon: Sparkles,
+      mobileLabel: "Rata-Rata",
       label: "Rata-Rata Nilai",
       desktopLabel: "Rata-Rata Nilai Akhir",
       value: stats.rataRata,
@@ -28,6 +30,7 @@ export const RekapNilaiStats = ({ stats, isDark }) => {
     },
     {
       icon: GraduationCap,
+      mobileLabel: "Predikat A",
       label: "Predikat Sangat Baik",
       desktopLabel: "Predikat Sangat Baik",
       value: stats.predikatSangatBaik,
@@ -40,6 +43,7 @@ export const RekapNilaiStats = ({ stats, isDark }) => {
     },
     {
       icon: Clock,
+      mobileLabel: "Menunggu",
       label: "Menunggu Evaluasi",
       desktopLabel: "Menunggu Evaluasi",
       value: stats.belum + stats.draf,
@@ -69,11 +73,12 @@ export const RekapNilaiStats = ({ stats, isDark }) => {
           <div className="relative flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p
-                className={`text-[10px] sm:text-sm font-bold tracking-wide truncate ${
+                className={`text-[10px] sm:text-sm font-bold tracking-wide leading-tight sm:leading-snug break-words ${
                   isDark ? "text-slate-400" : "text-slate-500"
                 }`}
               >
-                {c.label}
+                <span className="inline sm:hidden">{c.mobileLabel || c.label}</span>
+                <span className="hidden sm:inline">{c.label}</span>
               </p>
               <h3
                 className={`mt-0.5 sm:mt-1.5 text-xl sm:text-4xl font-black tracking-tight ${

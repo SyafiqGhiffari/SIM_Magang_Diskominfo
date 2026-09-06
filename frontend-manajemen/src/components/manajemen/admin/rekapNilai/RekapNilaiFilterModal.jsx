@@ -13,7 +13,7 @@ export const CheckboxItem = ({ checked, label, onToggle, isDark, centered = fals
   <button
     type="button"
     onClick={onToggle}
-    className={`group flex items-center justify-between rounded-xl border px-3 py-2.5 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
+    className={`group flex items-center justify-between rounded-lg sm:rounded-xl border px-2 py-1.5 sm:px-3 sm:py-2.5 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
       checked
         ? isDark
           ? "border-[#00A5EC] bg-[#00A5EC]/15 shadow-sm ring-1 ring-[#00A5EC]/30"
@@ -25,7 +25,7 @@ export const CheckboxItem = ({ checked, label, onToggle, isDark, centered = fals
   >
     {/* Kotak Centang Tetap di Kiri */}
     <span
-      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200 ${
+      className={`flex h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200 ${
         checked
           ? isDark
             ? "border-[#00A5EC] bg-gradient-to-br from-[#00A5EC] to-[#004F9F]"
@@ -35,13 +35,13 @@ export const CheckboxItem = ({ checked, label, onToggle, isDark, centered = fals
             : "border-slate-300 bg-white group-hover:border-[#004F9F]/60"
       }`}
     >
-      {checked && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3.5} />}
+      {checked && <Check className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-white" strokeWidth={3.5} />}
     </span>
 
     {/* Teks Label */}
     <span
-      className={`text-xs font-bold truncate ${
-        centered ? "flex-1 text-center" : "flex-1 text-left ml-2.5"
+      className={`text-[9.5px] sm:text-xs font-bold truncate ${
+        centered ? "flex-1 text-center" : "flex-1 text-left ml-2 sm:ml-2.5"
       } ${
         checked
           ? isDark
@@ -56,7 +56,7 @@ export const CheckboxItem = ({ checked, label, onToggle, isDark, centered = fals
     </span>
 
     {/* Counter-balancer di kanan saat centered agar teks persis di tengah simetris */}
-    {centered && <span className="w-4 h-4 shrink-0 pointer-events-none" aria-hidden="true" />}
+    {centered && <span className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 pointer-events-none" aria-hidden="true" />}
   </button>
 );
 
@@ -64,7 +64,7 @@ export const RadioItem = ({ checked, label, onSelect, isDark }) => (
   <button
     type="button"
     onClick={onSelect}
-    className={`group flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
+    className={`group flex items-center gap-2 sm:gap-2.5 rounded-lg sm:rounded-xl border px-2 py-1.5 sm:px-3 sm:py-2.5 text-left transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
       checked
         ? isDark
           ? "border-[#00A5EC] bg-[#00A5EC]/15 shadow-sm"
@@ -75,7 +75,7 @@ export const RadioItem = ({ checked, label, onSelect, isDark }) => (
     }`}
   >
     <span
-      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
+      className={`flex h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
         checked
           ? isDark
             ? "border-[#00A5EC] scale-110"
@@ -86,13 +86,13 @@ export const RadioItem = ({ checked, label, onSelect, isDark }) => (
       }`}
     >
       <span
-        className={`h-2 w-2 rounded-full bg-gradient-to-br transition-transform duration-200 ${
+        className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-gradient-to-br transition-transform duration-200 ${
           checked ? "scale-100" : "scale-0"
         } ${isDark ? "from-[#00A5EC] to-[#004F9F]" : "from-[#0B1442] to-[#004F9F]"}`}
       />
     </span>
     <span
-      className={`text-xs font-bold truncate ${
+      className={`text-[9.5px] sm:text-xs font-bold truncate ${
         checked
           ? isDark
             ? "text-sky-300 font-extrabold"
@@ -133,7 +133,7 @@ export const RekapNilaiFilterModal = ({
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-[340px] sm:max-w-xl max-h-[90vh] rounded-xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-[modalFadeUp_0.3s_ease-out] ${
+        className={`w-full max-w-sm sm:max-w-xl max-h-[90vh] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-[modalFadeUp_0.3s_ease-out] ${
           isDark ? "bg-[#161b22] border border-white/10" : "bg-white"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -168,14 +168,14 @@ export const RekapNilaiFilterModal = ({
         </div>
 
         {/* Body scrollable */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4">
           {/* 1. Status Penilaian */}
           <div>
-            <label className="flex items-center gap-1.5 text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-              <ListFilter className="w-3.5 h-3.5" />
+            <label className="flex items-center gap-1 text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">
+              <ListFilter className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               Status Penilaian
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2">
               {statusOptions.map((s) => (
                 <CheckboxItem
                   key={s.key}
@@ -186,7 +186,7 @@ export const RekapNilaiFilterModal = ({
                 />
               ))}
             </div>
-            <p className="mt-1.5 text-[8.5px] sm:text-[10px] text-slate-400">
+            <p className="mt-1 text-[8px] sm:text-[9.5px] text-slate-400">
               Kosongkan untuk menampilkan semua status penilaian.
             </p>
           </div>
@@ -194,11 +194,11 @@ export const RekapNilaiFilterModal = ({
           {/* 2. Bidang Penempatan */}
           {bidangOptions.length > 0 && (
             <div>
-              <label className="flex items-center gap-1.5 text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                <Building2 className="w-3.5 h-3.5" />
+              <label className="flex items-center gap-1 text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">
+                <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 Bidang Penempatan
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
                 {bidangOptions.map((bid) => (
                   <CheckboxItem
                     key={bid}
@@ -214,11 +214,11 @@ export const RekapNilaiFilterModal = ({
 
           {/* 3. Indeks Mutu / Predikat */}
           <div>
-            <label className="flex items-center gap-1.5 text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-              <Sparkles className="w-3.5 h-3.5" />
+            <label className="flex items-center gap-1 text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               Indeks Mutu / Nilai
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
               {["A", "A-", "B+", "B", "B-", "C", "D", "E"].map((idxMutu) => (
                 <CheckboxItem
                   key={idxMutu}
@@ -234,9 +234,9 @@ export const RekapNilaiFilterModal = ({
 
           {/* Mobile Only: Urutkan Data */}
           {sortOptions && (
-            <div className="block sm:hidden pt-1">
-              <label className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                <ArrowUpDown className="w-3.5 h-3.5" />
+            <div className="block sm:hidden border-t border-dashed dark:border-white/5 pt-2.5">
+              <label className="flex items-center gap-1 text-[8.5px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                <ArrowUpDown className="w-3 h-3" />
                 Urutkan Data
               </label>
               <div className="grid grid-cols-2 gap-1.5">

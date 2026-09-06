@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
 import Pagination from "../../components/manajemen/admin/pendaftaran/Pagination";
 import ExportDropdown from "../../components/manajemen/admin/pendaftaran/ExportDropdown";
@@ -44,7 +44,7 @@ const PesertaAvatar = ({ nama, foto }) => {
   const url = foto ? getFileUrl(foto) : null;
 
   return (
-    <div className="h-10 w-10 sm:h-11 sm:w-11 min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] aspect-square shrink-0 rounded-full overflow-hidden shadow-sm border-[2px] border-white ring-1 ring-slate-200 dark:ring-white/10 transition-all duration-300 group-hover:scale-105 flex items-center justify-center bg-slate-100 dark:bg-white/5">
+    <div className="h-8 w-8 sm:h-11 sm:w-11 min-w-[32px] min-h-[32px] sm:min-w-[44px] sm:min-h-[44px] aspect-square shrink-0 rounded-full overflow-hidden shadow-sm border-[2px] border-white ring-1 ring-slate-200 dark:ring-white/10 transition-all duration-300 group-hover:scale-105 flex items-center justify-center bg-slate-100 dark:bg-white/5">
       {url && !error ? (
         <img
           src={url}
@@ -53,7 +53,7 @@ const PesertaAvatar = ({ nama, foto }) => {
           className="w-full h-full object-cover object-center rounded-full aspect-square block"
         />
       ) : (
-        <span className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white text-xs sm:text-sm font-black">
+        <span className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white text-[11px] sm:text-sm font-black">
           {getInitials(nama)}
         </span>
       )}
@@ -136,6 +136,11 @@ const RekapNilaiAdminPage = () => {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [sortBy, setSortBy] = useState("nama_az");
   const [columnSort, setColumnSort] = useState({ key: null, direction: null });
+  const [expandedRows, setExpandedRows] = useState({});
+
+  const toggleRow = (id) => {
+    setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Pagination State
   const [page, setPage] = useState(0);
@@ -322,6 +327,7 @@ const RekapNilaiAdminPage = () => {
   // Active filter count
   const activeFilterCount =
     appliedStatusList.length + appliedBidangList.length + appliedPredikatList.length;
+  const mobileActiveFilterCount = activeFilterCount + (sortBy ? 1 : 0);
 
   // Handle Export
   const handleExport = (format) => {
@@ -379,7 +385,7 @@ const RekapNilaiAdminPage = () => {
         setSearch(v);
         setPage(0);
       }}
-      searchPlaceholder="Cari nama, email, kampus, bidang, mentor..."
+      searchPlaceholder="Cari peserta..."
     >
       <div className="space-y-4 sm:space-y-6 animate-[fadeslide_0.35s_ease-out]">
         {/* Page Header (Judul Halaman di Atas) */}
@@ -388,7 +394,8 @@ const RekapNilaiAdminPage = () => {
             Rekapitulasi Nilai Magang
           </h2>
           <p className={`mt-1 sm:mt-1.5 text-[11px] sm:text-xs max-w-3xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-            Pantau evaluasi kinerja 4 pilar kompetensi peserta magang yang aktif, kelola status penilaian mentor, dan ekspor laporan nilai resmi.
+            <span className="inline sm:hidden">Pantau evaluasi 4 pilar &amp; kelola nilai peserta.</span>
+            <span className="hidden sm:inline">Pantau evaluasi kinerja 4 pilar kompetensi peserta magang yang aktif, kelola status penilaian mentor, dan ekspor laporan nilai resmi.</span>
           </p>
         </div>
 
@@ -417,10 +424,11 @@ const RekapNilaiAdminPage = () => {
                       </span>
                       <div className="min-w-0 flex-1">
                         <h3 className={`text-xs sm:text-base font-black truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
-                          Daftar Rekapitulasi Nilai Peserta
+                          <span className="inline sm:hidden">Daftar Rekap Nilai</span>
+                          <span className="hidden sm:inline">Daftar Rekapitulasi Nilai Peserta</span>
                         </h3>
                         <p className={`mt-0.5 text-[10px] sm:text-xs leading-snug sm:leading-relaxed break-words max-w-md sm:max-w-lg ${isDark ? "text-slate-400" : "text-slate-400"}`}>
-                          <span className="inline sm:hidden">Saring &amp; kelola hasil penilaian peserta.</span>
+                          <span className="inline sm:hidden">Saring &amp; kelola hasil penilaian.</span>
                           <span className="hidden sm:inline">Gunakan tombol urutkan &amp; filter untuk menyaring peserta berdasarkan status penilaian.</span>
                         </p>
                       </div>
@@ -476,9 +484,9 @@ const RekapNilaiAdminPage = () => {
                         >
                           <FilterIcon className="w-3 h-3 transition-transform duration-300 group-hover:scale-110" />
                           Filter
-                          {activeFilterCount > 0 && (
+                          {mobileActiveFilterCount > 0 && (
                             <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#004F9F] text-white px-1 text-[8.5px] font-black">
-                              {activeFilterCount}
+                              {mobileActiveFilterCount}
                             </span>
                           )}
                         </button>
@@ -504,7 +512,7 @@ const RekapNilaiAdminPage = () => {
                           }}
                           onFocus={() => setIsSearchFocused(true)}
                           onBlur={() => setIsSearchFocused(false)}
-                          placeholder="Cari peserta, email, bidang..."
+                          placeholder="Cari peserta..."
                           className={`w-full rounded-lg sm:rounded-xl border pl-8 sm:pl-9 pr-8 sm:pr-9 py-2 sm:py-2.5 text-[11px] sm:text-xs font-medium outline-none transition-all duration-200 ${
                             isDark
                               ? isSearchFocused
@@ -548,7 +556,7 @@ const RekapNilaiAdminPage = () => {
                             columnSort={columnSort}
                             setColumnSort={setColumnSort}
                             isDark={isDark}
-                            className="w-[28%] sm:w-[24%]"
+                            className="w-[62%] sm:w-[24%]"
                           />
                           {/* Bidang */}
                           <SortableHeader
@@ -570,7 +578,7 @@ const RekapNilaiAdminPage = () => {
                             columnSort={columnSort}
                             setColumnSort={setColumnSort}
                             isDark={isDark}
-                            className="text-center sm:w-[12%]"
+                            className="hidden sm:table-cell text-center sm:w-[12%]"
                           />
                           {/* Indeks */}
                           <SortableHeader
@@ -586,10 +594,10 @@ const RekapNilaiAdminPage = () => {
                             columnSort={columnSort}
                             setColumnSort={setColumnSort}
                             isDark={isDark}
-                            className="w-[22%] sm:w-[10%]"
+                            className="w-[24%] sm:w-[10%]"
                           />
                           {/* Aksi */}
-                          <th className="px-2 sm:px-4 py-3 text-center w-[16%] sm:w-[6%] whitespace-nowrap">
+                          <th className="px-2 sm:px-4 py-3 text-center w-[14%] sm:w-[6%] whitespace-nowrap">
                             <span className="text-[9px] sm:text-[10.5px] font-black uppercase tracking-wider text-slate-400">
                               Aksi
                             </span>
@@ -620,161 +628,269 @@ const RekapNilaiAdminPage = () => {
                             const isFinal = r.status_penilaian === "final";
                             const isDraf = r.status_penilaian === "draf";
                             const bidangColor = getBidangColor(r.bidang);
+                            const isExpanded = !!expandedRows[r.peserta_id];
 
                             return (
-                              <tr
-                                key={r.peserta_id}
-                                className={`group border-b transition-colors duration-150 ${
-                                  isDark
-                                    ? "border-white/5 hover:bg-white/[0.02]"
-                                    : "border-slate-50 hover:bg-blue-50/30"
-                                }`}
-                              >
-                                {/* 1. Peserta */}
-                                <td className="px-3 sm:px-5 py-3.5">
-                                  <div className="flex items-center gap-2.5 sm:gap-3">
-                                    <PesertaAvatar nama={r.nama} foto={r.foto_profil || r.foto} />
-                                    <div className="min-w-0 flex-1">
-                                      <p className={`font-extrabold text-xs sm:text-sm leading-snug whitespace-nowrap transition-colors duration-200 ${
-                                        isDark ? "text-slate-100 group-hover:text-[#00A5EC]" : "text-[#0B1442] group-hover:text-[#004F9F]"
-                                      }`}>
-                                        {r.nama}
-                                      </p>
-                                      <p className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5 whitespace-nowrap">
-                                        <GraduationCap className="w-3 h-3 shrink-0" />
-                                        <span>{r.institusi || r.email}</span>
-                                      </p>
+                              <Fragment key={r.peserta_id}>
+                                <tr
+                                  className={`group border-b transition-colors duration-150 ${
+                                    isDark
+                                      ? "border-white/5 hover:bg-white/[0.02]"
+                                      : "border-slate-50 hover:bg-blue-50/30"
+                                  }`}
+                                >
+                                  {/* 1. Peserta */}
+                                  <td
+                                    className="px-2.5 sm:px-5 py-3 sm:py-3.5 cursor-pointer sm:cursor-default"
+                                    onClick={() => toggleRow(r.peserta_id)}
+                                  >
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                      <PesertaAvatar nama={r.nama} foto={r.foto_profil || r.foto} />
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1">
+                                          <p className={`font-extrabold text-[11px] sm:text-sm leading-tight break-words line-clamp-2 sm:line-clamp-none transition-colors duration-200 ${
+                                            isDark ? "text-slate-100 group-hover:text-[#00A5EC]" : "text-[#0B1442] group-hover:text-[#004F9F]"
+                                          }`}>
+                                            {r.nama}
+                                          </p>
+                                          <ChevronDown
+                                            className={`w-3 h-3 text-slate-400 block sm:hidden transition-transform duration-200 shrink-0 ${
+                                              isExpanded ? "rotate-180 text-[#00A5EC]" : ""
+                                            }`}
+                                          />
+                                        </div>
+                                        <p className="hidden sm:flex items-center gap-1 text-[11px] text-slate-400 mt-0.5 whitespace-nowrap">
+                                          <GraduationCap className="w-3 h-3 shrink-0" />
+                                          <span>{r.institusi || r.email}</span>
+                                        </p>
+                                      </div>
                                     </div>
-                                  </div>
-                                </td>
+                                  </td>
 
-                                {/* 2. Bidang & Mentor */}
-                                <td className="hidden sm:table-cell px-5 py-3.5">
-                                  <div>
-                                    {r.bidang ? (
+                                  {/* 2. Bidang & Mentor (Desktop) */}
+                                  <td className="hidden sm:table-cell px-5 py-3.5">
+                                    <div>
+                                      {r.bidang ? (
+                                        <span
+                                          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-black whitespace-nowrap shadow-xs ${bidangColor.bg} ${bidangColor.text}`}
+                                          style={isDark ? bidangColor.darkStyle : bidangColor.style}
+                                        >
+                                          <Building2 className="w-3.5 h-3.5 shrink-0" />
+                                          <span>{r.bidang}</span>
+                                        </span>
+                                      ) : (
+                                        <span className="text-[11px] text-slate-400">-</span>
+                                      )}
+                                      <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+                                        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-bold border transition-colors ${
+                                          isDark
+                                            ? "bg-white/5 border-white/10 text-slate-300"
+                                            : "bg-slate-50 border-slate-200/80 text-slate-600"
+                                        }`}>
+                                          <UserCog className="w-3 h-3 text-[#00A5EC] shrink-0" />
+                                          <span className="text-slate-400 font-medium">Mentor:</span>
+                                          <span className="font-extrabold text-[#0B1442] dark:text-slate-100 truncate max-w-[120px]">
+                                            {r.mentor_nama || "Belum Ditugaskan"}
+                                          </span>
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* 3. 4 Pilar Mini (Desktop) */}
+                                  <td className="hidden lg:table-cell px-3 sm:px-4 py-3.5 text-center">
+                                    <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/5 shadow-xs transition-all duration-300 hover:shadow-md hover:border-slate-300 dark:hover:border-white/10">
                                       <span
-                                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-black whitespace-nowrap shadow-xs ${bidangColor.bg} ${bidangColor.text}`}
-                                        style={isDark ? bidangColor.darkStyle : bidangColor.style}
+                                        className="px-1.5 py-0.5 rounded-lg text-[9.5px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 transition-all duration-200 hover:scale-110 hover:-translate-y-0.5 hover:bg-blue-500/20 hover:shadow-xs cursor-pointer"
+                                        title={`1. Profesional: ${r.nilai_profesional != null ? Number(r.nilai_profesional).toFixed(1) : 'Belum dinilai'}`}
                                       >
-                                        <Building2 className="w-3.5 h-3.5 shrink-0" />
-                                        <span>{r.bidang}</span>
+                                        Prof: {r.nilai_profesional != null ? Math.round(r.nilai_profesional) : "-"}
+                                      </span>
+                                      <span
+                                        className="px-1.5 py-0.5 rounded-lg text-[9.5px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 transition-all duration-200 hover:scale-110 hover:-translate-y-0.5 hover:bg-emerald-500/20 hover:shadow-xs cursor-pointer"
+                                        title={`2. Personal: ${r.nilai_personal != null ? Number(r.nilai_personal).toFixed(1) : 'Belum dinilai'}`}
+                                      >
+                                        Pers: {r.nilai_personal != null ? Math.round(r.nilai_personal) : "-"}
+                                      </span>
+                                      <span
+                                        className="px-1.5 py-0.5 rounded-lg text-[9.5px] font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 transition-all duration-200 hover:scale-110 hover:-translate-y-0.5 hover:bg-amber-500/20 hover:shadow-xs cursor-pointer"
+                                        title={`3. Sosial: ${r.nilai_sosial != null ? Number(r.nilai_sosial).toFixed(1) : 'Belum dinilai'}`}
+                                      >
+                                        Sos: {r.nilai_sosial != null ? Math.round(r.nilai_sosial) : "-"}
+                                      </span>
+                                      <span
+                                        className="px-1.5 py-0.5 rounded-lg text-[9.5px] font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 transition-all duration-200 hover:scale-110 hover:-translate-y-0.5 hover:bg-purple-500/20 hover:shadow-xs cursor-pointer"
+                                        title={`4. Administratif: ${r.nilai_administratif != null ? Number(r.nilai_administratif).toFixed(1) : 'Otomatis'}`}
+                                      >
+                                        Adm: {r.nilai_administratif != null ? Math.round(r.nilai_administratif) : "-"}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* 4. Nilai Akhir (Desktop) */}
+                                  <td className="hidden sm:table-cell px-3 sm:px-5 py-3.5 text-center">
+                                    {r.nilai_akhir_angka != null ? (
+                                      <span className="text-xs sm:text-sm font-black tabular-nums text-slate-900 dark:text-white">
+                                        {Number(r.nilai_akhir_angka).toFixed(2)}
                                       </span>
                                     ) : (
-                                      <span className="text-[11px] text-slate-400">-</span>
+                                      <span className="text-slate-400 text-xs font-normal">-</span>
                                     )}
-                                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-                                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-bold border transition-colors ${
-                                        isDark
-                                          ? "bg-white/5 border-white/10 text-slate-300"
-                                          : "bg-slate-50 border-slate-200/80 text-slate-600"
-                                      }`}>
-                                        <UserCog className="w-3 h-3 text-[#00A5EC] shrink-0" />
-                                        <span className="text-slate-400 font-medium">Mentor:</span>
-                                        <span className="font-extrabold text-[#0B1442] dark:text-slate-100 truncate max-w-[120px]">
-                                          {r.mentor_nama || "Belum Ditugaskan"}
-                                        </span>
+                                  </td>
+
+                                  {/* 5. Indeks (Desktop) */}
+                                  <td className="hidden sm:table-cell px-3 sm:px-5 py-3.5 text-center">
+                                    {r.indeks_nilai_akhir ? (
+                                      <span className="inline-flex items-center justify-center font-black px-2.5 py-0.5 rounded-md text-xs bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 shadow-xs">
+                                        {r.indeks_nilai_akhir}
                                       </span>
+                                    ) : (
+                                      <span className="text-slate-400 text-xs">-</span>
+                                    )}
+                                  </td>
+
+                                  {/* 6. Status Penilaian */}
+                                  <td className="px-1.5 sm:px-4 py-3 sm:py-3.5">
+                                    {isFinal ? (
+                                      <span className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-full border px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[8.5px] sm:text-[10.5px] font-bold whitespace-nowrap ${
+                                        isDark
+                                          ? "bg-emerald-950/50 border-emerald-800/50 text-emerald-400"
+                                          : "bg-emerald-50 border-emerald-100 text-emerald-600"
+                                      }`}>
+                                        <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                        <span className="inline sm:hidden">Terbit</span>
+                                        <span className="hidden sm:inline">Diterbitkan</span>
+                                      </span>
+                                    ) : isDraf ? (
+                                      <span className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-full border px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[8.5px] sm:text-[10.5px] font-bold whitespace-nowrap ${
+                                        isDark
+                                          ? "bg-amber-950/50 border-amber-800/50 text-amber-400"
+                                          : "bg-amber-50 border-amber-100 text-amber-600"
+                                      }`}>
+                                        <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Draf
+                                      </span>
+                                    ) : (
+                                      <span className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-full border px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[8.5px] sm:text-[10.5px] font-bold whitespace-nowrap ${
+                                        isDark
+                                          ? "bg-white/5 border-white/10 text-slate-400"
+                                          : "bg-slate-50 border-slate-200 text-slate-500"
+                                      }`}>
+                                        <span className="inline sm:hidden">Belum</span>
+                                        <span className="hidden sm:inline">Belum Dinilai</span>
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* 7. Aksi */}
+                                  <td className="px-1.5 sm:px-4 py-3 sm:py-3.5 text-center">
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenDetail(r.peserta_id)}
+                                        className={`inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-90 ${
+                                          isDark
+                                            ? "border-white/10 text-slate-400 hover:border-white/20 hover:bg-white/5 hover:text-sky-400"
+                                            : "border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-[#004F9F]"
+                                        }`}
+                                        title="Lihat Detail Transkrip Nilai"
+                                      >
+                                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200 hover:scale-110" />
+                                      </button>
                                     </div>
-                                  </div>
-                                </td>
+                                  </td>
+                                </tr>
 
-                                {/* 3. 4 Pilar Mini (Desktop) */}
-                                <td className="hidden lg:table-cell px-3 sm:px-4 py-3.5 text-center">
-                                  <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/5 shadow-xs transition-all duration-300 hover:shadow-md hover:border-slate-300 dark:hover:border-white/10">
-                                    <span
-                                      className="px-1.5 py-0.5 rounded-lg text-[9.5px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 transition-all duration-200 hover:scale-110 hover:-translate-y-0.5 hover:bg-blue-500/20 hover:shadow-xs cursor-pointer"
-                                      title={`1. Profesional: ${r.nilai_profesional != null ? Number(r.nilai_profesional).toFixed(1) : 'Belum dinilai'}`}
+                                {/* Mobile Collapsible Accordion Row */}
+                                <tr className="table-row sm:hidden">
+                                  <td colSpan={3} className="p-0">
+                                    <div
+                                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                                        isExpanded
+                                          ? "max-h-[500px] opacity-100 py-3 px-3.5 border-b border-dashed border-slate-200 dark:border-white/5 bg-slate-50/70 dark:bg-white/[0.02]"
+                                          : "max-h-0 opacity-0 p-0 border-none"
+                                      }`}
                                     >
-                                      Prof: {r.nilai_profesional != null ? Math.round(r.nilai_profesional) : "-"}
-                                    </span>
-                                    <span
-                                      className="px-1.5 py-0.5 rounded-lg text-[9.5px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 transition-all duration-200 hover:scale-110 hover:-translate-y-0.5 hover:bg-emerald-500/20 hover:shadow-xs cursor-pointer"
-                                      title={`2. Personal: ${r.nilai_personal != null ? Number(r.nilai_personal).toFixed(1) : 'Belum dinilai'}`}
-                                    >
-                                      Pers: {r.nilai_personal != null ? Math.round(r.nilai_personal) : "-"}
-                                    </span>
-                                    <span
-                                      className="px-1.5 py-0.5 rounded-lg text-[9.5px] font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 transition-all duration-200 hover:scale-110 hover:-translate-y-0.5 hover:bg-amber-500/20 hover:shadow-xs cursor-pointer"
-                                      title={`3. Sosial: ${r.nilai_sosial != null ? Number(r.nilai_sosial).toFixed(1) : 'Belum dinilai'}`}
-                                    >
-                                      Sos: {r.nilai_sosial != null ? Math.round(r.nilai_sosial) : "-"}
-                                    </span>
-                                    <span
-                                      className="px-1.5 py-0.5 rounded-lg text-[9.5px] font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 transition-all duration-200 hover:scale-110 hover:-translate-y-0.5 hover:bg-purple-500/20 hover:shadow-xs cursor-pointer"
-                                      title={`4. Administratif: ${r.nilai_administratif != null ? Number(r.nilai_administratif).toFixed(1) : 'Otomatis'}`}
-                                    >
-                                      Adm: {r.nilai_administratif != null ? Math.round(r.nilai_administratif) : "-"}
-                                    </span>
-                                  </div>
-                                </td>
+                                      <div className="space-y-2 text-[10.5px]">
+                                        {/* 1. Institusi / Kampus */}
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="text-slate-400 flex items-center gap-1 font-semibold">
+                                            <GraduationCap className="w-3 h-3 text-slate-400 shrink-0" /> Institusi:
+                                          </span>
+                                          <span className={`font-bold truncate max-w-[200px] ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+                                            {r.institusi || r.email || "-"}
+                                          </span>
+                                        </div>
 
-                                {/* 4. Nilai Akhir */}
-                                <td className="px-3 sm:px-5 py-3.5 text-center">
-                                  {r.nilai_akhir_angka != null ? (
-                                    <span className="text-xs sm:text-sm font-black tabular-nums text-slate-900 dark:text-white">
-                                      {Number(r.nilai_akhir_angka).toFixed(2)}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-400 text-xs font-normal">-</span>
-                                  )}
-                                </td>
+                                        {/* 2. Bidang & Mentor */}
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="text-slate-400 flex items-center gap-1 font-semibold">
+                                            <Building2 className="w-3 h-3 text-slate-400 shrink-0" /> Bidang:
+                                          </span>
+                                          {r.bidang ? (
+                                            <span
+                                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9.5px] font-black ${bidangColor.bg} ${bidangColor.text}`}
+                                              style={isDark ? bidangColor.darkStyle : bidangColor.style}
+                                            >
+                                              {r.bidang}
+                                            </span>
+                                          ) : (
+                                            <span className="text-slate-400">-</span>
+                                          )}
+                                        </div>
 
-                                {/* 5. Indeks */}
-                                <td className="hidden sm:table-cell px-3 sm:px-5 py-3.5 text-center">
-                                  {r.indeks_nilai_akhir ? (
-                                    <span className="inline-flex items-center justify-center font-black px-2.5 py-0.5 rounded-md text-xs bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 shadow-xs">
-                                      {r.indeks_nilai_akhir}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-400 text-xs">-</span>
-                                  )}
-                                </td>
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="text-slate-400 flex items-center gap-1 font-semibold">
+                                            <UserCog className="w-3 h-3 text-slate-400 shrink-0" /> Mentor:
+                                          </span>
+                                          <span className={`font-bold truncate max-w-[180px] ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+                                            {r.mentor_nama || "Belum Ditugaskan"}
+                                          </span>
+                                        </div>
 
-                                {/* 6. Status Penilaian */}
-                                <td className="px-2 sm:px-4 py-3.5">
-                                  {isFinal ? (
-                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9.5px] sm:text-[10.5px] font-bold whitespace-nowrap ${
-                                      isDark
-                                        ? "bg-emerald-950/50 border-emerald-800/50 text-emerald-400"
-                                        : "bg-emerald-50 border-emerald-100 text-emerald-600"
-                                    }`}>
-                                      <CheckCircle2 className="w-3 h-3" /> Diterbitkan
-                                    </span>
-                                  ) : isDraf ? (
-                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9.5px] sm:text-[10.5px] font-bold whitespace-nowrap ${
-                                      isDark
-                                        ? "bg-amber-950/50 border-amber-800/50 text-amber-400"
-                                        : "bg-amber-50 border-amber-100 text-amber-600"
-                                    }`}>
-                                      <Clock className="w-3 h-3" /> Draf
-                                    </span>
-                                  ) : (
-                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9.5px] sm:text-[10.5px] font-bold whitespace-nowrap ${
-                                      isDark
-                                        ? "bg-white/5 border-white/10 text-slate-400"
-                                        : "bg-slate-50 border-slate-200 text-slate-500"
-                                    }`}>
-                                      Belum Dinilai
-                                    </span>
-                                  )}
-                                </td>
+                                        {/* 3. Nilai 4 Pilar */}
+                                        <div className="pt-1.5 border-t border-slate-200/60 dark:border-white/5">
+                                          <span className="text-slate-400 flex items-center gap-1 font-semibold mb-1">
+                                            Nilai 4 Kompetensi:
+                                          </span>
+                                          <div className="grid grid-cols-4 gap-1 text-center">
+                                            <div className="p-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400">
+                                              <p className="text-[7.5px] font-bold uppercase truncate">Prof 35%</p>
+                                              <p className="text-[10.5px] font-black">{r.nilai_profesional != null ? Number(r.nilai_profesional).toFixed(1) : "-"}</p>
+                                            </div>
+                                            <div className="p-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                                              <p className="text-[7.5px] font-bold uppercase truncate">Pers 25%</p>
+                                              <p className="text-[10.5px] font-black">{r.nilai_personal != null ? Number(r.nilai_personal).toFixed(1) : "-"}</p>
+                                            </div>
+                                            <div className="p-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
+                                              <p className="text-[7.5px] font-bold uppercase truncate">Sos 20%</p>
+                                              <p className="text-[10.5px] font-black">{r.nilai_sosial != null ? Number(r.nilai_sosial).toFixed(1) : "-"}</p>
+                                            </div>
+                                            <div className="p-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400">
+                                              <p className="text-[7.5px] font-bold uppercase truncate">Adm 20%</p>
+                                              <p className="text-[10.5px] font-black">{r.nilai_administratif != null ? Number(r.nilai_administratif).toFixed(1) : "-"}</p>
+                                            </div>
+                                          </div>
+                                        </div>
 
-                                {/* 7. Aksi */}
-                                <td className="px-2 sm:px-4 py-3.5 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenDetail(r.peserta_id)}
-                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-90 ${
-                                      isDark
-                                        ? "border-white/10 text-slate-400 hover:border-white/20 hover:bg-white/5 hover:text-sky-400"
-                                        : "border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-[#004F9F]"
-                                    }`}
-                                    title="Lihat Detail Transkrip Nilai"
-                                  >
-                                    <Eye className="w-4 h-4 transition-transform duration-200 hover:scale-110" />
-                                  </button>
-                                </td>
-                              </tr>
+                                        {/* 4. Nilai Akhir & Indeks Mutu */}
+                                        <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-200/60 dark:border-white/5">
+                                          <span className="text-slate-400 font-semibold">Nilai Akhir &amp; Indeks:</span>
+                                          <div className="flex items-center gap-1.5">
+                                            <span className={`text-xs font-black tabular-nums ${isDark ? "text-white" : "text-[#0B1442]"}`}>
+                                              {r.nilai_akhir_angka != null ? Number(r.nilai_akhir_angka).toFixed(2) : "-"}
+                                            </span>
+                                            {r.indeks_nilai_akhir && (
+                                              <span className="inline-flex items-center justify-center font-black px-1.5 py-0.5 rounded text-[9.5px] bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                                                {r.indeks_nilai_akhir}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              </Fragment>
                             );
                           })
                         )}
