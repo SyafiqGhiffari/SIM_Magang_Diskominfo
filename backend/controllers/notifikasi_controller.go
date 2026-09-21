@@ -135,3 +135,50 @@ func HapusSemuaNotifikasi(c *gin.Context) {
 
 	utils.SuccessResponse(c, http.StatusOK, "Semua notifikasi berhasil dihapus", nil)
 }
+
+// POST /api/manajemen/notifikasi/test
+// Endpoint untuk mengirim notifikasi uji coba ke akun sendiri
+func KirimNotifikasiTest(c *gin.Context) {
+	role, userID := filterNotifikasi(c)
+
+	var input struct {
+		Tipe      string `json:"tipe"`
+		Judul     string `json:"judul"`
+		Pesan     string `json:"pesan"`
+		UrlTujuan string `json:"url_tujuan"`
+	}
+	_ = c.ShouldBindJSON(&input)
+
+	if input.Tipe == "" {
+		input.Tipe = "sistem"
+	}
+	if input.Judul == "" {
+		input.Judul = "Uji Coba Lonceng Notifikasi Web"
+	}
+	if input.Pesan == "" {
+		input.Pesan = "Preferensi notifikasi Anda berhasil terhubung dan aktif di web manajemen SIM Magang Diskominfo."
+	}
+	if input.UrlTujuan == "" {
+		input.UrlTujuan = "/peserta/akun"
+	}
+
+	uid := userID
+	notif := models.Notifikasi{
+		TargetRole:   role,
+		TargetUserID: &uid,
+		Tipe:         input.Tipe,
+		Prioritas:    "normal",
+		Judul:        input.Judul,
+		Pesan:        input.Pesan,
+		RefTabel:     "user_manajemens",
+		RefID:        &uid,
+		UrlTujuan:    input.UrlTujuan,
+	}
+
+	if err := config.DB.Create(&notif).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengirim notifikasi uji coba")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Notifikasi uji coba berhasil dikirim", notif)
+}

@@ -16,6 +16,7 @@ type UserPendaftaran struct {
 	LastActivityAt   *time.Time  `gorm:"index" json:"last_activity_at,omitempty"`
 	LastLoginAt      *time.Time  `json:"last_login_at,omitempty"`
 	LastLoginIP      string      `gorm:"type:varchar(45)" json:"last_login_ip,omitempty"`
+	PasswordChangedAt *time.Time  `json:"password_changed_at,omitempty"`
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 	

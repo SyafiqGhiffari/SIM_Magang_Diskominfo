@@ -297,7 +297,11 @@ func GetRekapPeserta(c *gin.Context) {
 	var rows []PresensiRow
 	config.DB.Table("presensis pr").
 		Joins("JOIN user_manajemens u ON u.id = pr.peserta_id").
-		Joins("LEFT JOIN pendaftaran_magangs p ON p.id = pr.pendaftaran_id").
+		Joins(`LEFT JOIN pendaftaran_magangs p ON p.id = COALESCE(pr.pendaftaran_id, (
+			SELECT p2.id FROM pendaftaran_magangs p2
+			WHERE p2.akun_peserta_id = pr.peserta_id
+			ORDER BY p2.id DESC LIMIT 1
+		))`).
 		Joins("LEFT JOIN user_manajemens m ON m.id = p.mentor_id").
 		Select(selectPresensiRow).
 		Where("pr.peserta_id = ? AND pr.tanggal >= ? AND pr.tanggal <= ?", pesertaID, dari, sampai).

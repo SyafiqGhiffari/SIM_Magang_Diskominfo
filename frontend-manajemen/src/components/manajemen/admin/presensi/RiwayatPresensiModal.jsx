@@ -271,7 +271,7 @@ const RiwayatPresensiModal = ({ peserta, onClose, onSelectDetail, isDark }) => {
                       {/* Detail Button */}
                       <button
                         type="button"
-                        onClick={() => onSelectDetail(item)}
+                        onClick={() => onSelectDetail({ ...peserta, ...item })}
                         className={`group/btn inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-bold shadow-xs transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ml-auto sm:ml-1 ${
                           isDark
                             ? "border-white/10 bg-white/5 text-slate-300 hover:border-[#00A5EC]/50 hover:bg-[#00A5EC]/15 hover:text-[#00A5EC]"

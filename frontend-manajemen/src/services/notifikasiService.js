@@ -17,3 +17,6 @@ export const hapusNotifikasi = (id) =>
 
 export const hapusSemuaNotifikasi = () =>
   api.delete("/manajemen/notifikasi/semua/hapus");
+
+export const kirimNotifikasiTest = (data = {}) =>
+  api.post("/manajemen/notifikasi/test", data);

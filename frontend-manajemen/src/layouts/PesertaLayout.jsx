@@ -1,8 +1,21 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { CalendarCheck, Fingerprint, FileText, GraduationCap } from "lucide-react";
+import {
+  CalendarDays,
+  Fingerprint,
+  HeartPulse,
+  History,
+  Library,
+  BookOpen,
+  ClipboardList,
+  GraduationCap,
+  FileText,
+  Award,
+  Medal,
+} from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import AlumniBanner from "../components/manajemen/peserta/AlumniBanner";
+import { useManajemenTheme } from "../context/useManajemenTheme";
 import { logoutAdmin, getMe } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
 import { clearAuthData, updateAuthUser, isMagangSelesai, getUser } from "../utils/authStorage";
@@ -13,7 +26,7 @@ const dashboardIcon = (
   </svg>
 );
 
-// Label menu menyesuaikan status magang: alumni hanya bisa melihat riwayat.
+// Label & struktur menu navigasi peserta dengan dropdown dan ikon unik
 const buildNavItems = (readOnly) => [
   {
     key: "dashboard",
@@ -23,38 +36,91 @@ const buildNavItems = (readOnly) => [
   },
   {
     type: "dropdown",
-    key: "presensi",
-    label: readOnly ? "Riwayat Magang" : "Presensi Saya",
-    icon: <CalendarCheck className="w-[18px] h-[18px] shrink-0" />,
+    key: "presensi-group",
+    label: readOnly ? "Presensi & Aktivitas (Alumni)" : "Presensi & Aktivitas",
+    icon: <CalendarDays className="w-[18px] h-[18px] shrink-0" />,
     children: [
       {
-        key: "presensi-absen",
+        key: "presensi",
         to: "/peserta/presensi",
-        label: readOnly ? "Riwayat Presensi" : "Absen & Riwayat",
+        label: "Presensi & Logbook",
         icon: <Fingerprint className="w-4 h-4 shrink-0" />,
       },
       {
-        key: "presensi-izin",
+        key: "izin",
         to: "/peserta/pengajuan-izin",
-        label: readOnly ? "Riwayat Izin" : "Pengajuan Izin",
-        icon: <FileText className="w-4 h-4 shrink-0" />,
+        label: "Pengajuan Izin",
+        icon: <HeartPulse className="w-4 h-4 shrink-0" />,
+      },
+      {
+        key: "riwayat-aktivitas",
+        to: "/peserta/riwayat-aktivitas",
+        label: "Riwayat Aktivitas",
+        icon: <History className="w-4 h-4 shrink-0" />,
       },
     ],
   },
   {
+    type: "dropdown",
+    key: "pembelajaran",
+    label: "Pembelajaran",
+    icon: <Library className="w-[18px] h-[18px] shrink-0" />,
+    children: [
+      {
+        key: "materi",
+        to: "/peserta/pembelajaran/materi",
+        label: "Materi Pembelajaran",
+        icon: <BookOpen className="w-4 h-4 shrink-0" />,
+      },
+      {
+        key: "tugas",
+        to: "/peserta/pembelajaran/tugas",
+        label: "Tugas Magang",
+        icon: <ClipboardList className="w-4 h-4 shrink-0" />,
+      },
+    ],
+  },
+  {
+    type: "dropdown",
     key: "penilaian",
-    to: "/peserta/penilaian",
-    label: readOnly ? "Transkrip Nilai (Alumni)" : "Transkrip Nilai",
+    label: "Penilaian Akhir",
     icon: <GraduationCap className="w-[18px] h-[18px] shrink-0" />,
+    children: [
+      {
+        key: "laporan",
+        to: "/peserta/penilaian/laporan",
+        label: "Laporan Akhir",
+        icon: <FileText className="w-4 h-4 shrink-0" />,
+      },
+      {
+        key: "rapor",
+        to: "/peserta/penilaian/rapor",
+        label: "Rapor Nilai",
+        icon: <Award className="w-4 h-4 shrink-0" />,
+      },
+      {
+        key: "sertifikat",
+        to: "/peserta/penilaian/sertifikat",
+        label: "Sertifikat Magang",
+        icon: <Medal className="w-4 h-4 shrink-0" />,
+      },
+    ],
   },
 ];
 
 const tabTitles = {
-  dashboard: { title: "Dashboard", desc: "Ringkasan aktivitas magang Anda" },
+  dashboard: { title: "Dashboard", desc: "Ringkasan aktivitas dan progres magang Anda" },
   akun: { title: "Kelola Akun", desc: "Atur informasi dan keamanan akun Anda" },
-  "presensi-absen": { title: "Presensi Saya", desc: "Lakukan absen masuk/pulang dan pantau riwayat kehadiran" },
-  "presensi-izin": { title: "Pengajuan Izin", desc: "Ajukan izin atau sakit untuk diverifikasi mentor" },
-  penilaian: { title: "Transkrip Nilai Magang", desc: "Lihat hasil evaluasi kinerja magang Anda dan unduh transkrip nilai resmi" },
+  presensi: { title: "Presensi & Logbook", desc: "Presensi harian datang & kepulangan dinas serta pengisian jurnal aktivitas hari ini" },
+  izin: { title: "Pengajuan Izin & Sakit", desc: "Kelola permohonan izin atau sakit yang diverifikasi mentor" },
+  "riwayat-aktivitas": { title: "Riwayat Aktivitas & Presensi", desc: "Rekapitulasi lengkap riwayat presensi harian, permohonan izin, logbook, dan ekspor dokumen" },
+  riwayat: { title: "Riwayat Aktivitas & Presensi", desc: "Rekapitulasi lengkap riwayat presensi harian, permohonan izin, logbook, dan ekspor dokumen" },
+  logbook: { title: "Riwayat Aktivitas & Presensi", desc: "Rekapitulasi lengkap riwayat presensi harian, permohonan izin, logbook, dan ekspor dokumen" },
+  materi: { title: "Materi Pembelajaran", desc: "Modul teknis, SOP dinas, dan referensi kerja magang Diskominfo" },
+  tugas: { title: "Tugas & Penugasan Magang", desc: "Penugasan terstruktur dari mentor untuk meningkatkan kompetensi" },
+  laporan: { title: "Laporan Akhir Magang", desc: "Unggah naskah laporan akhir praktek kerja dan luaran proyek magang" },
+  rapor: { title: "Rapor Transkrip Nilai", desc: "Evaluasi kinerja 4 pilar kompetensi dan transkrip resmi bertanda tangan" },
+  sertifikat: { title: "Sertifikat Kelulusan Magang", desc: "Dokumen sertifikat resmi Diskominfo dengan nomor registrasi sah" },
 };
 
 const PesertaLayout = ({ children, searchValue = "", onSearchChange }) => {
@@ -62,17 +128,7 @@ const PesertaLayout = ({ children, searchValue = "", onSearchChange }) => {
   const location = useLocation();
   const [profile, setProfile] = useState(() => getUser() || null);
   const [readOnly, setReadOnly] = useState(() => isMagangSelesai());
-  const [isDark, setIsDark] = useState(() => localStorage.getItem("admin_theme") === "dark");
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("admin_theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("admin_theme", "light");
-    }
-  }, [isDark]);
+  const { isDark, setIsDark } = useManajemenTheme();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -111,12 +167,18 @@ const PesertaLayout = ({ children, searchValue = "", onSearchChange }) => {
     }
   };
 
+  const pathname = location.pathname;
   const activeKey =
-    location.pathname === "/peserta" ? "dashboard" :
-    location.pathname.startsWith("/peserta/akun") ? "akun" :
-    location.pathname.startsWith("/peserta/pengajuan-izin") ? "presensi-izin" :
-    location.pathname.startsWith("/peserta/presensi") ? "presensi-absen" :
-    location.pathname.startsWith("/peserta/penilaian") ? "penilaian" : "dashboard";
+    pathname === "/peserta" ? "dashboard" :
+    pathname.startsWith("/peserta/akun") ? "akun" :
+    pathname.startsWith("/peserta/presensi") ? "presensi" :
+    pathname.startsWith("/peserta/riwayat-aktivitas") || pathname.startsWith("/peserta/riwayat") || pathname.startsWith("/peserta/logbook") ? "riwayat-aktivitas" :
+    pathname.startsWith("/peserta/pengajuan-izin") || pathname.startsWith("/peserta/izin") ? "izin" :
+    pathname.startsWith("/peserta/pembelajaran/materi") || pathname.startsWith("/peserta/materi") ? "materi" :
+    pathname.startsWith("/peserta/pembelajaran/tugas") || pathname.startsWith("/peserta/tugas") ? "tugas" :
+    pathname.startsWith("/peserta/penilaian/laporan") || pathname.startsWith("/peserta/laporan-akhir") ? "laporan" :
+    pathname.startsWith("/peserta/penilaian/rapor") || pathname === "/peserta/penilaian" ? "rapor" :
+    pathname.startsWith("/peserta/penilaian/sertifikat") || pathname.startsWith("/peserta/sertifikat") ? "sertifikat" : "dashboard";
 
   const currentTab = tabTitles[activeKey] || tabTitles.dashboard;
 

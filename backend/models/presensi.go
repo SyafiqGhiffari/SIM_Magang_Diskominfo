@@ -42,6 +42,14 @@ type Presensi struct {
 	FotoMasuk  string `gorm:"type:varchar(255)" json:"foto_masuk"`
 	FotoPulang string `gorm:"type:varchar(255)" json:"foto_pulang"`
 
+	// Mode Kehadiran: "wfo" (di kantor), "wfh" (remote/mandiri), "dinas_luar" (lapangan)
+	ModeKehadiran string `gorm:"type:enum('wfo','wfh','dinas_luar');default:'wfo'" json:"mode_kehadiran"`
+
+	// Titik koordinat GPS & Jarak fisik terhadap kantor Diskominfo saat presensi
+	Latitude   *string `gorm:"type:varchar(30)" json:"latitude"`
+	Longitude  *string `gorm:"type:varchar(30)" json:"longitude"`
+	JarakMeter *int    `json:"jarak_meter"`
+
 	// Sumber pencatatan: "peserta" (absen sendiri), "mentor" (koreksi),
 	// "sistem" (alfa otomatis / hasil persetujuan izin)
 	Sumber        string         `gorm:"type:enum('peserta','mentor','admin','sistem');default:'peserta'" json:"sumber"`

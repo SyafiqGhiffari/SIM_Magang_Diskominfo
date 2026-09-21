@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Search, X, Menu, UserPlus, FileEdit, MessageSquare,
   UserCog, Award, Clock, CheckCheck, Bell, FileSignature, Trash2, BellOff,
+  BookOpen, CheckCircle2, FileText, ShieldAlert, LogIn, LogOut,
 } from "lucide-react";
 import {
   getNotifikasi, bacaNotifikasi, bacaSemuaNotifikasi,
@@ -16,8 +17,23 @@ const NOTIF_META = {
   akun_belum_dibuat:       { icon: UserCog,         color: "text-violet-500",  bg: "bg-violet-500/10" },
   mentor_belum_ditugaskan: { icon: UserCog,         color: "text-rose-500",    bg: "bg-rose-500/10" },
   sertifikat_pending:      { icon: Award,           color: "text-yellow-500",  bg: "bg-yellow-500/10" },
+  sertifikat_terbit:       { icon: Award,           color: "text-emerald-500", bg: "bg-emerald-500/10" },
   pendaftaran_tertunda:    { icon: Clock,           color: "text-orange-500",  bg: "bg-orange-500/10" },
   surat_belum_terbit:      { icon: FileSignature,   color: "text-amber-600",   bg: "bg-amber-500/10" },
+  presensi_masuk:          { icon: LogIn,           color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  presensi_pulang:         { icon: LogOut,          color: "text-amber-500",   bg: "bg-amber-500/10" },
+  izin_status:             { icon: CheckCircle2,    color: "text-blue-500",    bg: "bg-blue-500/10" },
+  logbook_reminder:        { icon: Clock,           color: "text-amber-500",   bg: "bg-amber-500/10" },
+  logbook_verifikasi:      { icon: FileSignature,   color: "text-indigo-500",  bg: "bg-indigo-500/10" },
+  logbook_revisi:          { icon: FileEdit,        color: "text-amber-500",   bg: "bg-amber-500/10" },
+  tugas_baru:              { icon: BookOpen,        color: "text-purple-500",  bg: "bg-purple-500/10" },
+  tugas_dikumpulkan:       { icon: CheckCircle2,    color: "text-blue-500",    bg: "bg-blue-500/10" },
+  tugas_nilai:             { icon: Award,           color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  tugas_deadline:          { icon: Clock,           color: "text-rose-500",    bg: "bg-rose-500/10" },
+  laporan_akhir:           { icon: FileText,        color: "text-blue-500",    bg: "bg-blue-500/10" },
+  rapor_nilai:             { icon: Award,           color: "text-amber-500",   bg: "bg-amber-500/10" },
+  keamanan_login:          { icon: ShieldAlert,     color: "text-amber-500",   bg: "bg-amber-500/10" },
+  keamanan_password:       { icon: ShieldAlert,     color: "text-rose-500",    bg: "bg-rose-500/10" },
   sistem:                  { icon: Bell,            color: "text-slate-400",   bg: "bg-slate-500/10" },
 };
 
@@ -43,6 +59,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
   const [notifList, setNotifList] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [isWebPushDisabled, setIsWebPushDisabled] = useState(false);
   const navigate = useNavigate();
 
   const handleSearchChange = (val) => {
@@ -50,22 +67,60 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
     onSearchChange?.(val);
   };
 
-  // Loader murni: TIDAK memanggil setState secara sinkron — semua setState
-  // terjadi setelah await, sehingga aman dipakai di dalam callback timer.
+  // Loader murni: memuat notifikasi & memfilter sesuai preferensi user
   const muatNotifikasi = useCallback(async () => {
     try {
-      const res = await getNotifikasi({ limit: 15 });
+      const res = await getNotifikasi({ limit: 20 });
       const data = res.data?.data ?? {};
-      setNotifList(data.items ?? []);
-      setUnreadCount(data.unread_count ?? 0);
+      const rawList = data.items ?? [];
+
+      // Baca preferensi notifikasi peserta/user dari localStorage
+      let userSettings = null;
+      try {
+        const storedUser = sessionStorage.getItem("user") || localStorage.getItem("user");
+        const user = storedUser ? JSON.parse(storedUser) : null;
+        const storageKey = user?.id ? `sim_peserta_notif_settings_${user.id}` : "sim_peserta_notif_settings";
+        const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_peserta_notif_settings");
+        if (saved) userSettings = JSON.parse(saved);
+      } catch {
+        // ignore
+      }
+
+      // Filter notifikasi sesuai preferensi yang dipilih pengguna
+      let filtered = rawList;
+      if (userSettings) {
+        setIsWebPushDisabled(false);
+        filtered = rawList.filter((item) => {
+          const tipe = (item.tipe || "").toLowerCase();
+          if (tipe === "chat_baru" && userSettings.chatMentor === false) return false;
+          if (tipe === "presensi_masuk" && userSettings.checkinReminder === false) return false;
+          if (tipe === "presensi_pulang" && userSettings.checkoutReminder === false) return false;
+          if (tipe === "izin_status" && userSettings.izinStatus === false) return false;
+          if (tipe === "logbook_reminder" && userSettings.logbookReminder === false) return false;
+          if ((tipe === "revisi_dokumen" || tipe === "logbook_revisi" || tipe === "logbook_verifikasi") && userSettings.logbookVerification === false) return false;
+          if (tipe === "tugas_baru" && userSettings.tugasBaru === false) return false;
+          if ((tipe === "tugas_nilai" || tipe === "tugas_feedback") && userSettings.tugasFeedback === false) return false;
+          if (tipe === "tugas_deadline" && userSettings.tugasDeadline === false) return false;
+          if (tipe === "laporan_akhir" && userSettings.laporanAkhirStatus === false) return false;
+          if (tipe === "rapor_nilai" && userSettings.raporNilai === false) return false;
+          if ((tipe === "sertifikat_pending" || tipe === "sertifikat_terbit") && userSettings.sertifikatTerbit === false) return false;
+          if (tipe === "keamanan_login" && userSettings.loginSecurityAlert === false) return false;
+          if (tipe === "keamanan_password" && userSettings.passwordEmailChangeAlert === false) return false;
+          return true;
+        });
+      } else {
+        setIsWebPushDisabled(false);
+      }
+
+      setNotifList(filtered);
+      const unread = filtered.filter((x) => !x.dibaca_pada).length;
+      setUnreadCount(unread);
     } catch {
       // diamkan: notifikasi tidak boleh mengganggu alur utama
     }
   }, []);
 
-  // Polling tiap 45 detik.
-  // Muatan pertama dijadwalkan lewat setTimeout(0) supaya tidak ada setState
-  // sinkron di badan efek (mencegah cascading render).
+  // Polling tiap 45 detik + dengarkan event perubahan preferensi notifikasi
   useEffect(() => {
     const timerAwal = setTimeout(() => {
       muatNotifikasi();
@@ -75,11 +130,20 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
       muatNotifikasi();
     }, 45000);
 
+    const handleSettingsChanged = () => {
+      muatNotifikasi();
+    };
+    window.addEventListener("sim_notif_settings_changed", handleSettingsChanged);
+    window.addEventListener("storage", handleSettingsChanged);
+
     return () => {
       clearTimeout(timerAwal);
       clearInterval(interval);
+      window.removeEventListener("sim_notif_settings_changed", handleSettingsChanged);
+      window.removeEventListener("storage", handleSettingsChanged);
     };
   }, [muatNotifikasi]);
+
 
   // Buka/tutup dropdown + segarkan data saat dibuka.
   // Ini event handler, bukan efek, jadi setState di sini memang tempatnya.
@@ -327,6 +391,22 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
               {notifLoading && notifList.length === 0 ? (
                 <div className="py-10 text-center">
                   <p className={`text-xs font-sans ${isDark ? "text-slate-500" : "text-slate-400"}`}>Memuat notifikasi…</p>
+                </div>
+              ) : isWebPushDisabled ? (
+                <div className="py-8 px-4 text-center">
+                  <div className={`mx-auto mb-2.5 flex h-12 w-12 items-center justify-center rounded-2xl ${isDark ? "bg-amber-500/10 text-amber-400" : "bg-amber-50 text-amber-600"}`}>
+                    <BellOff className="w-6 h-6" />
+                  </div>
+                  <p className={`text-xs font-bold ${isDark ? "text-slate-200" : "text-slate-700"}`}>Lonceng Web Dinonaktifkan</p>
+                  <p className={`mt-1 text-[10.5px] leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    Anda menonaktifkan saluran Web Portal pada pengaturan notifikasi akun.
+                  </p>
+                  <button
+                    onClick={() => { setNotifOpen(false); navigate("/peserta/akun"); }}
+                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10.5px] font-bold bg-blue-50 dark:bg-blue-950/40 text-[#004F9F] dark:text-sky-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
+                  >
+                    Buka Pengaturan Notifikasi
+                  </button>
                 </div>
               ) : notifList.length === 0 ? (
                 <div className="py-10 text-center">

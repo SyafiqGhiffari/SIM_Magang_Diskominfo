@@ -9,6 +9,7 @@ type UserManajemen struct {
 	Password string `gorm:"type:varchar(255);not null" json:"-"`
 
 	NoHp               string        `gorm:"type:varchar(20)" json:"no_hp"`
+	Nip                string        `gorm:"type:varchar(50)" json:"nip"`
 	Jabatan            string        `gorm:"type:varchar(100)" json:"jabatan"`
 	KapasitasBimbingan int           `gorm:"default:0" json:"kapasitas_bimbingan"`
 	FotoProfil         string        `gorm:"type:varchar(255)" json:"foto_profil"`
@@ -36,6 +37,15 @@ type UserManajemen struct {
 	LastActivityAt   *time.Time `gorm:"index" json:"last_activity_at,omitempty"`
 	LastLoginAt      *time.Time `json:"last_login_at,omitempty"`
 	LastLoginIP      string     `gorm:"type:varchar(45)" json:"last_login_ip,omitempty"`
+
+	// Field untuk menyimpan email baru sementara saat proses ganti email
+	EmailBaru         string     `gorm:"type:varchar(100)" json:"-"`
+	OtpEmail          string     `gorm:"type:varchar(6)" json:"-"`
+	OtpEmailExpiredAt *time.Time `json:"-"`
+	OtpRequestedAt    *time.Time `json:"-"`
+	OtpAttemptCount   int        `gorm:"default:0" json:"-"`
+
+	PasswordChangedAt *time.Time `json:"password_changed_at,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

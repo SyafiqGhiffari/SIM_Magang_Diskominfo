@@ -85,22 +85,22 @@ func RequestForgotPassword(c *gin.Context) {
 
 type ResetPasswordInput struct {
 	Token           string `json:"token" binding:"required"`
-	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	NewPassword     string `json:"new_password" binding:"required,min=8"`
 	ConfirmPassword string `json:"confirm_password" binding:"required"`
 }
 
 func ResetPassword(c *gin.Context) {
 	var input ResetPasswordInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Password baru wajib diisi minimal 6 karakter")
+		utils.ErrorResponse(c, http.StatusBadRequest, "Kata sandi baru wajib diisi minimal 8 karakter")
 		return
 	}
-	if !isPasswordValid(input.NewPassword) {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Password harus mengandung minimal satu huruf dan satu angka")
+	if err := utils.ValidatePasswordStrength(input.NewPassword); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	if input.NewPassword != input.ConfirmPassword {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Konfirmasi password tidak cocok")
+		utils.ErrorResponse(c, http.StatusBadRequest, "Konfirmasi kata sandi tidak cocok")
 		return
 	}
 

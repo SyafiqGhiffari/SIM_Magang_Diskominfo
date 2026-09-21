@@ -28,6 +28,9 @@ type PresensiRow struct {
 	Institusi      string  `json:"institusi"`
 	Bidang         string  `json:"bidang"`
 	Kategori       string  `json:"kategori_pendaftar"`
+	Jurusan        string  `json:"jurusan"`
+	ProgramStudi   string  `json:"program_studi"`
+	JurusanSekolah string  `json:"jurusan_sekolah"`
 	Tanggal        string  `json:"tanggal"`
 	JamMasuk       *string `json:"jam_masuk"`
 	JamPulang      *string `json:"jam_pulang"`
@@ -38,6 +41,10 @@ type PresensiRow struct {
 	Keterangan     string  `json:"keterangan"`
 	FotoMasuk      string  `json:"foto_masuk"`
 	FotoPulang     string  `json:"foto_pulang"`
+	ModeKehadiran  string  `json:"mode_kehadiran"`
+	Latitude       *string `json:"latitude"`
+	Longitude      *string `json:"longitude"`
+	JarakMeter     *int    `json:"jarak_meter"`
 	Sumber         string  `json:"sumber"`
 	MentorNama     string  `json:"mentor_nama"`
 	// TotalRiwayat hanya diisi saat mode=terbaru, dipakai untuk badge
@@ -48,13 +55,17 @@ type PresensiRow struct {
 const selectPresensiRow = `
 	pr.id, pr.peserta_id, pr.tanggal, pr.jam_masuk, pr.jam_pulang,
 	pr.status, pr.menit_terlambat, pr.lupa_presensi, pr.dikunci,
-	pr.keterangan, pr.foto_masuk, pr.foto_pulang, pr.sumber,
+	pr.keterangan, pr.foto_masuk, pr.foto_pulang, pr.mode_kehadiran,
+	pr.latitude, pr.longitude, pr.jarak_meter, pr.sumber,
 	u.nama AS nama,
 	COALESCE(u.foto_profil, '') AS foto_profil,
 	COALESCE(p.file_pas_foto, '') AS foto_peserta,
 	COALESCE(NULLIF(p.asal_kampus, ''), p.asal_sekolah, '') AS institusi,
 	COALESCE(p.posisi_bidang, '') AS bidang,
 	COALESCE(p.kategori_pendaftar, '') AS kategori,
+	COALESCE(NULLIF(p.program_studi, ''), p.jurusan_sekolah, '') AS jurusan,
+	COALESCE(p.program_studi, '') AS program_studi,
+	COALESCE(p.jurusan_sekolah, '') AS jurusan_sekolah,
 	COALESCE(m.nama, '') AS mentor_nama
 `
 
@@ -71,10 +82,14 @@ const selectPresensiRow = `
 		return buildPresensiQuery(c, false)
 	}
 
-	func buildPresensiQuery(c *gin.Context, pakaiMode bool) *gorm.DB {
-		q := config.DB.Table("presensis pr").
+func buildPresensiQuery(c *gin.Context, pakaiMode bool) *gorm.DB {
+	q := config.DB.Table("presensis pr").
 		Joins("JOIN user_manajemens u ON u.id = pr.peserta_id").
-		Joins("LEFT JOIN pendaftaran_magangs p ON p.id = pr.pendaftaran_id").
+		Joins(`LEFT JOIN pendaftaran_magangs p ON p.id = COALESCE(pr.pendaftaran_id, (
+			SELECT p2.id FROM pendaftaran_magangs p2
+			WHERE p2.akun_peserta_id = pr.peserta_id
+			ORDER BY p2.id DESC LIMIT 1
+		))`).
 		Joins("LEFT JOIN user_manajemens m ON m.id = p.mentor_id")
 
 	if s := strings.TrimSpace(c.Query("search")); s != "" {
@@ -235,7 +250,11 @@ func GetPresensi(c *gin.Context) {
 	var row PresensiRow
 	err := config.DB.Table("presensis pr").
 		Joins("JOIN user_manajemens u ON u.id = pr.peserta_id").
-		Joins("LEFT JOIN pendaftaran_magangs p ON p.id = pr.pendaftaran_id").
+		Joins(`LEFT JOIN pendaftaran_magangs p ON p.id = COALESCE(pr.pendaftaran_id, (
+			SELECT p2.id FROM pendaftaran_magangs p2
+			WHERE p2.akun_peserta_id = pr.peserta_id
+			ORDER BY p2.id DESC LIMIT 1
+		))`).
 		Joins("LEFT JOIN user_manajemens m ON m.id = p.mentor_id").
 		Select(selectPresensiRow).
 		Where("pr.id = ?", c.Param("id")).

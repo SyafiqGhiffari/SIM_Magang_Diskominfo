@@ -64,14 +64,14 @@ const Avatar = ({ m }) => {
       <img
         src={fotoUrl}
         alt={m.nama}
-        className="h-8.5 w-8.5 sm:h-13 sm:w-13 shrink-0 rounded-full object-cover border-[2px] sm:border-[3px] border-white shadow-lg ring-2 ring-slate-300 transition-transform duration-200 group-hover:scale-110"
+        className="h-8.5 w-8.5 sm:h-13 sm:w-13 shrink-0 rounded-xl sm:rounded-2xl object-cover border-[2px] sm:border-[3px] border-white shadow-lg ring-2 ring-slate-300 transition-transform duration-200 group-hover:scale-110"
       />
     );
   }
   return (
     <span
       style={{ background: avatarPalette[m.id % avatarPalette.length] }}
-      className="flex h-8.5 w-8.5 sm:h-13 sm:w-13 shrink-0 items-center justify-center rounded-full text-white text-[10px] sm:text-sm font-black border-[2px] sm:border-[3px] border-white shadow-lg ring-2 ring-slate-300 transition-transform duration-200 group-hover:scale-110"
+      className="flex h-8.5 w-8.5 sm:h-13 sm:w-13 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-white text-[10px] sm:text-sm font-black border-[2px] sm:border-[3px] border-white shadow-lg ring-2 ring-slate-300 transition-transform duration-200 group-hover:scale-110"
     >
       {getInitials(m.nama)}
     </span>
@@ -306,6 +306,7 @@ const MentorPage = () => {
         return (
           m.nama.toLowerCase().includes(s) ||
           m.email.toLowerCase().includes(s) ||
+          (m.nip || "").toLowerCase().includes(s) ||
           (m.jabatan || "").toLowerCase().includes(s)
         );
       };
@@ -347,6 +348,7 @@ const MentorPage = () => {
     }
     const rows = sorted.map((m) => ({
       "Nama Mentor": m.nama,
+      NIP: m.nip || "-",
       Email: m.email,
       "No. HP": m.no_hp || "-",
       Jabatan: m.jabatan || "-",
@@ -378,9 +380,10 @@ const MentorPage = () => {
       doc.setFontSize(9);
       doc.text(`Dicetak pada: ${new Date().toLocaleDateString("id-ID")}`, 14, 21);
 
-      const tableColumn = ["Nama", "Email", "No. HP", "Jabatan", "Bidang", "Bimbingan", "Status"];
+      const tableColumn = ["Nama", "NIP", "Email", "No. HP", "Jabatan", "Bidang", "Bimbingan", "Status"];
       const tableRows = rows.map((r) => [
         r["Nama Mentor"],
+        r["NIP"],
         r["Email"],
         r["No. HP"],
         r["Jabatan"],
@@ -767,12 +770,19 @@ const MentorPage = () => {
 
                                 {/* 2. Jabatan (Desktop Only) */}
                                 <td className="hidden sm:table-cell px-4 sm:px-6 py-3.5">
-                                  <span className={`inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold truncate ${
-                                    isDark ? "text-slate-300" : "text-slate-600"
-                                  }`}>
-                                    <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                    {m.jabatan || "-"}
-                                  </span>
+                                  <div className="flex flex-col">
+                                    <span className={`inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold truncate ${
+                                      isDark ? "text-slate-300" : "text-slate-600"
+                                    }`}>
+                                      <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                      {m.jabatan || "-"}
+                                    </span>
+                                    {m.nip && (
+                                      <span className="text-[10px] sm:text-[10.5px] font-mono font-medium text-[#00A5EC] mt-0.5 pl-4.5">
+                                        NIP: {m.nip}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
 
                                 {/* 3. Bidang (Desktop Only) */}
@@ -920,6 +930,18 @@ const MentorPage = () => {
                                           {m.jabatan || "-"}
                                         </span>
                                       </div>
+
+                                      {/* NIP */}
+                                      {m.nip && (
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                                            NIP
+                                          </span>
+                                          <span className="text-[10.5px] font-mono font-bold text-[#00A5EC]">
+                                            {m.nip}
+                                          </span>
+                                        </div>
+                                      )}
 
 
 

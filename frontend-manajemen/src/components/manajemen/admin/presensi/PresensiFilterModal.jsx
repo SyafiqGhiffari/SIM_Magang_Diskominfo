@@ -275,13 +275,13 @@ const PresensiFilterModal = ({
           <button
             type="button"
             onClick={onReset}
-            className={`inline-flex items-center gap-1.5 rounded-lg sm:rounded-xl border px-3 py-1.5 sm:px-4 sm:py-2.5 text-[10px] sm:text-xs font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ${
+            className={`group inline-flex items-center gap-1.5 rounded-lg sm:rounded-xl border px-3 py-1.5 sm:px-4 sm:py-2.5 text-[10px] sm:text-xs font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ${
               isDark
                 ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
             }`}
           >
-            <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform duration-500 group-hover:-rotate-180" />
             <span>Reset Filter</span>
           </button>
           <button
@@ -290,9 +290,9 @@ const PresensiFilterModal = ({
               onApply();
               onClose();
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#004F9F] px-4 py-1.5 sm:px-5 sm:py-2.5 text-[10px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:from-[#0f1d5e] hover:to-[#005bb8] hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+            className="group inline-flex items-center gap-1.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#004F9F] px-4 py-1.5 sm:px-5 sm:py-2.5 text-[10px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
           >
-            <FilterIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <FilterIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform duration-300 group-hover:scale-110" />
             <span>Terapkan Filter</span>
           </button>
         </div>

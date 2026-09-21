@@ -68,6 +68,27 @@ export const PRESENSI_SORT_OPTS = [
   { value: "terlambat_terbanyak", label: "Paling sering terlambat" },
 ];
 
+export const PESERTA_PRESENSI_SORT_OPTS = [
+  { value: "tanggal_baru", label: "Tanggal terbaru" },
+  { value: "tanggal_lama", label: "Tanggal terlama" },
+  { value: "jam_masuk_awal", label: "Jam masuk paling awal" },
+  { value: "jam_pulang_akhir", label: "Jam pulang paling akhir" },
+  { value: "status", label: "Status presensi" },
+  { value: "terlambat_terbanyak", label: "Paling sering terlambat" },
+];
+
+export const PESERTA_IZIN_SORT_OPTS = [
+  { value: "terbaru", label: "Terbaru" },
+  { value: "terlama", label: "Terlama" },
+  { value: "tgl_mulai_asc", label: "Tanggal Mulai (Awal)" },
+  { value: "tgl_mulai_desc", label: "Tanggal Mulai (Akhir)" },
+  { value: "jenis_izin", label: "Jenis: Izin Dahulu" },
+  { value: "jenis_sakit", label: "Jenis: Sakit Dahulu" },
+  { value: "status_menunggu", label: "Status: Menunggu" },
+  { value: "status_disetujui", label: "Status: Disetujui" },
+  { value: "status_ditolak", label: "Status: Ditolak" },
+];
+
 export const REKAP_SORT_OPTS = [
   { value: "kehadiran_terendah", label: "Kehadiran terendah" },
   { value: "kehadiran_tertinggi", label: "Kehadiran tertinggi" },

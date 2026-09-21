@@ -480,6 +480,9 @@ const KelolaAkunPage = () => {
           cropFileInputRef={cropFileInputRef}
           handleSimpanPerubahanFoto={handleSimpanPerubahanFoto}
           fotoModalLoading={fotoModalLoading}
+          handleHapusFoto={handleHapusFoto}
+          hasExistingFoto={Boolean(fotoPreview || profile?.foto_profil)}
+          fotoDeleteLoading={fotoDeleteLoading}
         />
 
         {/* CARD 2: INFORMASI AKUN */}

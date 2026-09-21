@@ -71,6 +71,10 @@ func ConnectDatabase() {
 		&models.PengaturanPenilaian{},
 		&models.PenilaianMagang{},
 		&models.TemplateRapor{},
+		&models.MateriPembelajaran{},
+		&models.TugasMagang{},
+		&models.PengumpulanTugas{},
+		&models.UserLoginHistory{},
 	)
 
 	if err != nil {

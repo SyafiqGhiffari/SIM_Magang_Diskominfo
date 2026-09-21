@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import MentorLayout from "../../layouts/MentorLayout";
-import Pagination from "../../components/manajemen/admin/pendaftaran/Pagination";
+import Pagination from "../../components/manajemen/shared/Pagination";
 import PresensiSortDropdown from "../../components/manajemen/admin/presensi/PresensiSortDropdown";
 import PresensiFilterModal from "../../components/manajemen/admin/presensi/PresensiFilterModal";
-import PresensiStatusBadge from "../../components/manajemen/admin/presensi/PresensiStatusBadge";
+import PresensiStatusBadge from "../../components/manajemen/shared/PresensiStatusBadge";
 import PresensiDetailModal from "../../components/manajemen/admin/presensi/PresensiDetailModal";
 import KoreksiPresensiModal from "../../components/manajemen/mentor/presensi/KoreksiPresensiModal";
 import { getPresensiMentor, getStatistikPresensiMentor } from "../../services/mentorService";

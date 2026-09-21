@@ -45,6 +45,13 @@ type PendaftaranMagang struct {
 	FilePasFoto        string `gorm:"type:varchar(255);not null" json:"file_pas_foto"`
 	FileProposalMagang string `gorm:"type:varchar(255)" json:"file_proposal_magang"`
 
+	// Laporan Akhir & Portofolio Proyek Magang
+	FileLaporanAkhir     string     `gorm:"type:varchar(255)" json:"file_laporan_akhir"`
+	JudulLaporanAkhir    string     `gorm:"type:varchar(255)" json:"judul_laporan_akhir"`
+	LinkProyek           string     `gorm:"type:varchar(255)" json:"link_proyek"`
+	CatatanLaporanAkhir  string     `gorm:"type:text" json:"catatan_laporan_akhir"`
+	TanggalUploadLaporan *time.Time `json:"tanggal_upload_laporan"`
+
 	StatusPendaftaran string `gorm:"type:enum('menunggu','revisi','diterima','ditolak');default:'menunggu'" json:"status_pendaftaran"`
 	CatatanAdmin      string `gorm:"type:text" json:"catatan_admin"`
 	DetailVerifikasi  string `gorm:"type:text" json:"detail_verifikasi"`

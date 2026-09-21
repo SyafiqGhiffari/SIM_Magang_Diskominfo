@@ -99,6 +99,8 @@ func LoginPendaftaran(c *gin.Context) {
 	newSessionID := uuid.NewString()
 	now := time.Now()
 	clientIP := c.ClientIP()
+	rawUserAgent := c.Request.UserAgent()
+	browserName, deviceName, isMobileDevice := parseUserAgent(rawUserAgent)
 
 	user.CurrentSessionID = newSessionID
 	user.SessionIssuedAt = &now
@@ -111,6 +113,20 @@ func LoginPendaftaran(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memproses sesi login")
 		return
 	}
+
+	// Catat audit riwayat login ke database
+	loginHistory := models.UserLoginHistory{
+		UserID:    user.ID,
+		UserType:  "pendaftaran",
+		SessionID: newSessionID,
+		IPAddress: clientIP,
+		UserAgent: rawUserAgent,
+		Device:    deviceName,
+		Browser:   browserName,
+		IsMobile:  isMobileDevice,
+		CreatedAt: now,
+	}
+	config.DB.Create(&loginHistory)
 
 	token, err := services.GenerateToken(user.ID, user.Email, "pendaftar", "pendaftaran", newSessionID)
 	if err != nil {
@@ -125,6 +141,69 @@ func LoginPendaftaran(c *gin.Context) {
 			"foto_profil": user.FotoProfil, "status_akun": user.StatusAkun,
 		},
 	})
+}
+
+// GetRiwayatLoginPendaftaran mengambil daftar riwayat login untuk akun peserta
+func GetRiwayatLoginPendaftaran(c *gin.Context) {
+	userID, ok := getUserIDFromContext(c)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "User tidak ditemukan")
+		return
+	}
+
+	var histories []models.UserLoginHistory
+	if err := config.DB.Where("user_id = ? AND user_type = ?", userID, "pendaftaran").
+		Order("created_at desc").
+		Limit(5).
+		Find(&histories).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memuat riwayat login")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Riwayat login berhasil diambil", histories)
+}
+
+// Helper untuk mengekstrak nama browser, perangkat, dan kategori mobile dari User-Agent
+func parseUserAgent(ua string) (browser string, device string, isMobile bool) {
+	lowerUA := strings.ToLower(ua)
+
+	// Deteksi Browser
+	if strings.Contains(lowerUA, "edg") {
+		browser = "Microsoft Edge"
+	} else if strings.Contains(lowerUA, "firefox") {
+		browser = "Mozilla Firefox"
+	} else if strings.Contains(lowerUA, "opera") || strings.Contains(lowerUA, "opr") {
+		browser = "Opera Browser"
+	} else if strings.Contains(lowerUA, "chrome") {
+		browser = "Google Chrome"
+	} else if strings.Contains(lowerUA, "safari") {
+		browser = "Apple Safari"
+	} else {
+		browser = "Web Browser"
+	}
+
+	// Deteksi Sistem Operasi & Tipe Perangkat
+	if strings.Contains(lowerUA, "android") {
+		device = "Smartphone Android"
+		isMobile = true
+	} else if strings.Contains(lowerUA, "iphone") || strings.Contains(lowerUA, "ipad") || strings.Contains(lowerUA, "ipod") {
+		device = "Perangkat iOS (Apple)"
+		isMobile = true
+	} else if strings.Contains(lowerUA, "windows") {
+		device = "Laptop / Komputer Windows"
+		isMobile = false
+	} else if strings.Contains(lowerUA, "macintosh") || strings.Contains(lowerUA, "mac os") {
+		device = "MacBook / iMac (macOS)"
+		isMobile = false
+	} else if strings.Contains(lowerUA, "linux") {
+		device = "Perangkat Linux OS"
+		isMobile = false
+	} else {
+		device = "Perangkat Komputer"
+		isMobile = false
+	}
+
+	return browser, device, isMobile
 }
 
 func LogoutPendaftaran(c *gin.Context) {
@@ -453,7 +532,7 @@ func VerifikasiGantiEmail(c *gin.Context) {
 
 type GantiPasswordInput struct {
 	OldPassword     string `json:"oldPassword" binding:"required"`
-	NewPassword     string `json:"newPassword" binding:"required,min=6"`
+	NewPassword     string `json:"newPassword" binding:"required,min=8"`
 	ConfirmPassword string `json:"confirmPassword" binding:"required"`
 }
 
@@ -465,11 +544,15 @@ func GantiPasswordPendaftaran(c *gin.Context) {
 	}
 	var input GantiPasswordInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Password lama, baru, dan konfirmasi wajib diisi minimal 6 karakter")
+		utils.ErrorResponse(c, http.StatusBadRequest, "Kata sandi lama, baru, dan konfirmasi wajib diisi minimal 8 karakter")
+		return
+	}
+	if err := utils.ValidatePasswordStrength(input.NewPassword); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	if input.NewPassword != input.ConfirmPassword {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Konfirmasi password tidak cocok")
+		utils.ErrorResponse(c, http.StatusBadRequest, "Konfirmasi kata sandi tidak cocok")
 		return
 	}
 	var user models.UserPendaftaran
@@ -486,10 +569,14 @@ func GantiPasswordPendaftaran(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengenkripsi password baru")
 		return
 	}
+	now := time.Now()
 	user.Password = string(hashed)
+	user.PasswordChangedAt = &now
 	if err := config.DB.Save(&user).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui password")
 		return
 	}
-	utils.SuccessResponse(c, http.StatusOK, "Password berhasil diperbarui", nil)
+	utils.SuccessResponse(c, http.StatusOK, "Password berhasil diperbarui", gin.H{
+		"password_changed_at": now,
+	})
 }

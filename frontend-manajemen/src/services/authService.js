@@ -29,3 +29,15 @@ export const hapusFotoAdmin = () =>
 // Perbarui informasi akun sendiri (nama, email, no_hp, jabatan)
 export const updateProfilAdmin = (data) =>
   api.put("/manajemen/me", data);
+
+// Request ganti email akun sendiri (kirim OTP)
+export const requestGantiEmailManajemen = (data) =>
+  api.post("/manajemen/request-ganti-email", data);
+
+// Verifikasi OTP ganti email akun sendiri
+export const verifikasiGantiEmailManajemen = (data) =>
+  api.post("/manajemen/verifikasi-ganti-email", data);
+
+// Riwayat login akun peserta / manajemen
+export const getRiwayatLoginPeserta = () =>
+  api.get("/manajemen/riwayat-login");

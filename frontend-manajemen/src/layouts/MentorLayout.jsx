@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { CalendarCheck, ClipboardList, MailCheck, ClipboardCheck } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import { getHitunganAntreanMentor } from "../services/mentorService";
+import { useManajemenTheme } from "../context/useManajemenTheme";
 import { logoutAdmin, getMe } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
 import { clearAuthData, getUser, updateAuthUser } from "../utils/authStorage";
@@ -48,18 +49,8 @@ const MentorLayout = ({ children, searchValue = "", onSearchChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [profile, setProfile] = useState(() => getUser() || null);
-  const [isDark, setIsDark] = useState(() => localStorage.getItem("admin_theme") === "dark");
+  const { isDark, setIsDark } = useManajemenTheme();
   const [hitunganIzin, setHitunganIzin] = useState(0);
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("admin_theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("admin_theme", "light");
-    }
-  }, [isDark]);
 
   useEffect(() => {
     const ambil = async () => {

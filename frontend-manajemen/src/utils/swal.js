@@ -60,6 +60,32 @@ export const toastError = (title = "Terjadi kesalahan") => {
   });
 };
 
+export const toastInfo = (title = "Informasi") => {
+  baseSwal.fire({
+    toast: true,
+    position: "top-end",
+    icon: "info",
+    iconColor: "#0284c7",
+    title,
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+  });
+};
+
+export const toastWarning = (title = "Perhatian") => {
+  baseSwal.fire({
+    toast: true,
+    position: "top-end",
+    icon: "warning",
+    iconColor: "#d97706",
+    title,
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+  });
+};
+
 export const sessionExpiredDialog = ({
   title = "Sesi Kedaluwarsa",
   text = "Sesi Anda telah berakhir karena tidak ada aktivitas (idle timeout). Silakan login kembali untuk melanjutkan.",

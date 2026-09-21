@@ -108,6 +108,12 @@ func SetupRoutes(router *gin.Engine) {
 			controllers.GantiPasswordPendaftaran,
 		)
 
+		// Riwayat login peserta
+		pendaftaran.GET("/riwayat-login",
+			middlewares.AuthMiddleware("pendaftaran"),
+			controllers.GetRiwayatLoginPendaftaran,
+		)
+
 		// Form Pendaftaran Magang
 		pendaftaran.POST("/magang",
 			middlewares.AuthMiddleware("pendaftaran"),
@@ -214,6 +220,24 @@ func SetupRoutes(router *gin.Engine) {
 			controllers.HapusFotoProfilManajemen,
 		)
 
+		// Request ganti email (kirim OTP)
+		manajemen.POST("/request-ganti-email",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.RequestGantiEmailManajemen,
+		)
+
+		// Verifikasi OTP ganti email
+		manajemen.POST("/verifikasi-ganti-email",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.VerifikasiGantiEmailManajemen,
+		)
+
+		// Riwayat login akun manajemen / peserta
+		manajemen.GET("/riwayat-login",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.GetRiwayatLoginManajemen,
+		)
+
 		// ── NOTIFIKASI IN-APP (semua role manajemen, difilter per role di controller) ──
 		notif := manajemen.Group("/notifikasi")
 		notif.Use(middlewares.AuthMiddleware("manajemen"))
@@ -224,6 +248,7 @@ func SetupRoutes(router *gin.Engine) {
 			notif.PUT("/semua/baca", controllers.BacaSemuaNotifikasi)
 			notif.DELETE("/semua/hapus", controllers.HapusSemuaNotifikasi)
 			notif.DELETE("/:id", controllers.HapusNotifikasi)
+			notif.POST("/test", controllers.KirimNotifikasiTest)
 		}
 
 		manajemen.GET("/admin/dashboard",
@@ -253,6 +278,12 @@ func SetupRoutes(router *gin.Engine) {
 			controllers.GetTemplateRaporAktif,
 		)
 
+		// Daftar hari libur (bisa diakses admin, mentor, maupun peserta)
+		manajemen.GET("/hari-libur",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.GetAllHariLibur,
+		)
+
 		// Route khusus Mentor
 		mentor := manajemen.Group("/mentor")
 		mentor.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("mentor"))
@@ -275,10 +306,15 @@ func SetupRoutes(router *gin.Engine) {
 		peserta.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("peserta"))
 		{
 			// READ-ONLY: tetap terbuka walau masa magang sudah selesai
+			peserta.GET("/dashboard", controllers.GetDashboardPeserta)
 			peserta.GET("/presensi/hari-ini", controllers.GetStatusPresensiHariIni)
 			peserta.GET("/presensi/riwayat", controllers.GetRiwayatPresensiSaya)
 			peserta.GET("/pengajuan-izin", controllers.GetPengajuanIzinSaya)
 			peserta.GET("/penilaian", controllers.GetNilaiSaya)
+			peserta.GET("/sertifikat", controllers.GetSertifikatPesertaSaya)
+			peserta.GET("/logbook", controllers.GetLogbookPeserta)
+			peserta.GET("/materi", controllers.GetMateriPeserta)
+			peserta.GET("/tugas", controllers.GetTugasPeserta)
 
 			// AKSI TULIS: hanya untuk peserta yang masih aktif magang
 			aktif := peserta.Group("", middlewares.MagangAktifMiddleware())
@@ -287,19 +323,12 @@ func SetupRoutes(router *gin.Engine) {
 				aktif.POST("/presensi/pulang", controllers.PresensiPulang)
 				aktif.POST("/pengajuan-izin", controllers.BuatPengajuanIzin)
 				aktif.DELETE("/pengajuan-izin/:id", controllers.BatalkanPengajuanIzin)
+				aktif.PUT("/logbook/:id", controllers.UpdateLogbookPeserta)
+				aktif.POST("/laporan-akhir", controllers.UploadLaporanAkhirPeserta)
+				aktif.POST("/upload-dokumen", controllers.UploadDokumenPeserta)
+				aktif.POST("/tugas/:id/kumpul", controllers.KumpulTugasPeserta)
 			}
 		}
-
-		manajemen.GET("/peserta/dashboard",
-			middlewares.AuthMiddleware("manajemen"),
-			middlewares.RoleMiddleware("peserta"),
-			func(c *gin.Context) {
-				c.JSON(200, gin.H{
-					"success": true,
-					"message": "Dashboard peserta berhasil diakses",
-				})
-			},
-		)
 
 		// Route khusus Admin
 		admin := manajemen.Group("/admin")

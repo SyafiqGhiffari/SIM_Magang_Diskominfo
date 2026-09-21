@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -97,12 +98,15 @@ func GetStatusPresensiHariIni(c *gin.Context) {
 	}
 
 	tanggal := utils.TanggalHariIni()
+	jamSekarang := utils.JamSekarang()
 	info := kal.CekHari(tanggal)
 
 	var presensi models.Presensi
 	adaPresensi := config.DB.
 		Where("peserta_id = ? AND tanggal = ?", pesertaID, tanggal).
 		First(&presensi).Error == nil
+
+	izinHariIni := izinDisetujuiPada(pesertaID, tanggal)
 
 	// rekap bulan berjalan
 	dari := utils.SekarangWIB().Format("2006-01") + "-01"
@@ -122,22 +126,95 @@ func GetStatusPresensiHariIni(c *gin.Context) {
 		ringkas[r.Status] = r.Total
 	}
 
+	sudahMasuk := adaPresensi && presensi.JamMasuk != nil && *presensi.JamMasuk != ""
+	sudahPulang := adaPresensi && presensi.JamPulang != nil && *presensi.JamPulang != ""
+
+	// Tentukan status string untuk frontend hero dan statistik
+	statusStr := "belum_absen"
+	if !info.HariKerja {
+		statusStr = "libur"
+	} else if izinHariIni != nil {
+		statusStr = izinHariIni.Jenis // "izin" | "sakit"
+	} else if adaPresensi && presensi.Status != "" && presensi.Status != "belum" {
+		statusStr = presensi.Status
+	} else if sudahMasuk {
+		if presensi.Status == "terlambat" || presensi.MenitTerlambat > 0 {
+			statusStr = "terlambat"
+		} else {
+			statusStr = "hadir"
+		}
+	} else if adaPresensi && presensi.Status == "alfa" {
+		statusStr = "alfa"
+	}
+
+	// Batasan Waktu & Jam Kerja:
+	if info.HariKerja && info.JamKerja.JamMasuk == "" {
+		info.JamKerja = models.JamKerja{
+			Hari:               info.Hari,
+			JamMasuk:           "07:30",
+			JamPulang:          "15:30",
+			ToleransiTerlambat: 30,
+			IsAktif:            true,
+		}
+	}
+
+	// Jam Buka Presensi Masuk (06:00 WIB):
+	jamMasukBuka := "06:00"
+	belumWaktunyaMasuk := false
+	if info.HariKerja && jamSekarang < jamMasukBuka {
+		belumWaktunyaMasuk = true
+	}
+
+	// Presensi Masuk: hanya aktif pada hari kerja, belum masuk, belum izin, dan sudah masuk jam buka
+	bisaAbsenMasuk := info.HariKerja && izinHariIni == nil && !sudahMasuk && !belumWaktunyaMasuk
+
+	// Cek apakah belum waktunya pulang
+	belumWaktunyaPulang := false
+	if info.HariKerja && info.JamKerja.JamPulang != "" && jamSekarang < info.JamKerja.JamPulang {
+		belumWaktunyaPulang = true
+	}
+
+	// Presensi Pulang: hanya aktif pada hari kerja, sudah masuk, belum pulang, belum izin, dan sudah masuk jadwal pulang
+	bisaAbsenPulang := info.HariKerja && izinHariIni == nil && sudahMasuk && !sudahPulang && !belumWaktunyaPulang
+
+	var jamMasukVal *string = nil
+	var jamPulangVal *string = nil
+	menitTerlambatVal := 0
+	keteranganLogbookVal := ""
+
+	if adaPresensi {
+		jamMasukVal = presensi.JamMasuk
+		jamPulangVal = presensi.JamPulang
+		menitTerlambatVal = presensi.MenitTerlambat
+		keteranganLogbookVal = presensi.Keterangan
+	}
+
 	respons := gin.H{
-		"tanggal":      tanggal,
-		"hari":         info.Hari,
-		"hari_kerja":   info.HariKerja,
-		"alasan":       info.Alasan,
-		"jam_sekarang": utils.JamSekarang(),
+		"tanggal":               tanggal,
+		"hari":                  info.Hari,
+		"hari_kerja":            info.HariKerja,
+		"alasan":                info.Alasan,
+		"jam_sekarang":          jamSekarang,
 		"jam_kerja": gin.H{
+			"jam_masuk_buka":      jamMasukBuka,
 			"jam_masuk":           info.JamKerja.JamMasuk,
 			"jam_pulang":          info.JamKerja.JamPulang,
 			"toleransi_terlambat": info.JamKerja.ToleransiTerlambat,
 		},
-		"sudah_masuk":     adaPresensi && presensi.JamMasuk != nil && *presensi.JamMasuk != "",
-		"sudah_pulang":    adaPresensi && presensi.JamPulang != nil && *presensi.JamPulang != "",
-		"presensi":        nil,
-		"izin_hari_ini":   izinDisetujuiPada(pesertaID, tanggal),
-		"rekap_bulan_ini": ringkas,
+		"status":                statusStr,
+		"sudah_masuk":           sudahMasuk,
+		"sudah_pulang":          sudahPulang,
+		"bisa_absen_masuk":      bisaAbsenMasuk,
+		"bisa_absen_pulang":     bisaAbsenPulang,
+		"belum_waktunya_masuk":  belumWaktunyaMasuk,
+		"belum_waktunya_pulang": belumWaktunyaPulang,
+		"jam_masuk":             jamMasukVal,
+		"jam_pulang":            jamPulangVal,
+		"menit_terlambat":       menitTerlambatVal,
+		"keterangan":            keteranganLogbookVal,
+		"presensi":              nil,
+		"izin_hari_ini":         izinHariIni,
+		"rekap_bulan_ini":       ringkas,
 	}
 	if adaPresensi {
 		respons["presensi"] = presensi
@@ -164,7 +241,29 @@ func PresensiMasuk(c *gin.Context) {
 	jam := utils.JamSekarang()
 	info := kal.CekHari(tanggal)
 	if !info.HariKerja {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Hari ini bukan hari kerja ("+info.Alasan+"), presensi tidak diperlukan")
+		utils.ErrorResponse(c, http.StatusBadRequest, "Hari ini bukan hari kerja ("+info.Alasan+"), presensi tidak dapat dilakukan")
+		return
+	}
+	if info.JamKerja.JamMasuk == "" {
+		info.JamKerja = models.JamKerja{
+			Hari:               info.Hari,
+			JamMasuk:           "07:30",
+			JamPulang:          "15:30",
+			ToleransiTerlambat: 30,
+			IsAktif:            true,
+		}
+	}
+
+	// Validasi jam buka presensi masuk (pukul 06:00 WIB)
+	jamMasukBuka := "06:00"
+	if jam < jamMasukBuka {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Sesi presensi masuk belum dibuka. Presensi masuk dibuka mulai pukul "+jamMasukBuka+" WIB.")
+		return
+	}
+
+	// Cek pengajuan izin/sakit yang sudah disetujui mentor untuk hari ini
+	if izin := izinDisetujuiPada(pesertaID, tanggal); izin != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("Hari ini Anda tercatat %s berdasarkan surat pengajuan yang telah disetujui mentor.", strings.ToUpper(izin.Jenis)))
 		return
 	}
 
@@ -209,6 +308,26 @@ func PresensiMasuk(c *gin.Context) {
 	presensi.Sumber = "peserta"
 	presensi.DicatatOlehID = &pesertaID
 
+	// Mode Kehadiran: wfo, wfh, dinas_luar
+	modeKehadiran := strings.ToLower(strings.TrimSpace(c.PostForm("mode_kehadiran")))
+	if modeKehadiran != "wfh" && modeKehadiran != "dinas_luar" {
+		modeKehadiran = "wfo"
+	}
+	presensi.ModeKehadiran = modeKehadiran
+
+	// GPS Koordinat & Jarak
+	if lat := strings.TrimSpace(c.PostForm("latitude")); lat != "" {
+		presensi.Latitude = &lat
+	}
+	if lng := strings.TrimSpace(c.PostForm("longitude")); lng != "" {
+		presensi.Longitude = &lng
+	}
+	if jarakStr := strings.TrimSpace(c.PostForm("jarak_meter")); jarakStr != "" {
+		if j, err := strconv.Atoi(jarakStr); err == nil {
+			presensi.JarakMeter = &j
+		}
+	}
+
 	fotoMasukLama := ""
 	if pathFoto != "" {
 		fotoMasukLama = presensi.FotoMasuk // foto lama (kasus record ditimpa)
@@ -249,8 +368,21 @@ func PresensiPulang(c *gin.Context) {
 		return
 	}
 
+	kal, err := utils.MuatKalenderKerja(config.DB)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memuat kalender kerja")
+		return
+	}
+
 	tanggal := utils.TanggalHariIni()
 	jam := utils.JamSekarang()
+	info := kal.CekHari(tanggal)
+
+	// Cek pengajuan izin/sakit yang sudah disetujui mentor untuk hari ini
+	if izin := izinDisetujuiPada(pesertaID, tanggal); izin != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("Hari ini Anda tercatat %s berdasarkan surat pengajuan yang telah disetujui mentor.", strings.ToUpper(izin.Jenis)))
+		return
+	}
 
 	var presensi models.Presensi
 	if err := config.DB.Where("peserta_id = ? AND tanggal = ?", pesertaID, tanggal).First(&presensi).Error; err != nil {
@@ -263,6 +395,33 @@ func PresensiPulang(c *gin.Context) {
 	}
 	if presensi.JamPulang != nil && *presensi.JamPulang != "" {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Anda sudah melakukan presensi pulang pada jam "+*presensi.JamPulang)
+		return
+	}
+
+	if !info.HariKerja {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Hari ini bukan hari kerja ("+info.Alasan+"), presensi tidak dapat dilakukan")
+		return
+	}
+	if info.JamKerja.JamPulang == "" {
+		info.JamKerja = models.JamKerja{
+			Hari:               info.Hari,
+			JamMasuk:           "07:30",
+			JamPulang:          "15:30",
+			ToleransiTerlambat: 30,
+			IsAktif:            true,
+		}
+	}
+
+	// Validasi jam buka presensi pulang
+	if info.JamKerja.JamPulang != "" && jam < info.JamKerja.JamPulang {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Sesi presensi pulang belum dibuka. Jam kepulangan dibuka mulai pukul "+info.JamKerja.JamPulang+" WIB.")
+		return
+	}
+
+	// Validasi isian logbook harian wajib diisi
+	catatan := strings.TrimSpace(c.PostForm("keterangan"))
+	if catatan == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Logbook kegiatan harian wajib diisi sebelum melakukan presensi pulang.")
 		return
 	}
 
@@ -284,9 +443,8 @@ func PresensiPulang(c *gin.Context) {
 		fotoPulangLama = presensi.FotoPulang
 		presensi.FotoPulang = pathFoto
 	}
-	if catatan := strings.TrimSpace(c.PostForm("keterangan")); catatan != "" {
-		presensi.Keterangan = catatan
-	}
+
+	presensi.Keterangan = catatan
 
 	if err := config.DB.Save(&presensi).Error; err != nil {
 		cleanupUploadedFiles(pathFoto)
@@ -296,7 +454,7 @@ func PresensiPulang(c *gin.Context) {
 
 	gantiFile(fotoPulangLama, pathFoto)
 
-	utils.SuccessResponse(c, http.StatusOK, "Presensi pulang berhasil dicatat", presensi)
+	utils.SuccessResponse(c, http.StatusOK, "Presensi pulang berhasil dicatat. Jangan lupa melengkapi logbook kegiatan hari ini.", presensi)
 }
 
 // ── 4. Riwayat presensi peserta ───────────────────────────────────────────────
@@ -313,6 +471,7 @@ func GetRiwayatPresensiSaya(c *gin.Context) {
 
 	var rows []models.Presensi
 	if err := config.DB.
+		Preload("DicatatOleh").
 		Where("peserta_id = ? AND tanggal >= ? AND tanggal <= ?", pesertaID, dari, sampai).
 		Order("tanggal desc").
 		Find(&rows).Error; err != nil {
@@ -326,6 +485,37 @@ func GetRiwayatPresensiSaya(c *gin.Context) {
 		return
 	}
 	hariKerja := kal.DaftarHariKerja(dari, sampai)
+
+	// Pastikan hari ini (jika hari kerja dalam rentang bulan) muncul di riwayat meski belum ada record di DB
+	today := utils.TanggalHariIni()
+	if today >= dari && today <= sampai {
+		adaHariIni := false
+		for _, r := range rows {
+			if strings.HasPrefix(r.Tanggal, today) {
+				adaHariIni = true
+				break
+			}
+		}
+		if !adaHariIni {
+			info := kal.CekHari(today)
+			if info.HariKerja {
+				statusToday := "belum"
+				ketToday := "Belum melakukan presensi hari ini"
+				if izin := izinDisetujuiPada(pesertaID, today); izin != nil {
+					statusToday = izin.Jenis
+					ketToday = izin.Alasan
+				}
+				todayRow := models.Presensi{
+					PesertaID:  pesertaID,
+					Tanggal:    today,
+					Status:     statusToday,
+					Keterangan: ketToday,
+					Sumber:     "sistem",
+				}
+				rows = append([]models.Presensi{todayRow}, rows...)
+			}
+		}
+	}
 
 	ringkas := map[string]int{"hadir": 0, "terlambat": 0, "izin": 0, "sakit": 0, "alfa": 0}
 	totalMenit := 0

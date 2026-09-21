@@ -3,7 +3,7 @@ import {
   X, UserCog, Mail, Phone, Briefcase, Lock, Camera, Loader2, Save,
   Info, Check, Users2, Sparkles, Building2, Network, Workflow, Boxes,
   FolderKanban, GitBranch, LayoutGrid, MapPin, ShieldCheck, ShieldOff,
-  Infinity as InfinityIcon, Eye, EyeOff,
+  Infinity as InfinityIcon, Eye, EyeOff, Fingerprint,
 } from "lucide-react";
 import { getFileUrl } from "../../../../utils/fileUrl";
 import { toastError } from "../../../../utils/swal";
@@ -94,6 +94,7 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
   const [nama, setNama] = useState(initialData?.nama || "");
   const [email, setEmail] = useState(initialData?.email || "");
   const [noHp, setNoHp] = useState(initialData?.no_hp || "");
+  const [nip, setNip] = useState(initialData?.nip || "");
   const [jabatan, setJabatan] = useState(initialData?.jabatan || "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -271,6 +272,7 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
         nama,
         email,
         no_hp: noHp,
+        nip,
         jabatan,
         password: password || undefined,
         kapasitas_bimbingan: Number(kapasitas) || 0,
@@ -345,9 +347,9 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
                   <div className="flex items-center gap-2.5 sm:gap-4 animate-[fadeslide_0.3s_ease-out]" style={{ animationDelay: "60ms", animationFillMode: "backwards" }}>
                     <div className="relative shrink-0">
                       {fotoPreview ? (
-                        <img src={fotoPreview} alt="Preview" className="h-11 w-11 sm:h-16 sm:w-16 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-md ring-2 ring-slate-200 dark:ring-white/10" />
+                        <img src={fotoPreview} alt="Preview" className="h-11 w-11 sm:h-16 sm:w-16 rounded-2xl object-cover border-2 border-white dark:border-slate-700 shadow-md ring-2 ring-slate-200 dark:ring-white/10" />
                       ) : (
-                        <span className="flex h-11 w-11 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white text-sm sm:text-lg font-black shadow-md">
+                        <span className="flex h-11 w-11 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white text-sm sm:text-lg font-black shadow-md">
                           {getInitials(nama)}
                         </span>
                       )}
@@ -366,7 +368,7 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
                         type="text"
                         value={nama}
                         onChange={(e) => setNama(e.target.value)}
-                        placeholder="Contoh: Budi Santoso"
+                        placeholder="Contoh: Aris Setiawan, S.Kom"
                         required
                         className={`w-full rounded-lg sm:rounded-xl border px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-semibold outline-none transition-all duration-200 ${
                           isDark
@@ -415,22 +417,41 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
                     </div>
                   </div>
 
-                  <div className="animate-[fadeslide_0.3s_ease-out]" style={{ animationDelay: "140ms", animationFillMode: "backwards" }}>
-                    <label className="flex items-center gap-1 text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-0.5 sm:mb-1">
-                      <Briefcase className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                      Jabatan
-                    </label>
-                    <input
-                      type="text"
-                      value={jabatan}
-                      onChange={(e) => setJabatan(e.target.value)}
-                      placeholder="Contoh: IT Architect"
-                      className={`w-full rounded-lg sm:rounded-xl border px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-semibold outline-none transition-all duration-200 ${
-                        isDark
-                          ? "border-white/10 bg-white/5 text-slate-100 placeholder-slate-500 focus:border-[#00A5EC] focus:ring-4 focus:ring-[#00A5EC]/15"
-                          : "border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-400 focus:border-[#004F9F] focus:bg-white focus:ring-4 focus:ring-[#00A5EC]/15"
-                      }`}
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 animate-[fadeslide_0.3s_ease-out]" style={{ animationDelay: "140ms", animationFillMode: "backwards" }}>
+                    <div>
+                      <label className="flex items-center gap-1 text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-0.5 sm:mb-1">
+                        <Briefcase className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        Jabatan
+                      </label>
+                      <input
+                        type="text"
+                        value={jabatan}
+                        onChange={(e) => setJabatan(e.target.value)}
+                        placeholder="Contoh: Pranata Komputer Ahli Muda"
+                        className={`w-full rounded-lg sm:rounded-xl border px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-semibold outline-none transition-all duration-200 ${
+                          isDark
+                            ? "border-white/10 bg-white/5 text-slate-100 placeholder-slate-500 focus:border-[#00A5EC] focus:ring-4 focus:ring-[#00A5EC]/15"
+                            : "border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-400 focus:border-[#004F9F] focus:bg-white focus:ring-4 focus:ring-[#00A5EC]/15"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-1 text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-0.5 sm:mb-1">
+                        <Fingerprint className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        NIP (Nomor Induk Pegawai)
+                      </label>
+                      <input
+                        type="text"
+                        value={nip}
+                        onChange={(e) => setNip(e.target.value)}
+                        placeholder="Contoh: 19840912 201101 1 008"
+                        className={`w-full rounded-lg sm:rounded-xl border px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-semibold outline-none transition-all duration-200 ${
+                          isDark
+                            ? "border-white/10 bg-white/5 text-slate-100 placeholder-slate-500 focus:border-[#00A5EC] focus:ring-4 focus:ring-[#00A5EC]/15"
+                            : "border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-400 focus:border-[#004F9F] focus:bg-white focus:ring-4 focus:ring-[#00A5EC]/15"
+                        }`}
+                      />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 animate-[fadeslide_0.3s_ease-out]" style={{ animationDelay: "180ms", animationFillMode: "backwards" }}>

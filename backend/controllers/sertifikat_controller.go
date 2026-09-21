@@ -403,3 +403,62 @@ func DeleteFilePengaturanSertifikat(c *gin.Context) {
 
 	utils.SuccessResponse(c, http.StatusOK, "File berhasil dihapus", p)
 }
+
+// GetSertifikatPesertaSaya — peserta melihat status sertifikat & konfigurasi template untuk cetak/unduh PDF
+func GetSertifikatPesertaSaya(c *gin.Context) {
+	pesertaID, ok := getUserIDFromContext(c)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Sesi tidak valid, silakan login ulang")
+		return
+	}
+
+	var user models.UserManajemen
+	if err := config.DB.First(&user, pesertaID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Data peserta tidak ditemukan")
+		return
+	}
+
+	var pendaftaran models.PendaftaranMagang
+	hasPendaftaran := config.DB.
+		Where("akun_peserta_id = ?", pesertaID).
+		Order("id desc").
+		First(&pendaftaran).Error == nil
+
+	var sertifikat models.Sertifikat
+	hasSertifikat := config.DB.
+		Where("akun_peserta_id = ?", pesertaID).
+		First(&sertifikat).Error == nil
+
+	pengaturan, _ := getOrSeedPengaturanSertifikat()
+
+	institusi := ""
+	if hasPendaftaran {
+		if pendaftaran.KategoriPendaftar == "mahasiswa" {
+			institusi = pendaftaran.AsalKampus
+		} else {
+			institusi = pendaftaran.AsalSekolah
+		}
+	}
+
+	row := gin.H{
+		"akun_peserta_id": user.ID,
+		"nama":            user.Nama,
+		"foto_profil":     user.FotoProfil,
+		"institusi":       institusi,
+	}
+	if hasPendaftaran {
+		row["bidang"] = pendaftaran.PosisiBidang
+		row["tanggal_mulai"] = pendaftaran.TanggalMulai
+		row["tanggal_selesai"] = pendaftaran.TanggalSelesai
+		row["pendaftaran"] = pendaftaran
+	}
+	if hasSertifikat {
+		row["sertifikat"] = sertifikat
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Data sertifikat peserta berhasil diambil", gin.H{
+		"ada_sertifikat": hasSertifikat,
+		"data":           row,
+		"pengaturan":     pengaturan,
+	})
+}

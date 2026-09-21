@@ -25,7 +25,15 @@ const FotoMentorModal = ({
         {/* Header */}
         <div className="relative px-6 py-5 bg-gradient-to-r from-[#0B1442] via-[#101F5C] to-[#1E3A8A] overflow-hidden">
           <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[#00A5EC]/20 blur-2xl pointer-events-none" />
-          <div className="relative flex items-center justify-between">
+          <div className="absolute left-1/3 -bottom-8 h-16 w-16 rounded-full bg-white/5 blur-xl pointer-events-none" />
+
+          {/* Watermark Ikon Besar */}
+          <Camera
+            className="absolute right-6 sm:right-12 top-1/2 -translate-y-1/2 w-14 h-14 sm:w-22 sm:h-22 opacity-[0.08] sm:opacity-[0.10] text-white pointer-events-none transform rotate-6"
+            strokeWidth={1}
+          />
+
+          <div className="relative flex items-center justify-between z-10">
             <div className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 border border-white/15 backdrop-blur-md">
                 <Camera className="w-4 h-4 text-white" />
@@ -45,7 +53,7 @@ const FotoMentorModal = ({
         {/* Crop Area */}
         <div className={`px-6 pt-7 pb-3 flex flex-col items-center ${isDark ? "bg-[#1f242c]" : "bg-slate-50"}`}>
           <div
-            className={`relative h-56 w-56 rounded-full overflow-hidden shadow-[0_0_0_6px_rgba(0,165,236,0.12),0_8px_30px_rgba(0,0,0,0.25)] select-none ring-4 ${
+            className={`relative h-56 w-56 rounded-3xl overflow-hidden shadow-[0_0_0_6px_rgba(0,165,236,0.12),0_8px_30px_rgba(0,0,0,0.25)] select-none ring-4 ${
               isDark ? "ring-slate-700" : "ring-white"
             } ${
               !fotoModalLoading && isDragging ? "cursor-grabbing" : fotoModalLoading ? "cursor-default" : "cursor-grab"
@@ -80,7 +88,7 @@ const FotoMentorModal = ({
 
             {fotoModalLoading && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0B1442]/85 via-[#101F5C]/75 to-[#1E3A8A]/85">
-                <div className="absolute inset-0 overflow-hidden rounded-full">
+                <div className="absolute inset-0 overflow-hidden rounded-3xl">
                   <div
                     className="absolute inset-0 animate-[shimmerSweep_1.8s_ease-in-out_infinite]"
                     style={{ background: "linear-gradient(110deg, transparent 30%, rgba(0,165,236,0.12) 50%, transparent 70%)", backgroundSize: "200% 100%" }}
@@ -90,7 +98,7 @@ const FotoMentorModal = ({
                   <div className="absolute h-[88px] w-[88px] rounded-full animate-[spin_2.4s_linear_infinite]" style={{ border: "2px solid transparent", borderTopColor: "#00A5EC", borderRightColor: "#00A5EC40" }} />
                   <div className="absolute h-[64px] w-[64px] rounded-full animate-[spin_1.8s_linear_infinite_reverse]" style={{ border: "1.5px solid transparent", borderRightColor: "#00A5EC80", borderBottomColor: "#00A5EC30" }} />
                   <div className="absolute h-[44px] w-[44px] rounded-full bg-[#00A5EC]/10 animate-pulse" />
-                  <div className="relative flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
+                  <div className="relative flex h-[34px] w-[34px] items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20">
                     <Camera className="w-4 h-4 text-white opacity-90" strokeWidth={1.8} />
                   </div>
                 </div>
@@ -98,7 +106,7 @@ const FotoMentorModal = ({
               </div>
             )}
 
-            <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-black/10 pointer-events-none" />
+            <div className="absolute inset-0 rounded-3xl ring-1 ring-inset ring-black/10 pointer-events-none" />
           </div>
 
           {!fotoModalLoading ? (

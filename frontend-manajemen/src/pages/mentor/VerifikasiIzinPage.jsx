@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import MentorLayout from "../../layouts/MentorLayout";
-import Pagination from "../../components/manajemen/admin/pendaftaran/Pagination";
+import Pagination from "../../components/manajemen/shared/Pagination";
 import ProsesIzinModal from "../../components/manajemen/mentor/presensi/ProsesIzinModal";
 import { getPengajuanIzinMentor } from "../../services/mentorService";
 import { getFileUrl } from "../../utils/fileUrl";

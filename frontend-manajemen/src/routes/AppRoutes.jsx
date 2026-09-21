@@ -25,9 +25,15 @@ import PresensiBimbinganPage from "../pages/mentor/PresensiBimbinganPage";
 import VerifikasiIzinPage from "../pages/mentor/VerifikasiIzinPage";
 import PenilaianMentorPage from "../pages/mentor/PenilaianMentorPage";
 import PesertaDashboardPage from "../pages/peserta/PesertaDashboardPage";
-import PresensiSayaPage from "../pages/peserta/PresensiSayaPage";
+import PesertaPresensiLogbookPage from "../pages/peserta/PesertaPresensiLogbookPage";
+import PesertaRiwayatPage from "../pages/peserta/PesertaRiwayatPage";
 import PengajuanIzinPage from "../pages/peserta/PengajuanIzinPage";
+import PesertaMateriPage from "../pages/peserta/PesertaMateriPage";
+import PesertaTugasPage from "../pages/peserta/PesertaTugasPage";
+import PesertaLaporanAkhirPage from "../pages/peserta/PesertaLaporanAkhirPage";
 import TranskripNilaiPesertaPage from "../pages/peserta/TranskripNilaiPesertaPage";
+import PesertaSertifikatPage from "../pages/peserta/PesertaSertifikatPage";
+import PesertaAkunPage from "../pages/peserta/PesertaAkunPage";
 import BantuanPage from "../pages/admin/BantuanPage";
 import { getToken, getRole } from "../utils/authStorage";
 
@@ -81,9 +87,29 @@ const AppRoutes = () => {
 
       {/* Peserta — hanya role peserta yang boleh akses */}
       <Route path="/peserta" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaDashboardPage /></ProtectedRoute>} />
-      <Route path="/peserta/presensi" element={<ProtectedRoute allowedRoles={["peserta"]}><PresensiSayaPage /></ProtectedRoute>} />
+      <Route path="/peserta/akun" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaAkunPage /></ProtectedRoute>} />
+      
+      {/* Presensi, Logbook & Izin */}
+      <Route path="/peserta/presensi" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaPresensiLogbookPage /></ProtectedRoute>} />
+      <Route path="/peserta/riwayat-aktivitas" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaRiwayatPage /></ProtectedRoute>} />
+      <Route path="/peserta/riwayat" element={<Navigate to="/peserta/riwayat-aktivitas" replace />} />
+      <Route path="/peserta/logbook" element={<Navigate to="/peserta/riwayat-aktivitas" replace />} />
       <Route path="/peserta/pengajuan-izin" element={<ProtectedRoute allowedRoles={["peserta"]}><PengajuanIzinPage /></ProtectedRoute>} />
-      <Route path="/peserta/penilaian" element={<ProtectedRoute allowedRoles={["peserta"]}><TranskripNilaiPesertaPage /></ProtectedRoute>} />
+      <Route path="/peserta/izin" element={<Navigate to="/peserta/pengajuan-izin" replace />} />
+      
+      {/* Pembelajaran: Materi & Tugas */}
+      <Route path="/peserta/pembelajaran/materi" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaMateriPage /></ProtectedRoute>} />
+      <Route path="/peserta/pembelajaran/tugas" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaTugasPage /></ProtectedRoute>} />
+      <Route path="/peserta/materi" element={<Navigate to="/peserta/pembelajaran/materi" replace />} />
+      <Route path="/peserta/tugas" element={<Navigate to="/peserta/pembelajaran/tugas" replace />} />
+
+      {/* Penilaian Akhir: Laporan, Rapor, Sertifikat */}
+      <Route path="/peserta/penilaian/laporan" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaLaporanAkhirPage /></ProtectedRoute>} />
+      <Route path="/peserta/penilaian/rapor" element={<ProtectedRoute allowedRoles={["peserta"]}><TranskripNilaiPesertaPage /></ProtectedRoute>} />
+      <Route path="/peserta/penilaian/sertifikat" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaSertifikatPage /></ProtectedRoute>} />
+      <Route path="/peserta/penilaian" element={<Navigate to="/peserta/penilaian/rapor" replace />} />
+      <Route path="/peserta/sertifikat" element={<Navigate to="/peserta/penilaian/sertifikat" replace />} />
+      <Route path="/peserta/laporan-akhir" element={<Navigate to="/peserta/penilaian/laporan" replace />} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
