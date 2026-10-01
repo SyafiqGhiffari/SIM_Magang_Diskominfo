@@ -102,7 +102,66 @@ func LoginManajemen(c *gin.Context) {
 	}
 
 	var user models.UserManajemen
-	if err := config.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
+	userFound := false
+	if err := config.DB.Where("email = ?", input.Email).First(&user).Error; err == nil {
+		userFound = true
+	}
+
+	// ── RECOVERY / AUTO-SYNC: Cek jika ini akun peserta dari web pendaftaran ──
+	if !userFound || bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)) != nil {
+		var userPendaftaran models.UserPendaftaran
+		if errPendaftaran := config.DB.Where("email = ?", input.Email).First(&userPendaftaran).Error; errPendaftaran == nil {
+			if bcrypt.CompareHashAndPassword([]byte(userPendaftaran.Password), []byte(input.Password)) == nil {
+				var pendaftaran models.PendaftaranMagang
+				if errPenda := config.DB.Where("user_pendaftaran_id = ? AND status_pendaftaran = 'diterima'", userPendaftaran.ID).First(&pendaftaran).Error; errPenda == nil {
+					if userFound {
+						user.Password = userPendaftaran.Password
+						user.StatusAkun = "aktif"
+						if user.StatusMagang == "" {
+							user.StatusMagang = "aktif"
+						}
+						config.DB.Save(&user)
+					} else {
+						if pendaftaran.AkunPesertaID != nil {
+							var oldUser models.UserManajemen
+							if errOld := config.DB.First(&oldUser, *pendaftaran.AkunPesertaID).Error; errOld == nil {
+								oldUser.Email = input.Email
+								oldUser.Password = userPendaftaran.Password
+								oldUser.StatusAkun = "aktif"
+								if oldUser.StatusMagang == "" {
+									oldUser.StatusMagang = "aktif"
+								}
+								config.DB.Save(&oldUser)
+								user = oldUser
+								userFound = true
+							}
+						}
+
+						if !userFound {
+							newUser := models.UserManajemen{
+								Nama:         pendaftaran.NamaLengkap,
+								Email:        pendaftaran.Email,
+								Password:     userPendaftaran.Password,
+								Role:         "peserta",
+								StatusAkun:   "aktif",
+								StatusMagang: "aktif",
+								NoHp:         pendaftaran.NomorHP,
+								FotoProfil:   pendaftaran.FilePasFoto,
+							}
+							if errCreate := config.DB.Create(&newUser).Error; errCreate == nil {
+								pendaftaran.AkunPesertaID = &newUser.ID
+								config.DB.Save(&pendaftaran)
+								user = newUser
+								userFound = true
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if !userFound {
 		utils.ErrorResponse(c, http.StatusUnauthorized, "Email atau password salah")
 		return
 	}
@@ -318,6 +377,17 @@ func GantiPasswordManajemen(c *gin.Context) {
 		return
 	}
 
+	// Jika role peserta, sinkronkan juga perubahan kata sandi ke akun pendaftarannya
+	if user.Role == "peserta" {
+		var pendaftaran models.PendaftaranMagang
+		if err := config.DB.Where("akun_peserta_id = ?", user.ID).First(&pendaftaran).Error; err == nil && pendaftaran.UserPendaftaranID > 0 {
+			config.DB.Model(&models.UserPendaftaran{}).Where("id = ?", pendaftaran.UserPendaftaranID).Updates(map[string]interface{}{
+				"password":            string(hashed),
+				"password_changed_at": &now,
+			})
+		}
+	}
+
 	utils.SuccessResponse(c, http.StatusOK, "Password berhasil diperbarui", gin.H{
 		"password_changed_at": now,
 	})
@@ -487,9 +557,12 @@ type UpdateUserManajemenInput struct {
 	Nip                string `json:"nip"`
 	Jabatan            string `json:"jabatan"`
 	KapasitasBimbingan int    `json:"kapasitas_bimbingan"`
+	BidangID           *uint  `json:"bidang_id"`
+	Password           string `json:"password"`
+	StatusAkun         string `json:"status_akun"`
 }
 
-// UpdateUserManajemen — admin mengedit data dasar akun (bukan password/role)
+// UpdateUserManajemen — admin mengedit data akun (mentor/admin/peserta)
 func UpdateUserManajemen(c *gin.Context) {
 	id := c.Param("id")
 
@@ -501,7 +574,7 @@ func UpdateUserManajemen(c *gin.Context) {
 
 	var input UpdateUserManajemenInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Nama dan email wajib diisi dengan benar")
+		utils.ErrorResponse(c, http.StatusBadRequest, "Nama dan email wajib diisi dengan benar: "+err.Error())
 		return
 	}
 
@@ -517,6 +590,28 @@ func UpdateUserManajemen(c *gin.Context) {
 	user.Nip = input.Nip
 	user.Jabatan = input.Jabatan
 	user.KapasitasBimbingan = input.KapasitasBimbingan
+
+	if user.Role == "mentor" {
+		user.BidangID = input.BidangID
+	}
+	if input.StatusAkun == "aktif" || input.StatusAkun == "nonaktif" {
+		user.StatusAkun = input.StatusAkun
+	}
+
+	if input.Password != "" {
+		if len(input.Password) < 6 {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Password minimal 6 karakter")
+			return
+		}
+		hashed, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+		if err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengenkripsi password")
+			return
+		}
+		now := time.Now()
+		user.Password = string(hashed)
+		user.PasswordChangedAt = &now
+	}
 
 	if err := config.DB.Save(&user).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui akun")
@@ -537,6 +632,9 @@ func UploadFotoUserManajemen(c *gin.Context) {
 	}
 
 	file, err := c.FormFile("foto_profil")
+	if err != nil {
+		file, err = c.FormFile("foto")
+	}
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, "File foto tidak ditemukan")
 		return
@@ -947,6 +1045,14 @@ func RequestGantiEmailManajemen(c *gin.Context) {
 		return
 	}
 
+	// Cek apakah email baru sudah dipakai oleh akun user manajemen lain
+	var emailExists int64
+	config.DB.Model(&models.UserManajemen{}).Where("LOWER(email) = ? AND id != ?", input.EmailBaru, user.ID).Count(&emailExists)
+	if emailExists > 0 {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Alamat email baru sudah terdaftar pada akun lain")
+		return
+	}
+
 	// ── RATE LIMITING: 60 detik cooldown ──
 	if user.OtpRequestedAt != nil {
 		elapsed := time.Since(*user.OtpRequestedAt)
@@ -1050,9 +1156,9 @@ func VerifikasiGantiEmailManajemen(c *gin.Context) {
 	user.OtpEmail = ""
 	user.OtpEmailExpiredAt = nil
 	user.OtpAttemptCount = 0
+	user.Email = newEmail
 
-	// Jika role = peserta, yang diperbarui adalah Email Pribadi pada pendaftaran magang
-	// Email akun login user_manajemen tetap dipertahankan
+	// Jika role = peserta, perbarui juga Email pada pendaftaran magang dan UserPendaftaran
 	if user.Role == "peserta" {
 		var pendaftaran models.PendaftaranMagang
 		if err := config.DB.Where("akun_peserta_id = ?", user.ID).Order("id desc").First(&pendaftaran).Error; err == nil {
@@ -1070,8 +1176,6 @@ func VerifikasiGantiEmailManajemen(c *gin.Context) {
 			userPend.Email = newEmail
 			_ = config.DB.Save(&userPend)
 		}
-	} else {
-		user.Email = newEmail
 	}
 
 	if err := config.DB.Save(&user).Error; err != nil {

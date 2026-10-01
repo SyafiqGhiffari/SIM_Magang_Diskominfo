@@ -504,7 +504,7 @@ const PesertaDetailModal = ({ pesertaId, onClose, isDark }) => {
                   <p className={`text-xs sm:text-base font-black truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>{p.nama_lengkap}</p>
                   <p className="text-[9px] sm:text-xs text-slate-400 truncate flex items-center gap-1 mt-0.5 mb-1.5">
                     <Mail className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
-                    {data.email_login}
+                    {data.email_login || p.email}
                   </p>
                   <div>
                     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 sm:px-3 sm:py-1 text-[8.5px] sm:text-[10.5px] font-bold shadow-xs ${
@@ -521,7 +521,7 @@ const PesertaDetailModal = ({ pesertaId, onClose, isDark }) => {
 
               <SectionCard icon={User} title="Kontak & Data Diri" delay={40} isDark={isDark}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2.5 mt-2 sm:mt-3">
-                  <InfoRow icon={Mail} label="Email Notifikasi" value={p.email} delay={60} isDark={isDark} />
+                  <InfoRow icon={Mail} label="Alamat Email" value={p.email || data.email_login} delay={60} isDark={isDark} />
                   <InfoRow icon={Phone} label="Nomor HP" value={p.nomor_hp} delay={80} isDark={isDark} />
                   <InfoRow icon={Cake} label="Tempat, Tanggal Lahir" value={`${p.tempat_lahir || "-"}, ${fmtDate(p.tanggal_lahir)}`} delay={100} isDark={isDark} />
                   <InfoRow icon={User} label="Jenis Kelamin" value={p.jenis_kelamin} delay={120} isDark={isDark} />

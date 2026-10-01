@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"sim-magang-backend/config"
@@ -18,9 +20,129 @@ func filterNotifikasi(c *gin.Context) (role string, userID uint) {
 	return
 }
 
+var namaBulanSingkatID = map[string]string{
+	"01": "Jan", "02": "Feb", "03": "Mar", "04": "Apr", "05": "Mei", "06": "Jun",
+	"07": "Jul", "08": "Agu", "09": "Sep", "10": "Okt", "11": "Nov", "12": "Des",
+}
+
+func formatTglIndoSingkat(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	tgl := strings.Split(raw, "T")[0]
+	parts := strings.Split(tgl, "-")
+	if len(parts) == 3 {
+		bln := namaBulanSingkatID[parts[1]]
+		if bln == "" {
+			bln = parts[1]
+		}
+		d := strings.TrimPrefix(parts[2], "0")
+		return fmt.Sprintf("%s %s %s", d, bln, parts[0])
+	}
+	return raw
+}
+
+func formatRentangTglIndo(mulai, selesai string) string {
+	fMulai := formatTglIndoSingkat(mulai)
+	fSelesai := formatTglIndoSingkat(selesai)
+	if fMulai == "" {
+		return fSelesai
+	}
+	if fSelesai == "" || fMulai == fSelesai {
+		return fMulai
+	}
+	return fmt.Sprintf("%s s/d %s", fMulai, fSelesai)
+}
+
+// sinkronkanNotifikasiMentorIzin memastikan notifikasi in-app untuk pengajuan izin
+// berstatus 'menunggu' selalu sinkron dan muncul di lonceng mentor pembimbing.
+func sinkronkanNotifikasiMentorIzin(mentorID uint) {
+	type IzinMenunggu struct {
+		ID             uint
+		PesertaID      uint
+		NamaPeserta    string
+		Jenis          string
+		TanggalMulai   string
+		TanggalSelesai string
+		CreatedAt      time.Time
+	}
+
+	var izins []IzinMenunggu
+	config.DB.Table("pengajuan_izins pi").
+		Select("pi.id, pi.peserta_id, u.nama as nama_peserta, pi.jenis, pi.tanggal_mulai, pi.tanggal_selesai, pi.created_at").
+		Joins("JOIN user_manajemens u ON u.id = pi.peserta_id").
+		Joins("JOIN pendaftaran_magangs p ON p.akun_peserta_id = pi.peserta_id").
+		Where("p.mentor_id = ? AND pi.status = 'menunggu'", mentorID).
+		Scan(&izins)
+
+	for _, iz := range izins {
+		var count int64
+		config.DB.Model(&models.Notifikasi{}).
+			Where("target_role = 'mentor' AND target_user_id = ? AND tipe = 'pengajuan_izin' AND ref_tabel = 'pengajuan_izins' AND ref_id = ?", mentorID, iz.ID).
+			Count(&count)
+
+		namaJenis := "Izin"
+		if iz.Jenis == "sakit" {
+			namaJenis = "Izin Sakit"
+		}
+		rentangTgl := formatRentangTglIndo(iz.TanggalMulai, iz.TanggalSelesai)
+		pesanBaru := fmt.Sprintf("Peserta %s mengajukan %s (%s). Memerlukan verifikasi Anda.", iz.NamaPeserta, strings.ToLower(namaJenis), rentangTgl)
+
+		if count == 0 {
+			notif := models.Notifikasi{
+				TargetRole:   "mentor",
+				TargetUserID: &mentorID,
+				Tipe:         "pengajuan_izin",
+				Prioritas:    "tinggi",
+				Judul:        fmt.Sprintf("Verifikasi %s Baru", namaJenis),
+				Pesan:        pesanBaru,
+				RefTabel:     "pengajuan_izins",
+				RefID:        &iz.ID,
+				UrlTujuan:    "/mentor/pengajuan-izin",
+				CreatedAt:    iz.CreatedAt,
+				UpdatedAt:    iz.CreatedAt,
+			}
+			config.DB.Create(&notif)
+		} else {
+			// Perbarui pesan jika ada notifikasi lama yang masih memuat format tanggal ISO panjang
+			config.DB.Model(&models.Notifikasi{}).
+				Where("target_role = 'mentor' AND target_user_id = ? AND tipe = 'pengajuan_izin' AND ref_tabel = 'pengajuan_izins' AND ref_id = ? AND pesan LIKE '%T00:%'", mentorID, iz.ID).
+				Update("pesan", pesanBaru)
+		}
+	}
+
+	// Otomatis tandai sudah dibaca notifikasi izin yang statusnya sudah bukan 'menunggu' (disetujui/ditolak)
+	config.DB.Exec(`
+		UPDATE notifikasis n
+		JOIN pengajuan_izins pi ON pi.id = n.ref_id
+		SET n.dibaca_pada = NOW()
+		WHERE n.target_role = 'mentor'
+		  AND n.target_user_id = ?
+		  AND n.tipe = 'pengajuan_izin'
+		  AND n.ref_tabel = 'pengajuan_izins'
+		  AND n.dibaca_pada IS NULL
+		  AND pi.status != 'menunggu'
+	`, mentorID)
+
+	// Bersihkan notifikasi untuk pengajuan izin yang sudah dihapus / dibatalkan
+	config.DB.Exec(`
+		DELETE n FROM notifikasis n
+		LEFT JOIN pengajuan_izins pi ON pi.id = n.ref_id
+		WHERE n.target_role = 'mentor'
+		  AND n.target_user_id = ?
+		  AND n.tipe = 'pengajuan_izin'
+		  AND n.ref_tabel = 'pengajuan_izins'
+		  AND pi.id IS NULL
+	`, mentorID)
+}
+
 // GET /api/manajemen/notifikasi?only_unread=true&limit=20
 func GetNotifikasiSaya(c *gin.Context) {
 	role, userID := filterNotifikasi(c)
+
+	if role == "mentor" && userID > 0 {
+		sinkronkanNotifikasiMentorIzin(userID)
+	}
 
 	limit := 20
 	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 && l <= 100 {
@@ -58,6 +180,10 @@ func GetNotifikasiSaya(c *gin.Context) {
 // GET /api/manajemen/notifikasi/unread-count
 func GetUnreadNotifikasiCount(c *gin.Context) {
 	role, userID := filterNotifikasi(c)
+
+	if role == "mentor" && userID > 0 {
+		sinkronkanNotifikasiMentorIzin(userID)
+	}
 
 	var unread int64
 	config.DB.Model(&models.Notifikasi{}).

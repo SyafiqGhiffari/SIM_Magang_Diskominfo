@@ -18,7 +18,7 @@ import { toastError, toastSuccess } from "../../utils/swal";
 import {
   ClipboardList, Search, Inbox, Filter as FilterIcon, CheckCircle2, Clock, FileText, UserX,
   Building2, GraduationCap, LogIn, LogOut, AlarmClockOff, Lock, CalendarCheck, CalendarOff, Loader2,
-  CalendarDays, Layers, Rows3, ChevronDown, ChevronUp, Sun, Users, Info,
+  CalendarDays, Layers, Rows3, ChevronDown, ChevronUp, Sun, Users, Info, Eye,
 } from "lucide-react";
 
 const emptyFilters = {
@@ -560,7 +560,7 @@ const DataPresensiPage = () => {
                     <h3 className={`text-xs sm:text-base font-black truncate ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
                       Riwayat Presensi
                     </h3>
-                    <p className="mt-0.5 text-[10px] sm:text-xs text-slate-400 max-w-xl truncate sm:whitespace-normal">
+                    <p className="mt-0.5 text-[10px] sm:text-xs text-slate-400 max-w-2xl truncate sm:whitespace-normal">
                       <span className="hidden sm:inline">
                         {mode === "terbaru"
                           ? "Menampilkan presensi terbaru tiap peserta. Klik tombol riwayat untuk membuka data lamanya."
@@ -625,14 +625,14 @@ const DataPresensiPage = () => {
                   {/* Desktop Only: Filter button */}
                   <button
                     onClick={openFilter}
-                    className={`hidden sm:inline-flex group items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer shrink-0 ${
+                    className={`hidden sm:inline-flex group h-[38px] sm:h-[42px] items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border px-3 sm:px-4 text-[11px] sm:text-xs font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer shrink-0 ${
                       isDark
                         ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
                         : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                     }`}
                   >
                     <FilterIcon className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
-                    Filter
+                    <span>Filter</span>
                     {activeFilterCountDesktop > 0 && (
                       <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[#004F9F] text-white px-1 text-[9.5px] font-black">
                         {activeFilterCountDesktop}
@@ -702,7 +702,7 @@ const DataPresensiPage = () => {
                         sortBy={sortBy}
                         onSort={setSortBy}
                         isDark={isDark}
-                        className="w-[55%] sm:w-[20%]"
+                        className="w-[50%] sm:w-[22%]"
                       />
 
                       {/* Tanggal (Desktop Only) */}
@@ -712,21 +712,26 @@ const DataPresensiPage = () => {
                         sortBy={sortBy}
                         onSort={setSortBy}
                         isDark={isDark}
-                        className="hidden sm:table-cell sm:w-[16%]"
+                        className="hidden sm:table-cell sm:w-[14%]"
                       />
 
-                      {/* Jam Masuk / Pulang (Desktop Only - diperlebar) */}
+                      {/* Jam Masuk / Pulang (Desktop Only - kurangi lebar untuk kolom logbook) */}
                       <SortableHeader
                         label="Jam Masuk / Pulang"
                         columnKey="jam"
                         sortBy={sortBy}
                         onSort={setSortBy}
                         isDark={isDark}
-                        className="hidden sm:table-cell sm:w-[30%]"
+                        className="hidden sm:table-cell sm:w-[18%]"
                       />
 
-                      {/* Bidang (Desktop Only) */}
+                      {/* Logbook (Desktop Only) */}
                       <th className="hidden sm:table-cell px-4 sm:px-6 py-3 sm:py-3.5 text-left text-[10px] sm:text-[10.5px] font-black uppercase tracking-wider text-slate-400 sm:w-[16%]">
+                        Logbook
+                      </th>
+
+                      {/* Bidang (Desktop Only) */}
+                      <th className="hidden sm:table-cell px-4 sm:px-6 py-3 sm:py-3.5 text-left text-[10px] sm:text-[10.5px] font-black uppercase tracking-wider text-slate-400 sm:w-[14%]">
                         Bidang
                       </th>
 
@@ -737,11 +742,11 @@ const DataPresensiPage = () => {
                         sortBy={sortBy}
                         onSort={setSortBy}
                         isDark={isDark}
-                        className="w-[25%] sm:w-[12%]"
+                        className="w-[28%] sm:w-[10%]"
                       />
 
                       {/* Aksi (Mobile & Desktop) */}
-                      <th className="px-3 sm:px-6 py-3 sm:py-3.5 text-right text-[10px] sm:text-[10.5px] font-black uppercase tracking-wider text-slate-400 w-[20%] sm:w-[6%]">
+                      <th className="px-3 sm:px-6 py-3 sm:py-3.5 text-right text-[10px] sm:text-[10.5px] font-black uppercase tracking-wider text-slate-400 w-[22%] sm:w-[6%]">
                         Aksi
                       </th>
                     </tr>
@@ -749,7 +754,7 @@ const DataPresensiPage = () => {
                   <tbody className={`divide-y ${isDark ? "divide-white/5" : "divide-slate-50"}`}>
                     {rows.length === 0 ? (
                       <tr className="animate-[fadeslide_0.3s_ease-out]">
-                        <td colSpan={6} className="px-4 sm:px-6 py-14 sm:py-16">
+                        <td colSpan={7} className="px-4 sm:px-6 py-14 sm:py-16">
                           <div className="flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center">
                             <span className={`relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl ${
                               isDark ? "bg-white/5 text-slate-500" : "bg-slate-50 text-slate-300"
@@ -872,7 +877,56 @@ const DataPresensiPage = () => {
                                 </div>
                               </td>
 
-                              {/* 4. Bidang (Desktop Only - Warna Berbeda Per Bidang) */}
+                              {/* 4. Logbook (Desktop Only) */}
+                              <td className="hidden sm:table-cell px-4 sm:px-6 py-2.5 sm:py-4">
+                                {(() => {
+                                  const rawKet = (r.keterangan || "").trim();
+                                  const isFallback = rawKet === "Belum melakukan presensi hari ini";
+                                  const hasLogbook =
+                                    rawKet !== "" &&
+                                    !isFallback &&
+                                    r.status !== "alfa" &&
+                                    r.status !== "alpa" &&
+                                    r.status !== "izin" &&
+                                    r.status !== "sakit";
+
+                                  if (r.status === "izin" || r.status === "sakit") {
+                                    return (
+                                      <p
+                                        className={`text-[10px] sm:text-[10.5px] italic font-medium leading-relaxed break-words max-w-[220px] ${
+                                          isDark ? "text-slate-400" : "text-slate-500"
+                                        }`}
+                                      >
+                                        {rawKet || (r.status === "sakit" ? "Dispensasi Sakit" : "Dispensasi Izin")}
+                                      </p>
+                                    );
+                                  }
+
+                                  if (r.status === "alfa" || r.status === "alpa") {
+                                    return <span className="text-[10.5px] text-slate-400">-</span>;
+                                  }
+
+                                  if (hasLogbook) {
+                                    return (
+                                      <p
+                                        className={`text-[10px] sm:text-[10.5px] font-medium leading-relaxed break-words max-w-[240px] whitespace-normal ${
+                                          isDark ? "text-slate-200" : "text-slate-700"
+                                        }`}
+                                      >
+                                        {rawKet}
+                                      </p>
+                                    );
+                                  }
+
+                                  return (
+                                    <span className="text-[10px] sm:text-[10.5px] text-slate-400 italic">
+                                      -
+                                    </span>
+                                  );
+                                })()}
+                              </td>
+
+                              {/* 5. Bidang (Desktop Only - Warna Berbeda Per Bidang) */}
                               <td className="hidden sm:table-cell px-4 sm:px-6 py-2.5 sm:py-4">
                                 {r.bidang ? (
                                   <span
@@ -887,21 +941,36 @@ const DataPresensiPage = () => {
                                 )}
                               </td>
 
-                              {/* 5. Status (Mobile & Desktop) */}
+                              {/* 6. Status (Mobile & Desktop) */}
                               <td className="px-2 sm:px-6 py-2.5 sm:py-4 whitespace-nowrap">
                                 <PresensiStatusBadge status={r.status} />
                               </td>
 
-                              {/* 6. Aksi Dropdown (Mobile & Desktop) */}
+                              {/* 7. Aksi (Mobile & Desktop) */}
                               <td className="px-2 sm:px-6 py-2.5 sm:py-4 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
-                                  <PresensiActionsDropdown
-                                    onDetail={() => setDetail(r)}
-                                    hasRiwayat={mode === "terbaru" && r.total_riwayat > 1}
-                                    totalRiwayat={r.total_riwayat || 0}
-                                    onToggleRiwayat={() => setSelectedPesertaRiwayat(r)}
-                                    isDark={isDark}
-                                  />
+                                  {mode === "semua" ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setDetail(r)}
+                                      title="Lihat Detail Presensi"
+                                      className={`group inline-flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-lg sm:rounded-xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer ${
+                                        isDark
+                                          ? "border-white/10 bg-white/5 text-slate-300 hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-300"
+                                          : "border-slate-200 bg-white text-slate-600 hover:border-[#004F9F]/30 hover:bg-blue-50/60 hover:text-[#004F9F]"
+                                      }`}
+                                    >
+                                      <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200 group-hover:scale-110" />
+                                    </button>
+                                  ) : (
+                                    <PresensiActionsDropdown
+                                      onDetail={() => setDetail(r)}
+                                      hasRiwayat={mode === "terbaru" && r.total_riwayat > 1}
+                                      totalRiwayat={r.total_riwayat || 0}
+                                      onToggleRiwayat={() => setSelectedPesertaRiwayat(r)}
+                                      isDark={isDark}
+                                    />
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -983,6 +1052,36 @@ const DataPresensiPage = () => {
                                         <Building2 className="w-3 h-3 shrink-0" />
                                         <span>{r.bidang || "-"}</span>
                                       </span>
+                                    </div>
+
+                                    {/* Logbook Harian (Mobile) */}
+                                    <div className="flex items-start justify-between gap-2 pt-1 border-t border-dashed border-slate-200 dark:border-white/5">
+                                      <span className="text-slate-400 flex items-center gap-1 font-semibold shrink-0">
+                                        <FileText className="w-3 h-3 text-slate-400" /> Logbook:
+                                      </span>
+                                      <div className="text-right max-w-[200px]">
+                                        {(() => {
+                                          const rawKet = (r.keterangan || "").trim();
+                                          const isFallback = rawKet === "Belum melakukan presensi hari ini";
+                                          const hasLogbook =
+                                            rawKet !== "" &&
+                                            !isFallback &&
+                                            r.status !== "alfa" &&
+                                            r.status !== "alpa";
+
+                                          if (r.status === "alfa" || r.status === "alpa") {
+                                            return <span className="text-slate-400">-</span>;
+                                          }
+                                          if (hasLogbook) {
+                                            return (
+                                              <span className={`font-medium line-clamp-2 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+                                                {rawKet}
+                                              </span>
+                                            );
+                                          }
+                                          return <span className="text-slate-400 italic">Belum diisi</span>;
+                                        })()}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>

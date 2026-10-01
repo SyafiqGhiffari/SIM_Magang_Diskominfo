@@ -11,6 +11,16 @@ const BidangModal = ({ initialData, onClose, onSubmit, isDark }) => {
 
   const isUnlimited = Number(kuota) === 0;
 
+  const isFormValid = Boolean(
+    nama.trim() &&
+    deskripsi.trim() &&
+    kuota !== "" &&
+    kuota !== null &&
+    kuota !== undefined &&
+    !isNaN(Number(kuota)) &&
+    Number(kuota) >= 0
+  );
+
   useEffect(() => {
     const handleKeyDown = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handleKeyDown);
@@ -20,7 +30,7 @@ const BidangModal = ({ initialData, onClose, onSubmit, isDark }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!nama.trim()) return;
+    if (!isFormValid || loading) return;
     setLoading(true);
     try {
       await onSubmit({
@@ -293,8 +303,12 @@ const BidangModal = ({ initialData, onClose, onSubmit, isDark }) => {
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="group flex-[1.5] inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] py-1.5 sm:py-2.5 text-[10.5px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:from-[#101F5C] hover:to-[#004F9F] active:scale-95 disabled:opacity-60 disabled:hover:translate-y-0 cursor-pointer"
+              disabled={loading || !isFormValid}
+              className={`group flex-[1.5] inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] py-1.5 sm:py-2.5 text-[10.5px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 ${
+                loading || !isFormValid
+                  ? "opacity-50 cursor-not-allowed shadow-none"
+                  : "hover:shadow-lg hover:-translate-y-0.5 hover:from-[#101F5C] hover:to-[#004F9F] active:scale-95 cursor-pointer"
+              }`}
             >
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110" />}
               {isEdit ? "Simpan Perubahan" : "Tambah Bidang"}

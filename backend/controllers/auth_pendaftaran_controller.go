@@ -576,6 +576,16 @@ func GantiPasswordPendaftaran(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui password")
 		return
 	}
+
+	// Sinkronkan ke akun UserManajemen jika pendaftar sudah memiliki akun peserta aktif
+	var pendaftaran models.PendaftaranMagang
+	if err := config.DB.Where("user_pendaftaran_id = ? AND akun_peserta_id IS NOT NULL", user.ID).First(&pendaftaran).Error; err == nil && pendaftaran.AkunPesertaID != nil {
+		config.DB.Model(&models.UserManajemen{}).Where("id = ?", *pendaftaran.AkunPesertaID).Updates(map[string]interface{}{
+			"password":            string(hashed),
+			"password_changed_at": &now,
+		})
+	}
+
 	utils.SuccessResponse(c, http.StatusOK, "Password berhasil diperbarui", gin.H{
 		"password_changed_at": now,
 	})

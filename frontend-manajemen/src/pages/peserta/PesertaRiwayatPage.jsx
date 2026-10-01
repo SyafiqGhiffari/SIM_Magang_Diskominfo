@@ -495,7 +495,7 @@ export const PesertaRiwayatPage = () => {
     }
     const filename = `Riwayat_Presensi_${bulan}`;
     if (type === "pdf") {
-      exportPresensiToPdf(filteredRiwayat, labelBulan(bulan));
+      exportPresensiToPdf(filteredRiwayat, labelBulan(bulan), filename);
     } else if (type === "excel") {
       exportPresensiToExcel(filteredRiwayat, filename);
     } else if (type === "csv") {

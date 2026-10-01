@@ -131,7 +131,9 @@ const RekapPesertaModal = ({ peserta, bulan, onClose, isDark = false }) => {
       try {
         const res = await getRekapPeserta(peserta.peserta_id, { bulan });
         if (!aktif) return;
-        setRiwayat(res.data.data?.riwayat || []);
+        const raw = res.data.data?.riwayat || [];
+        const sorted = [...raw].sort((a, b) => (b.tanggal || "").localeCompare(a.tanggal || ""));
+        setRiwayat(sorted);
         setPeriode(res.data.data?.periode || null);
       } catch (err) {
         if (aktif) toastError(err.response?.data?.message || "Gagal memuat riwayat presensi peserta.");
@@ -419,11 +421,15 @@ const RekapPesertaModal = ({ peserta, bulan, onClose, isDark = false }) => {
             untuk menutup
           </p>
           <button
+            type="button"
             onClick={onClose}
-            className="group relative inline-flex w-full sm:w-auto items-center justify-center gap-2 overflow-hidden rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#00A5EC] px-4 py-1.5 sm:px-5 sm:py-2.5 text-[10px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+            className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg sm:rounded-xl px-4 py-2 sm:px-5 sm:py-2.5 text-[11px] sm:text-xs font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ${
+              isDark
+                ? "bg-white/10 hover:bg-white/15 text-slate-200 border border-white/10 shadow-sm"
+                : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-sm"
+            }`}
           >
-            <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent group-hover:animate-[shine_0.9s_ease-out]" />
-            <span className="relative">Tutup</span>
+            Tutup
           </button>
         </div>
       </div>

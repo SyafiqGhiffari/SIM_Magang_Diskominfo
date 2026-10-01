@@ -71,16 +71,16 @@ const PendaftaranPage = () => {
 
   const handleBuatAkun = async (p) => {
     const result = await confirmDialog({
-      title: `Buat akun untuk ${p.nama_lengkap}?`,
-      text: `Sistem akan membuat akun login otomatis dan mengirimkan kredensial ke email ${p.email}.`,
-      confirmText: "Ya, Buat Akun",
+      title: `Aktifkan akun untuk ${p.nama_lengkap}?`,
+      text: `Sistem akan mengaktifkan akun portal magang menggunakan email ${p.email} dan kata sandi pendaftaran peserta.`,
+      confirmText: "Ya, Aktifkan Akun",
       icon: "question",
     });
     if (!result.isConfirmed) return;
 
     try {
       await createAkunPeserta(p.id);
-      toastSuccess("Akun peserta berhasil dibuat dan kredensial telah dikirim ke email");
+      toastSuccess("Akun peserta berhasil diaktifkan");
       fetchData();
 
       const lanjutkan = await confirmDialog({

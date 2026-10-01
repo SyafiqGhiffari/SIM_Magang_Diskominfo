@@ -41,3 +41,11 @@ export const verifikasiGantiEmailManajemen = (data) =>
 // Riwayat login akun peserta / manajemen
 export const getRiwayatLoginPeserta = () =>
   api.get("/manajemen/riwayat-login");
+
+// Request reset password (kirim link token ke email)
+export const requestForgotPassword = (email) =>
+  api.post("/manajemen/forgot-password", { email });
+
+// Reset password menggunakan token dari link email
+export const resetPassword = (data) =>
+  api.post("/manajemen/reset-password", data);

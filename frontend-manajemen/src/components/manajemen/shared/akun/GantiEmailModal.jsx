@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Mail,
   ShieldCheck,
@@ -98,9 +99,9 @@ export const GantiEmailModal = ({
     if (lastIndex >= 0) otpRefs.current[lastIndex]?.focus();
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/75 backdrop-blur-xs sm:backdrop-blur-sm p-2 sm:p-4 overflow-y-auto"
+      className="fixed inset-0 w-screen h-screen z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs sm:backdrop-blur-sm p-2 sm:p-4 overflow-y-auto"
       style={{ margin: 0 }}
       onClick={() => setShowEmailModal(false)}
     >
@@ -234,7 +235,7 @@ export const GantiEmailModal = ({
                   {/* Kolom Kiri: Form Input */}
                   <div className="md:col-span-7 space-y-2 sm:space-y-3">
                     <p className="text-[9.5px] sm:text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                      Ubah alamat <strong>email kontak pribadi</strong> peserta untuk
+                      Ubah alamat <strong>email kontak pribadi</strong> untuk
                       korespondensi kegiatan magang dan pengiriman notifikasi.
                     </p>
 
@@ -350,13 +351,13 @@ export const GantiEmailModal = ({
                         <li className="flex items-start gap-1 sm:gap-1.5">
                           <span className="shrink-0 mt-0.5 sm:mt-1 h-1 w-1 rounded-full bg-blue-500 dark:bg-sky-400" />
                           <span>
-                            Email baru digunakan untuk kontak pribadi & korespondensi magang.
+                            Email baru akan otomatis menjadi alamat login akun portal SIM Magang &amp; tujuan notifikasi resmi.
                           </span>
                         </li>
                         <li className="flex items-start gap-1 sm:gap-1.5">
                           <span className="shrink-0 mt-0.5 sm:mt-1 h-1 w-1 rounded-full bg-blue-500 dark:bg-sky-400" />
                           <span>
-                            Tidak memengaruhi email / username akun login portal SIM Magang.
+                            Pastikan alamat email baru aktif dan dapat menerima pesan masuk.
                           </span>
                         </li>
                         <li className="flex items-start gap-1 sm:gap-1.5">
@@ -383,7 +384,7 @@ export const GantiEmailModal = ({
                         </h4>
                       </div>
                       <p className="text-[8px] sm:text-[10.5px] leading-tight sm:leading-relaxed text-slate-600 dark:text-slate-300">
-                        Setiap pembaruan email diverifikasi melalui kode OTP demi mencegah kekeliruan dan menjaga validitas data peserta.
+                        Setiap pembaruan email diverifikasi melalui kode OTP demi mencegah kekeliruan dan menjaga validitas data akun.
                       </p>
                     </div>
                   </div>
@@ -508,7 +509,8 @@ export const GantiEmailModal = ({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -72,15 +72,82 @@ func SinkronStatusMagang() {
 	}
 }
 
+// SinkronSemuaAkunPeserta memastikan semua data pendaftaran berstatus 'diterima'
+// memiliki akun UserManajemen yang sinkron (menggunakan email aktif pribadi & password UserPendaftaran).
+func SinkronSemuaAkunPeserta() {
+	var pendaftaranList []models.PendaftaranMagang
+	if err := config.DB.Preload("UserPendaftaran").Where("status_pendaftaran = 'diterima'").Find(&pendaftaranList).Error; err != nil {
+		log.Println("[sync-akun] gagal memuat pendaftaran diterima:", err)
+		return
+	}
+
+	for _, p := range pendaftaranList {
+		if p.Email == "" || p.UserPendaftaran.Password == "" {
+			continue
+		}
+
+		if p.AkunPesertaID != nil {
+			var user models.UserManajemen
+			if err := config.DB.First(&user, *p.AkunPesertaID).Error; err == nil {
+				updates := map[string]interface{}{}
+				if user.Email != p.Email {
+					var conflict models.UserManajemen
+					if errConf := config.DB.Where("email = ? AND id != ?", p.Email, user.ID).First(&conflict).Error; errConf != nil {
+						updates["email"] = p.Email
+					}
+				}
+				if user.Password != p.UserPendaftaran.Password {
+					updates["password"] = p.UserPendaftaran.Password
+				}
+				if user.StatusAkun != "aktif" {
+					updates["status_akun"] = "aktif"
+				}
+				if user.Nama != p.NamaLengkap {
+					updates["nama"] = p.NamaLengkap
+				}
+				if len(updates) > 0 {
+					config.DB.Model(&user).Updates(updates)
+				}
+			}
+		} else {
+			var existingUser models.UserManajemen
+			if err := config.DB.Where("email = ?", p.Email).First(&existingUser).Error; err == nil {
+				config.DB.Model(&existingUser).Updates(map[string]interface{}{
+					"password":    p.UserPendaftaran.Password,
+					"status_akun": "aktif",
+					"nama":        p.NamaLengkap,
+				})
+				config.DB.Model(&p).Update("akun_peserta_id", existingUser.ID)
+			} else {
+				newUser := models.UserManajemen{
+					Nama:         p.NamaLengkap,
+					Email:        p.Email,
+					Password:     p.UserPendaftaran.Password,
+					Role:         "peserta",
+					StatusAkun:   "aktif",
+					StatusMagang: "aktif",
+					NoHp:         p.NomorHP,
+					FotoProfil:   p.FilePasFoto,
+				}
+				if errCreate := config.DB.Create(&newUser).Error; errCreate == nil {
+					config.DB.Model(&p).Update("akun_peserta_id", newUser.ID)
+				}
+			}
+		}
+	}
+}
+
 // JalankanSchedulerStatusMagang menjalankan sinkronisasi sekali saat server
 // menyala, lalu berulang setiap jam.
 func JalankanSchedulerStatusMagang() {
 	go func() {
+		SinkronSemuaAkunPeserta()
 		SinkronStatusMagang()
 
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
 		for range ticker.C {
+			SinkronSemuaAkunPeserta()
 			SinkronStatusMagang()
 		}
 	}()

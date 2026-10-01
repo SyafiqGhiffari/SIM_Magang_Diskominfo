@@ -18,7 +18,7 @@ import { getFileUrl } from "../../utils/fileUrl";
 import { getBidangColor } from "../../utils/bidangColor";
 import {
   Users, Filter as FilterIcon, Search, ChevronUp, ChevronDown, ChevronsUpDown, Inbox,
-  Building2, Calendar, Info, KeyRound, Plus, UserCog, AlertTriangle, Check, Landmark,
+  Building2, Calendar, Info, KeyRound, Plus, UserCog, Landmark,
 } from "lucide-react";
 
 const columns = [
@@ -101,9 +101,11 @@ const PesertaPage = () => {
 
   const [statusList, setStatusList] = useState([]);
   const [periodeList, setPeriodeList] = useState([]);
+  const [mentorStatusList, setMentorStatusList] = useState([]);
   const [bidangFilter, setBidangFilter] = useState("");
   const [appliedStatusList, setAppliedStatusList] = useState([]);
   const [appliedPeriodeList, setAppliedPeriodeList] = useState([]);
+  const [appliedMentorStatusList, setAppliedMentorStatusList] = useState([]);
   const [appliedBidangFilter, setAppliedBidangFilter] = useState("");
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedDetailId, setSelectedDetailId] = useState(null);
@@ -121,6 +123,7 @@ const PesertaPage = () => {
 
   const toggleStatus = (key) => setStatusList((prev) => (prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]));
   const togglePeriode = (key) => setPeriodeList((prev) => (prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]));
+  const toggleMentorStatus = (key) => setMentorStatusList((prev) => (prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]));
 
   const fetchData = async () => {
     try {
@@ -149,9 +152,10 @@ const PesertaPage = () => {
   };
 
   const handleResetPassword = async (m) => {
+    const emailPeserta = m.email_login || m.email_notifikasi || m.email || "-";
     const result = await confirmDialog({
       title: `Reset password ${m.nama}?`,
-      text: `Password baru akan dibuat otomatis dan dikirim ke email notifikasi peserta (${m.email_notifikasi || "-"}).`,
+      text: `Password baru akan dibuat otomatis dan dikirim ke email peserta (${emailPeserta}).`,
       confirmText: "Ya, Reset Password",
       icon: "question",
     });
@@ -204,12 +208,13 @@ const PesertaPage = () => {
   const handleApplyFilters = () => {
     setAppliedStatusList(statusList);
     setAppliedPeriodeList(periodeList);
+    setAppliedMentorStatusList(mentorStatusList);
     setAppliedBidangFilter(bidangFilter);
     setPage(0);
   };
   const handleResetFilters = () => {
-    setStatusList([]); setPeriodeList([]); setBidangFilter("");
-    setAppliedStatusList([]); setAppliedPeriodeList([]); setAppliedBidangFilter("");
+    setStatusList([]); setPeriodeList([]); setMentorStatusList([]); setBidangFilter("");
+    setAppliedStatusList([]); setAppliedPeriodeList([]); setAppliedMentorStatusList([]); setAppliedBidangFilter("");
     setSortBy("nama_az");
     setPage(0);
   };
@@ -224,6 +229,12 @@ const PesertaPage = () => {
         ? true
         : appliedPeriodeList.includes(getPeriodeStatus(m.tanggal_mulai, m.tanggal_selesai).key)
     )
+    .filter((m) => {
+      if (appliedMentorStatusList.length === 0 || appliedMentorStatusList.length === 2) return true;
+      if (appliedMentorStatusList.includes("belum_ada")) return !m.mentor_nama;
+      if (appliedMentorStatusList.includes("sudah_ada")) return Boolean(m.mentor_nama);
+      return true;
+    })
     .filter((m) => {
       const match = (q) => {
         const s = q.toLowerCase();
@@ -256,24 +267,13 @@ const PesertaPage = () => {
   const totalAlumni = list.filter((m) => m.status_magang === "selesai").length;
   const totalAktifMagang = list.filter((m) => m.status_akun === "aktif" && m.status_magang !== "selesai").length;
 
-  const pesertaSelesai = list.filter((m) => getPeriodeStatus(m.tanggal_mulai, m.tanggal_selesai).key === "selesai");
-  const pesertaSelesaiBelumNonaktif = pesertaSelesai.filter((m) => m.status_magang !== "selesai");
-
-  const handleLihatSelesaiBelumNonaktif = () => {
-    setStatusList([]);
-    setPeriodeList(["selesai"]);
-    setAppliedStatusList([]);
-    setAppliedPeriodeList(["selesai"]);
-    setPage(0);
-  };
-
   const handleExport = (format) => {
     if (sorted.length === 0) {
       toastError("Tidak ada data untuk diekspor pada filter saat ini.");
       return;
     }
     const rows = sorted.map((m) => ({
-      Nama: m.nama, "Email Login": m.email_login, "Email Notifikasi": m.email_notifikasi || "-",
+      Nama: m.nama, Email: m.email_login || m.email || "-",
       Bidang: m.bidang || "-", Mentor: m.mentor_nama || "Belum Ditugaskan", Institusi: m.institusi || "-",
       "Periode Magang": m.tanggal_mulai ? `${fmtDate(m.tanggal_mulai)} - ${fmtDate(m.tanggal_selesai)}` : "-",
       "Status Akun": m.status_akun === "aktif" ? "Aktif" : "Nonaktif",
@@ -294,6 +294,7 @@ const PesertaPage = () => {
     appliedStatusList.length +
     (appliedBidangFilter ? 1 : 0) +
     appliedPeriodeList.length +
+    appliedMentorStatusList.length +
     (isMobile ? (sortBy ? 1 : 0) : 0);
 
   return (
@@ -330,7 +331,7 @@ const PesertaPage = () => {
 
             {/* Dua Card Info Berdampingan (Order 3 di Mobile, Order 2 di Desktop) */}
             <div className="order-3 lg:order-2 col-span-1 lg:col-span-4 grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-5">
-              {/* Card 1: Cara Membuat Akun */}
+              {/* Card 1: Aktivasi Otomatis Akun Peserta */}
               <div className={`rounded-xl sm:rounded-2xl border shadow-sm overflow-hidden p-3 sm:p-5 ${
                 isDark ? "border-white/10" : "border-slate-200/80"
               } bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A]`}>
@@ -338,14 +339,14 @@ const PesertaPage = () => {
                   <span className="flex h-6 w-6 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-white/10 border border-white/15">
                     <Info className="w-3 h-3 sm:w-4 sm:h-4 text-[#00A5EC]" />
                   </span>
-                  <h3 className="text-[11px] sm:text-xs font-black text-white">Cara Membuat Akun Peserta Baru</h3>
+                  <h3 className="text-[11px] sm:text-xs font-black text-white">Aktivasi Otomatis Akun Peserta</h3>
                 </div>
                 <ol className="space-y-1.5 sm:space-y-2.5">
                   {[
                     "Buka menu Kelola Pendaftaran.",
-                    'Filter status "Diterima".',
-                    'Klik titik tiga pada baris peserta, pilih "Buat Akun Peserta".',
-                    "Kredensial otomatis dibuat dan dikirim ke email peserta.",
+                    "Review berkas pendaftaran calon peserta.",
+                    'Klik tombol "Terima" pada modal verifikasi.',
+                    "Akun magang otomatis aktif & terhubung dengan kredensial pendaftaran peserta.",
                   ].map((step, i) => (
                     <li key={i} className="flex items-start gap-1.5 sm:gap-2.5 text-[9.5px] sm:text-[11px] leading-relaxed text-white/75">
                       <span className="flex h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 shrink-0 items-center justify-center rounded-full bg-white/10 text-[8px] sm:text-[9px] font-black text-[#00A5EC]">{i + 1}</span>
@@ -356,8 +357,8 @@ const PesertaPage = () => {
                 <div className="mt-2.5 sm:mt-4 flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-white/5 border border-white/10 p-2 sm:p-3">
                   <KeyRound className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-[#00A5EC]" />
                   <p className="text-[9px] sm:text-[10.5px] leading-relaxed text-white/70">
-                    <span className="inline sm:hidden">Email login untuk akses sistem, email pribadi untuk menerima notifikasi.</span>
-                    <span className="hidden sm:inline">Email login dibuat khusus untuk mengakses sistem, sedangkan email pribadi tetap digunakan untuk menerima notifikasi selama masa magang.</span>
+                    <span className="inline sm:hidden">Peserta login menggunakan email aktif &amp; kata sandi pendaftaran mereka.</span>
+                    <span className="hidden sm:inline">Peserta langsung dapat login ke portal manajemen menggunakan email aktif &amp; kata sandi pendaftaran mereka tanpa perlu kredensial terpisah.</span>
                   </p>
                 </div>
               </div>
@@ -402,7 +403,7 @@ const PesertaPage = () => {
             </div>
 
             {/* Card Tabel (Order 2 di Mobile, Order 3 di Desktop) */}
-            <div className={`order-2 lg:order-3 col-span-1 lg:col-span-3 rounded-2xl border shadow-sm overflow-hidden ${
+            <div className={`order-2 lg:order-3 col-span-1 lg:col-span-4 rounded-2xl border shadow-sm overflow-hidden ${
               isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
             }`}>
               {/* Header Card: Judul di Kiri & Button Ekspor di Kanan (Sejajar) */}
@@ -518,7 +519,7 @@ const PesertaPage = () => {
                               <p className={`text-xs sm:text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-500"}`}>Belum ada akun peserta</p>
                               <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 max-w-[260px] sm:max-w-none">
                                 {list.length === 0
-                                  ? "Buat akun lewat menu Kelola Pendaftaran untuk peserta yang sudah diterima."
+                                  ? "Terima pendaftaran magang lewat menu Kelola Pendaftaran untuk mengaktifkan akun peserta."
                                   : "Tidak ada peserta yang cocok dengan filter saat ini."}
                               </p>
                             </div>
@@ -625,14 +626,14 @@ const PesertaPage = () => {
                                 </td>
 
                                 {/* Institusi (Desktop) */}
-                                <td className="hidden sm:table-cell px-4 py-4">
-                                  <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold shadow-xs whitespace-nowrap ${
+                                <td className="hidden sm:table-cell px-4 py-4 text-slate-500">
+                                  <span className={`group/inst inline-flex items-center gap-1 sm:gap-1.5 rounded-full border px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[9.5px] sm:text-[11px] font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md max-w-full ${
                                     isDark
-                                      ? "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
-                                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
+                                      ? "border-[#004F9F]/30 bg-white text-[#004F9F]"
+                                      : "border-[#004F9F]/15 bg-gradient-to-r from-[#0B1442]/5 via-[#004F9F]/10 to-[#00A5EC]/10 text-[#004F9F] hover:border-[#004F9F]/30"
                                   }`}>
-                                    <Landmark className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                                    <span>{m.institusi || "-"}</span>
+                                    <Landmark className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0 transition-transform duration-300 group-hover/inst:scale-110" />
+                                    <span className="whitespace-normal break-words leading-relaxed text-left">{m.institusi || "-"}</span>
                                   </span>
                                 </td>
 
@@ -642,19 +643,19 @@ const PesertaPage = () => {
                                     const status = getPeriodeStatus(m.tanggal_mulai, m.tanggal_selesai);
                                     const belumDiatur = !m.tanggal_mulai || !m.tanggal_selesai;
                                     return (
-                                      <div className="group/periode">
-                                        <p className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10.5px] font-bold shadow-sm whitespace-nowrap transition-all duration-200 group-hover/periode:-translate-y-0.5 ${
+                                      <div className="group/periode flex flex-col items-start">
+                                        <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10.5px] font-bold shadow-sm whitespace-nowrap transition-all duration-200 group-hover/periode:-translate-y-0.5 ${
                                           isDark
                                             ? "border-white/10 bg-white/5 text-slate-300 group-hover:border-white/20"
                                             : "border-slate-200 bg-slate-50 text-slate-600 group-hover:border-slate-300 group-hover:bg-white group-hover:shadow-md"
                                         }`}>
                                           <Calendar className="w-3 h-3 shrink-0 text-slate-400 transition-transform duration-300 group-hover/periode:scale-110 group-hover/periode:text-[#00A5EC]" />
                                           {belumDiatur ? "Periode belum diatur" : `${fmtDate(m.tanggal_mulai)} - ${fmtDate(m.tanggal_selesai)}`}
-                                        </p>
-                                        <p className={`mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold ${status.color}`}>
+                                        </span>
+                                        <span className={`mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold ${status.color}`}>
                                           <span className={`h-1.5 w-1.5 rounded-full ${status.dot} ${status.label === "Sedang berjalan" ? "animate-pulse" : ""}`} />
                                           {status.label}
-                                        </p>
+                                        </span>
                                       </div>
                                     );
                                   })()}
@@ -757,11 +758,16 @@ const PesertaPage = () => {
                                     <div className="space-y-2 text-[10.5px]">
                                       {/* Institusi */}
                                       <div className="flex items-center justify-between gap-2">
-                                        <span className="text-slate-400 flex items-center gap-1 font-semibold">
-                                          <Landmark className="w-3 h-3 text-slate-400" /> Institusi:
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                                          <Landmark className="w-3 h-3 text-slate-400" /> Institusi
                                         </span>
-                                        <span className={`font-bold truncate max-w-[180px] ${isDark ? "text-slate-200" : "text-slate-700"}`}>
-                                          {m.institusi || "-"}
+                                        <span className={`group/inst inline-flex items-center gap-1 sm:gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md max-w-[70%] ${
+                                          isDark
+                                            ? "border-[#004F9F]/30 bg-white text-[#004F9F]"
+                                            : "border-[#004F9F]/15 bg-gradient-to-r from-[#0B1442]/5 via-[#004F9F]/10 to-[#00A5EC]/10 text-[#004F9F] hover:border-[#004F9F]/30"
+                                        }`}>
+                                          <Landmark className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0 transition-transform duration-300 group-hover/inst:scale-110" />
+                                          <span className="whitespace-normal break-words leading-relaxed text-left">{m.institusi || "-"}</span>
                                         </span>
                                       </div>
 
@@ -838,115 +844,6 @@ const PesertaPage = () => {
 
                 <Pagination totalItems={sorted.length} page={page} setPage={setPage} perPage={perPage} setPerPage={setPerPage} isDark={isDark} />
               </div>
-
-              {/* Sidebar Card: Peserta yang Sudah Selesai Magang (Order 4 di Mobile, Order 3 di Desktop) */}
-              <div className={`order-4 lg:order-3 col-span-1 lg:col-span-1 relative overflow-hidden rounded-2xl border shadow-sm p-4 sm:p-5 flex flex-col lg:sticky lg:top-4 ${
-                isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
-              }`}>
-                <div className={`absolute -right-10 -top-10 h-32 w-32 rounded-full blur-3xl pointer-events-none transition-opacity duration-300 ${
-                  pesertaSelesai.length > 0 ? "bg-gradient-to-br from-amber-300 to-orange-400 opacity-20" : "bg-slate-200 opacity-10"
-                }`} />
-
-                <div className="relative flex items-center gap-2.5 mb-3">
-                  <span className={`relative flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl shadow-sm transition-all duration-300 ${
-                    pesertaSelesai.length > 0
-                      ? "bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-rose-300/40"
-                      : isDark ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-400"
-                  }`}>
-                    {pesertaSelesai.length > 0 && (
-                      <>
-                        <span className="absolute -inset-1.5 rounded-xl border-2 border-rose-300/40 animate-ping" style={{ animationDuration: "2.5s" }} />
-                        <span className="absolute -inset-1 rounded-xl border border-rose-300/50 animate-pulse" />
-                      </>
-                    )}
-                    <AlertTriangle
-                      className={`relative w-4 h-4 sm:w-4.5 sm:h-4.5 transition-transform duration-300 ${pesertaSelesai.length > 0 ? "animate-[wiggle_1.8s_ease-in-out_infinite]" : ""}`}
-                      strokeWidth={2.3}
-                    />
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className={`text-[11.5px] sm:text-xs font-black ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>Sudah Selesai Magang</h3>
-                    <p className="text-[9.5px] sm:text-[10px] text-slate-400">Perlu ditinjau untuk nonaktifkan akun</p>
-                  </div>
-                  {pesertaSelesai.length > 0 && (
-                    <span className="ml-auto flex h-5 min-w-[20px] sm:h-6 sm:min-w-[24px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-red-600 px-1.5 text-[9.5px] sm:text-[10.5px] font-black text-white shadow-sm animate-pulse">
-                      {pesertaSelesai.length}
-                    </span>
-                  )}
-                </div>
-
-                {pesertaSelesaiBelumNonaktif.length > 0 && (
-                  <button
-                    onClick={handleLihatSelesaiBelumNonaktif}
-                    className="group relative mb-3 flex items-center justify-center gap-1.5 overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-2 sm:py-2.5 text-[10px] sm:text-[10.5px] font-bold text-white shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all duration-200 cursor-pointer"
-                  >
-                    <span className="absolute inset-0 -translate-x-full bg-white/20 skew-x-12 group-hover:translate-x-full transition-transform duration-700" />
-                    <span className="relative">{pesertaSelesaiBelumNonaktif.length} akun belum dinonaktifkan</span>
-                  </button>
-                )}
-
-                {pesertaSelesai.length === 0 ? (
-                  <div className="relative flex flex-1 flex-col items-center justify-center gap-2 sm:gap-3 py-6 sm:py-10">
-                    <span className={`relative flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-2xl sm:rounded-3xl shadow-sm ${
-                      isDark
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                        : "bg-gradient-to-br from-emerald-50 to-emerald-100/50 text-emerald-500"
-                    }`}>
-                      <span className={`absolute inset-0 rounded-2xl sm:rounded-3xl border-2 animate-ping ${
-                        isDark ? "border-emerald-400/20" : "border-emerald-300/40"
-                      }`} style={{ animationDuration: "2s" }} />
-                      <span className={`absolute -inset-2 rounded-2xl sm:rounded-3xl border ${
-                        isDark ? "border-emerald-400/10" : "border-emerald-200/60"
-                      } animate-pulse`} />
-                      <Check className="relative w-5 h-5 sm:w-7 sm:h-7 animate-pulse text-emerald-500 dark:text-emerald-400" strokeWidth={2.5} style={{ animationDuration: "2s" }} />
-                    </span>
-                    <div className="text-center">
-                      <p className="text-[11px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400">Semua Aman!</p>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 leading-relaxed max-w-[200px] mt-0.5 sm:mt-1">
-                        Tidak ada peserta yang masa magangnya sudah selesai saat ini.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="relative flex flex-col gap-1.5 sm:gap-2 max-h-[360px] sm:max-h-[420px] overflow-y-auto pr-1">
-                    {pesertaSelesai.map((m, i) => (
-                      <div
-                        key={m.id}
-                        className={`group flex items-center gap-2 sm:gap-2.5 rounded-xl border px-2.5 sm:px-3 py-2 sm:py-2.5 transition-all duration-200 hover:-translate-y-0.5 animate-[fadeslide_0.25s_ease-out] ${
-                          isDark
-                            ? "border-white/10 bg-white/5 hover:border-white/20"
-                            : "border-slate-100 bg-gradient-to-r from-slate-50/80 to-white hover:border-amber-200 hover:shadow-sm"
-                        }`}
-                        style={{ animationDelay: `${i * 40}ms`, animationFillMode: "backwards" }}
-                      >
-                        <span
-                          className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-white text-[9px] sm:text-[9.5px] font-black shadow-sm transition-transform duration-200 group-hover:scale-110"
-                          style={{ background: avatarPalette[m.id % avatarPalette.length] }}
-                        >
-                          {getInitials(m.nama)}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-[10.5px] sm:text-[11px] font-bold truncate ${isDark ? "text-slate-200" : "text-slate-700"}`}>{m.nama}</p>
-                          <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">
-                            Selesai {fmtDate(m.tanggal_selesai)}
-                          </p>
-                        </div>
-                        {m.status_magang === "selesai" ? (
-                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-bold text-emerald-600 dark:text-emerald-300" title="Akun read-only: sertifikat & raport tetap dapat diakses">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            Alumni
-                          </span>
-                        ) : (
-                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-bold text-amber-600 dark:text-amber-300" title="Menunggu sinkronisasi otomatis">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                            Menunggu sinkron
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
         )}
       </div>
@@ -955,6 +852,7 @@ const PesertaPage = () => {
         <PesertaFilterModal
           statusList={statusList} toggleStatus={toggleStatus}
           periodeList={periodeList} togglePeriode={togglePeriode}
+          mentorStatusList={mentorStatusList} toggleMentorStatus={toggleMentorStatus}
           bidangList={bidangOptions} bidang={bidangFilter} setBidang={setBidangFilter}
           onApply={handleApplyFilters} onReset={handleResetFilters}
           onClose={() => setShowFilterModal(false)}

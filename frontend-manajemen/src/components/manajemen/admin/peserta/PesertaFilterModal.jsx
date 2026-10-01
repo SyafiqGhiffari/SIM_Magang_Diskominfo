@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Filter as FilterIcon, X, ListFilter, RotateCcw, Check, Building2, CalendarClock, ArrowUpDown } from "lucide-react";
+import { Filter as FilterIcon, X, ListFilter, RotateCcw, Check, Building2, CalendarClock, ArrowUpDown, UserCog } from "lucide-react";
 
 const sortOptions = [
   { key: "nama_az", label: "Nama (A-Z)" },
@@ -16,6 +16,11 @@ const periodeOptions = [
   { key: "belum_mulai", label: "Belum Mulai" },
   { key: "berjalan", label: "Sedang Berjalan" },
   { key: "selesai", label: "Selesai" },
+];
+
+const mentorOptions = [
+  { key: "belum_ada", label: "Belum Ada Mentor" },
+  { key: "sudah_ada", label: "Sudah Ada Mentor" },
 ];
 
 const CheckboxItem = ({ checked, label, onToggle, isDark }) => (
@@ -79,6 +84,7 @@ const RadioItem = ({ checked, label, onSelect, isDark }) => (
 const PesertaFilterModal = ({
   statusList, toggleStatus,
   periodeList, togglePeriode,
+  mentorStatusList = [], toggleMentorStatus,
   bidangList = [], bidang, setBidang,
   onApply, onReset, onClose,
   isDark,
@@ -143,6 +149,28 @@ const PesertaFilterModal = ({
             </div>
           </div>
 
+          {/* Penugasan Mentor */}
+          <div>
+            <label className="flex items-center gap-1 text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 sm:mb-1.5">
+              <UserCog className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              Penugasan Mentor
+            </label>
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+              {mentorOptions.map((m) => (
+                <CheckboxItem
+                  key={m.key}
+                  label={m.label}
+                  checked={mentorStatusList.includes(m.key)}
+                  onToggle={() => typeof toggleMentorStatus === "function" && toggleMentorStatus(m.key)}
+                  isDark={isDark}
+                />
+              ))}
+            </div>
+            <p className="mt-1 text-[8.5px] sm:text-[10px] text-slate-400">
+              Gunakan filter <b>"Belum Ada Mentor"</b> untuk melihat peserta yang belum ditentukan pembimbingnya.
+            </p>
+          </div>
+
           {/* Periode Magang */}
           <div>
             <label className="flex items-center gap-1 text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 sm:mb-1.5">
@@ -161,7 +189,7 @@ const PesertaFilterModal = ({
               ))}
             </div>
             <p className="mt-1 text-[8.5px] sm:text-[10px] text-slate-400">
-              Gunakan filter <b>"Selesai"</b> untuk melihat peserta yang masa magangnya sudah berakhir.
+              Gunakan filter <b>"Selesai"</b> untuk melihat peserta yang masa magangnya sudah berakhir (Alumni).
             </p>
           </div>
 

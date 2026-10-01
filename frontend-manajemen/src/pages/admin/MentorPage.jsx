@@ -39,6 +39,7 @@ import {
   Infinity as InfinityIcon,
   Inbox,
   Phone,
+  Fingerprint,
 } from "lucide-react";
 
 const getInitials = (nama) =>
@@ -64,14 +65,14 @@ const Avatar = ({ m }) => {
       <img
         src={fotoUrl}
         alt={m.nama}
-        className="h-8.5 w-8.5 sm:h-13 sm:w-13 shrink-0 rounded-xl sm:rounded-2xl object-cover border-[2px] sm:border-[3px] border-white shadow-lg ring-2 ring-slate-300 transition-transform duration-200 group-hover:scale-110"
+        className="h-8.5 w-8.5 sm:h-13 sm:w-13 shrink-0 rounded-full object-cover border-[2px] sm:border-[3px] border-white shadow-lg ring-2 ring-slate-300 transition-transform duration-200 group-hover:scale-110"
       />
     );
   }
   return (
     <span
       style={{ background: avatarPalette[m.id % avatarPalette.length] }}
-      className="flex h-8.5 w-8.5 sm:h-13 sm:w-13 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-white text-[10px] sm:text-sm font-black border-[2px] sm:border-[3px] border-white shadow-lg ring-2 ring-slate-300 transition-transform duration-200 group-hover:scale-110"
+      className="flex h-8.5 w-8.5 sm:h-13 sm:w-13 shrink-0 items-center justify-center rounded-full text-white text-[10px] sm:text-sm font-black border-[2px] sm:border-[3px] border-white shadow-lg ring-2 ring-slate-300 transition-transform duration-200 group-hover:scale-110"
     >
       {getInitials(m.nama)}
     </span>
@@ -205,19 +206,33 @@ const MentorPage = () => {
   const handleSubmit = async (formData) => {
     const { foto_file, ...payload } = formData;
     try {
+      let resolvedBidangId = payload.bidang_id || null;
+      if (!resolvedBidangId && payload.bidang_nama) {
+        const found = bidangOptions.find((b) => b.nama === payload.bidang_nama);
+        if (found) resolvedBidangId = found.id;
+      }
+
+      const submitPayload = {
+        ...payload,
+        bidang_id: resolvedBidangId,
+        role: "mentor",
+      };
+
       if (editData) {
-        await updateAkun(editData.id, { ...payload, role: "mentor" });
+        await updateAkun(editData.id, submitPayload);
         if (foto_file) {
           const fd = new FormData();
+          fd.append("foto_profil", foto_file);
           fd.append("foto", foto_file);
           await uploadFotoAkun(editData.id, fd);
         }
         toastSuccess("Data mentor berhasil diperbarui");
       } else {
-        const res = await createAkun({ ...payload, role: "mentor" });
+        const res = await createAkun(submitPayload);
         const newId = res.data.data?.id;
         if (foto_file && newId) {
           const fd = new FormData();
+          fd.append("foto_profil", foto_file);
           fd.append("foto", foto_file);
           await uploadFotoAkun(newId, fd);
         }
@@ -770,15 +785,22 @@ const MentorPage = () => {
 
                                 {/* 2. Jabatan (Desktop Only) */}
                                 <td className="hidden sm:table-cell px-4 sm:px-6 py-3.5">
-                                  <div className="flex flex-col">
-                                    <span className={`inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold truncate ${
-                                      isDark ? "text-slate-300" : "text-slate-600"
+                                  <div className="flex flex-col gap-1 text-left items-start">
+                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-colors ${
+                                      isDark
+                                        ? "bg-slate-800/80 border border-slate-700/60 text-slate-200"
+                                        : "bg-blue-50/80 border border-blue-100 text-[#0B1442]"
                                     }`}>
-                                      <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                      {m.jabatan || "-"}
+                                      <Briefcase className="w-3.5 h-3.5 text-[#004F9F] dark:text-[#00A5EC] shrink-0" />
+                                      <span className="truncate max-w-[200px]">{m.jabatan || "-"}</span>
                                     </span>
                                     {m.nip && (
-                                      <span className="text-[10px] sm:text-[10.5px] font-mono font-medium text-[#00A5EC] mt-0.5 pl-4.5">
+                                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] sm:text-[10px] font-mono font-medium ${
+                                        isDark
+                                          ? "bg-white/5 text-sky-300 border border-white/5"
+                                          : "bg-slate-100 text-slate-600 border border-slate-200/60"
+                                      }`}>
+                                        <Fingerprint className="w-2.5 h-2.5 text-[#00A5EC] shrink-0" />
                                         NIP: {m.nip}
                                       </span>
                                     )}
@@ -923,10 +945,12 @@ const MentorPage = () => {
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                                           Jabatan
                                         </span>
-                                        <span className={`inline-flex items-center gap-1 text-[10.5px] font-bold ${
-                                          isDark ? "text-slate-200" : "text-slate-700"
+                                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-bold ${
+                                          isDark
+                                            ? "bg-slate-800/80 border border-slate-700/60 text-slate-200"
+                                            : "bg-blue-50/80 border border-blue-100 text-[#0B1442]"
                                         }`}>
-                                          <Briefcase className="w-3 h-3 text-slate-400" />
+                                          <Briefcase className="w-3 h-3 text-[#004F9F] dark:text-[#00A5EC] shrink-0" />
                                           {m.jabatan || "-"}
                                         </span>
                                       </div>
@@ -937,7 +961,12 @@ const MentorPage = () => {
                                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                                             NIP
                                           </span>
-                                          <span className="text-[10.5px] font-mono font-bold text-[#00A5EC]">
+                                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                                            isDark
+                                              ? "bg-white/5 text-sky-300 border border-white/5"
+                                              : "bg-slate-100 text-slate-600 border border-slate-200/60"
+                                          }`}>
+                                            <Fingerprint className="w-2.5 h-2.5 text-[#00A5EC] shrink-0" />
                                             {m.nip}
                                           </span>
                                         </div>

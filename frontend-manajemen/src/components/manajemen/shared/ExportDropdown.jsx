@@ -38,7 +38,7 @@ const formats = [
   },
 ];
 
-export const ExportDropdown = ({ onExport, isDark = false }) => {
+export const ExportDropdown = ({ onExport, isDark = false, size = "normal", buttonClassName = "" }) => {
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -88,7 +88,11 @@ export const ExportDropdown = ({ onExport, isDark = false }) => {
     <div className="relative" ref={ref}>
       <button
         onClick={handleToggle}
-        className={`group inline-flex h-7.5 sm:h-[42px] shrink-0 items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border px-2.5 sm:px-4 text-[10.5px] sm:text-xs font-bold shadow-sm transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
+        className={`group inline-flex ${
+          size === "sm"
+            ? "h-7.5 sm:h-8 px-2.5 sm:px-3 text-[11px]"
+            : "h-7.5 sm:h-[42px] px-2.5 sm:px-4 text-[10.5px] sm:text-xs"
+        } shrink-0 items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border font-bold shadow-xs transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
           open
             ? isDark
               ? "border-emerald-500/40 bg-emerald-500/[0.07] text-[#34d399]"
@@ -96,7 +100,7 @@ export const ExportDropdown = ({ onExport, isDark = false }) => {
             : isDark
               ? "border-white/10 bg-white/5 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/[0.05] hover:text-[#34d399]"
               : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
-        }`}
+        } ${buttonClassName}`}
       >
         <Download className={`w-3 sm:w-3.5 h-3 sm:h-3.5 transition-transform duration-300 ${open ? "-translate-y-0.5" : "group-hover:-translate-y-0.5"}`} />
         <span className="inline sm:hidden">Ekspor</span>
@@ -160,7 +164,7 @@ export const ExportDropdown = ({ onExport, isDark = false }) => {
           )
         ) : (
           <div
-            className={`absolute right-0 top-9 sm:top-11 z-30 w-64 sm:w-72 origin-top-right rounded-xl sm:rounded-2xl border transition-all duration-250 ${
+            className={`absolute right-0 ${size === "sm" ? "top-9 sm:top-9.5" : "top-9 sm:top-11"} z-30 w-64 sm:w-72 origin-top-right rounded-xl sm:rounded-2xl border transition-all duration-250 ${
               visible ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-90 -translate-y-2 pointer-events-none"
             } ${isDark ? "border-white/10 bg-[#161b22] shadow-2xl" : "border-slate-200 bg-white shadow-xl"}`}
             style={{ transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)" }}

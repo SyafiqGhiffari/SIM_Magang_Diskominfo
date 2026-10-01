@@ -230,7 +230,7 @@ const DetailModal = ({ pendaftaran, onClose, onUpdated, isDark }) => {
 
     const result = await confirmDialog({
       title: "Terima pendaftaran ini?",
-      text: `${pendaftaran.nama_lengkap} akan ditempatkan di bidang ${selectedBidang}. Notifikasi akan dikirim ke peserta.`,
+      text: `${pendaftaran.nama_lengkap} akan ditempatkan di bidang ${selectedBidang}. Akun peserta akan otomatis diaktifkan dan notifikasi dikirim ke email peserta.`,
       confirmText: "Ya, Terima",
       icon: "question",
     });
@@ -244,7 +244,7 @@ const DetailModal = ({ pendaftaran, onClose, onUpdated, isDark }) => {
         posisi_bidang: selectedBidang,
         tanggal_mulai: tanggalMulai,
       });
-      toastSuccess("Pendaftaran berhasil diterima");
+      toastSuccess("Pendaftaran berhasil diterima & akun peserta otomatis aktif");
       onUpdated();
       onClose();
     } catch (err) {

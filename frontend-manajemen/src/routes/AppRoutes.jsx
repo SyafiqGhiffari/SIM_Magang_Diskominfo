@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import LoginPage from "../pages/auth/LoginPage";
+import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "../pages/auth/ResetPasswordPage";
 import DashboardPage from "../pages/admin/DashboardPage";
 import FaqPage from "../pages/admin/FaqPage";
 import AnalitikFaqPage from "../pages/admin/AnalitikFaqPage";
@@ -21,9 +23,16 @@ import RekapNilaiAdminPage from "../pages/admin/RekapNilaiAdminPage";
 import PengaturanBobotPenilaianPage from "../pages/admin/PengaturanBobotPenilaianPage";
 import TemplateRaporPage from "../pages/admin/TemplateRaporPage";
 import MentorDashboardPage from "../pages/mentor/MentorDashboardPage";
+import MentorAkunPage from "../pages/mentor/MentorAkunPage";
+import DaftarPesertaMentorPage from "../pages/mentor/DaftarPesertaMentorPage";
 import PresensiBimbinganPage from "../pages/mentor/PresensiBimbinganPage";
 import VerifikasiIzinPage from "../pages/mentor/VerifikasiIzinPage";
+import KelolaMateriMentorPage from "../pages/mentor/KelolaMateriMentorPage";
+import KelolaTugasMentorPage from "../pages/mentor/KelolaTugasMentorPage";
+import ReviewTugasMentorPage from "../pages/mentor/ReviewTugasMentorPage";
+import LaporanAkhirMentorPage from "../pages/mentor/LaporanAkhirMentorPage";
 import PenilaianMentorPage from "../pages/mentor/PenilaianMentorPage";
+import RekapPenilaianMentorPage from "../pages/mentor/RekapPenilaianMentorPage";
 import PesertaDashboardPage from "../pages/peserta/PesertaDashboardPage";
 import PesertaPresensiLogbookPage from "../pages/peserta/PesertaPresensiLogbookPage";
 import PesertaRiwayatPage from "../pages/peserta/PesertaRiwayatPage";
@@ -54,6 +63,8 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<AuthRoute><LoginPage /></AuthRoute>} />
+      <Route path="/forgot-password" element={<AuthRoute><ForgotPasswordPage /></AuthRoute>} />
+      <Route path="/reset-password" element={<AuthRoute><ResetPasswordPage /></AuthRoute>} />
 
       {/* Admin — hanya role admin yang boleh akses */}
       <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><DashboardPage /></ProtectedRoute>} /> 
@@ -81,9 +92,18 @@ const AppRoutes = () => {
 
       {/* Mentor — hanya role mentor yang boleh akses */}
       <Route path="/mentor" element={<ProtectedRoute allowedRoles={["mentor"]}><MentorDashboardPage /></ProtectedRoute>} />
+      <Route path="/mentor/akun" element={<ProtectedRoute allowedRoles={["mentor"]}><MentorAkunPage /></ProtectedRoute>} />
+      <Route path="/mentor/peserta" element={<ProtectedRoute allowedRoles={["mentor"]}><DaftarPesertaMentorPage /></ProtectedRoute>} />
       <Route path="/mentor/presensi" element={<ProtectedRoute allowedRoles={["mentor"]}><PresensiBimbinganPage /></ProtectedRoute>} />
       <Route path="/mentor/pengajuan-izin" element={<ProtectedRoute allowedRoles={["mentor"]}><VerifikasiIzinPage /></ProtectedRoute>} />
+      <Route path="/mentor/materi" element={<ProtectedRoute allowedRoles={["mentor"]}><KelolaMateriMentorPage /></ProtectedRoute>} />
+      <Route path="/mentor/materi/kategori" element={<Navigate to="/mentor/materi" replace />} />
+      <Route path="/mentor/tugas" element={<ProtectedRoute allowedRoles={["mentor"]}><KelolaTugasMentorPage /></ProtectedRoute>} />
+      <Route path="/mentor/tugas/review" element={<ProtectedRoute allowedRoles={["mentor"]}><ReviewTugasMentorPage /></ProtectedRoute>} />
+      <Route path="/mentor/tugas/penyerahan" element={<Navigate to="/mentor/tugas/review" replace />} />
+      <Route path="/mentor/laporan-akhir" element={<ProtectedRoute allowedRoles={["mentor"]}><LaporanAkhirMentorPage /></ProtectedRoute>} />
       <Route path="/mentor/penilaian" element={<ProtectedRoute allowedRoles={["mentor"]}><PenilaianMentorPage /></ProtectedRoute>} />
+      <Route path="/mentor/penilaian/rekap" element={<ProtectedRoute allowedRoles={["mentor"]}><RekapPenilaianMentorPage /></ProtectedRoute>} />
 
       {/* Peserta — hanya role peserta yang boleh akses */}
       <Route path="/peserta" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaDashboardPage /></ProtectedRoute>} />

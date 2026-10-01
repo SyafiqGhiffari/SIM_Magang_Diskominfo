@@ -2,17 +2,32 @@ package emailtemplates
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"time"
 )
 
-// ==== GANTI URL ini sesuai alamat login web manajemen yang sebenarnya ====
-const urlLoginManajemen = "http://localhost:5173/login"
-
-func SubjectAkunPesertaDibuat() string {
-	return "Akun Peserta Magang Anda Sudah Aktif"
+func getLoginManajemenURL() string {
+	url := os.Getenv("FRONTEND_MANAJEMEN_URL")
+	if url == "" {
+		return "http://localhost:5173/login"
+	}
+	if !strings.HasSuffix(url, "/login") {
+		return strings.TrimRight(url, "/") + "/login"
+	}
+	return url
 }
 
-func TemplateAkunPesertaDibuat(namaLengkap, emailLogin, password string) string {
+func SubjectAkunPesertaDibuat() string {
+	return "Selamat! Pendaftaran Diterima & Akun Magang Anda Telah Aktif"
+}
+
+func TemplateAkunPesertaDibuat(namaLengkap, emailLogin, passwordDesc string) string {
+	if passwordDesc == "" {
+		passwordDesc = "Gunakan kata sandi yang Anda daftarkan"
+	}
+	urlLogin := getLoginManajemenURL()
+
 	return fmt.Sprintf(`
 		<table width="100%%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; font-family: 'Segoe UI', Arial, sans-serif;">
 			<tr>
@@ -40,7 +55,7 @@ func TemplateAkunPesertaDibuat(namaLengkap, emailLogin, password string) string 
 								<table width="100%%" cellpadding="0" cellspacing="0">
 									<tr>
 										<td align="center" style="color: #0B1442; font-size: 18px; font-weight: 800; padding-bottom: 12px;">
-											Akun Peserta Magang Anda Sudah Aktif
+											Pendaftaran Diterima & Akun Telah Aktif
 										</td>
 									</tr>
 									<tr>
@@ -50,7 +65,7 @@ func TemplateAkunPesertaDibuat(namaLengkap, emailLogin, password string) string 
 									</tr>
 									<tr>
 										<td align="center" style="color: #64748b; font-size: 13px; line-height: 1.7; padding-bottom: 24px;">
-											Selamat! Pendaftaran magang Anda di Dinas Komunikasi dan Informatika Kabupaten Ponorogo telah <strong style="color:#065f46;">diterima</strong>. Berikut kredensial akun Anda untuk mengakses portal manajemen peserta magang.
+											Selamat! Pendaftaran magang Anda di Dinas Komunikasi dan Informatika Kabupaten Ponorogo telah <strong style="color:#065f46;">DITERIMA</strong>. Akun portal peserta magang Anda telah diaktifkan secara otomatis.
 										</td>
 									</tr>
 
@@ -60,7 +75,7 @@ func TemplateAkunPesertaDibuat(namaLengkap, emailLogin, password string) string 
 											<table cellpadding="0" cellspacing="0">
 												<tr>
 													<td bgcolor="#d1fae5" style="background-color: #d1fae5; border-radius: 999px; padding: 6px 16px;">
-														<span style="color: #065f46; font-size: 11px; font-weight: 700;">&#9989; Akun Aktif</span>
+														<span style="color: #065f46; font-size: 11px; font-weight: 700;">&#9989; Akun Portal Aktif</span>
 													</td>
 												</tr>
 											</table>
@@ -75,7 +90,7 @@ func TemplateAkunPesertaDibuat(namaLengkap, emailLogin, password string) string 
 													<td style="padding: 18px 20px;">
 														<p style="color: #94a3b8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin: 0 0 4px;">Email Login</p>
 														<p style="color: #0B1442; font-size: 14px; font-weight: 800; margin: 0 0 14px;">%s</p>
-														<p style="color: #94a3b8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin: 0 0 4px;">Password</p>
+														<p style="color: #94a3b8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin: 0 0 4px;">Kata Sandi</p>
 														<p style="color: #0B1442; font-size: 14px; font-weight: 800; margin: 0;">%s</p>
 													</td>
 												</tr>
@@ -109,7 +124,7 @@ func TemplateAkunPesertaDibuat(namaLengkap, emailLogin, password string) string 
 															<tr>
 																<td valign="top" style="font-size: 14px; padding-right: 10px;">&#8505;</td>
 																<td style="color: #0369a1; font-size: 12px; line-height: 1.6;">
-																	Email login ini <strong>berbeda</strong> dari email pribadi Anda, khusus dipakai untuk masuk ke sistem. Seluruh notifikasi kegiatan magang akan tetap dikirim ke email pribadi Anda ini. Disarankan untuk segera mengganti password setelah login pertama kali.
+																	Anda dapat langsung masuk ke portal magang menggunakan <strong>email aktif Anda</strong> dan <strong>kata sandi yang Anda buat saat pendaftaran</strong>.
 																</td>
 															</tr>
 														</table>
@@ -139,7 +154,7 @@ func TemplateAkunPesertaDibuat(namaLengkap, emailLogin, password string) string 
 				</td>
 			</tr>
 		</table>
-	`, namaLengkap, emailLogin, password, urlLoginManajemen, time.Now().Year())
+	`, namaLengkap, emailLogin, passwordDesc, urlLogin, time.Now().Year())
 }
 
 func SubjectResetPasswordPeserta() string {
@@ -273,7 +288,7 @@ func TemplateResetPasswordPeserta(namaLengkap, emailLogin, passwordBaru string) 
 				</td>
 			</tr>
 		</table>
-	`, namaLengkap, emailLogin, passwordBaru, urlLoginManajemen, time.Now().Year())
+	`, namaLengkap, emailLogin, passwordBaru, getLoginManajemenURL(), time.Now().Year())
 }
 
 func SubjectMentorDitugaskan() string {

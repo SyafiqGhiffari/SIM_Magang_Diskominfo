@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { Camera, X, Trash2, RefreshCw } from "lucide-react";
 
 export const FotoProfilModal = ({
@@ -22,9 +23,9 @@ export const FotoProfilModal = ({
 }) => {
   if (!showFotoModal) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-3 sm:p-6"
+      className="fixed inset-0 w-screen h-screen z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-md p-3 sm:p-6"
       style={{ margin: 0 }}
       onClick={() => !fotoModalLoading && !fotoDeleteLoading && setShowFotoModal(false)}
     >
@@ -237,7 +238,8 @@ export const FotoProfilModal = ({
           }
         `}</style>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

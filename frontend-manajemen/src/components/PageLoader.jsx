@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-const getTopSegment = (pathname) => "/" + (pathname.split("/")[1] || "");
+const AUTH_ROUTES = ["/login", "/forgot-password", "/reset-password"];
+
+const getTopSegment = (pathname) => {
+  if (AUTH_ROUTES.includes(pathname)) return "/auth";
+  return "/" + (pathname.split("/")[1] || "");
+};
 
 const PageLoader = () => {
   const location = useLocation();

@@ -4,6 +4,8 @@ import {
   LogIn,
   LogOut,
   Building2,
+  Home,
+  Briefcase,
   GraduationCap,
   CalendarDays,
   UserCog,
@@ -30,6 +32,7 @@ import {
 } from "../../../../constants/presensiStatus";
 import { getFileUrl } from "../../../../utils/fileUrl";
 import { getPresensi, getDetailAkunPeserta } from "../../../../services/adminService";
+import { useAlamatPresensi } from "../../../../utils/reverseGeocode";
 
 /* Inisial nama (fallback bila foto tidak ada) */
 const getInisial = (nama) => {
@@ -168,6 +171,25 @@ const PresensiDetailModal = ({ data, item, onClose, isDark = false, dk }) => {
   const [pesertaAccountData, setPesertaAccountData] = useState(null);
 
   const rawActiveData = data || item;
+
+  const activeLat = rawActiveData?.latitude;
+  const activeLng = rawActiveData?.longitude;
+  const activeMode = rawActiveData?.mode_kehadiran;
+  const activeStatus = rawActiveData?.status;
+
+  const { alamat: alamatMasuk } = useAlamatPresensi(
+    rawActiveData?.jam_masuk ? activeLat : null,
+    rawActiveData?.jam_masuk ? activeLng : null,
+    activeMode,
+    activeStatus,
+  );
+
+  const { alamat: alamatPulang } = useAlamatPresensi(
+    rawActiveData?.jam_pulang ? activeLat : null,
+    rawActiveData?.jam_pulang ? activeLng : null,
+    activeMode,
+    activeStatus,
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -550,7 +572,7 @@ const PresensiDetailModal = ({ data, item, onClose, isDark = false, dk }) => {
                       />
                     </span>
 
-                    {activeData.mode_kehadiran && (
+                    {Boolean(activeData.mode_kehadiran && activeData.status !== "alfa" && activeData.status !== "alpa" && activeData.status !== "izin" && activeData.status !== "sakit") && (
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[8px] sm:text-[9.5px] font-bold ring-1 backdrop-blur-sm ${
                         activeData.mode_kehadiran === "wfo"
                           ? "bg-emerald-500/20 text-emerald-200 ring-emerald-400/30"
@@ -558,11 +580,22 @@ const PresensiDetailModal = ({ data, item, onClose, isDark = false, dk }) => {
                           ? "bg-sky-500/20 text-sky-200 ring-sky-400/30"
                           : "bg-indigo-500/20 text-indigo-200 ring-indigo-400/30"
                       }`}>
-                        {activeData.mode_kehadiran === "wfo"
-                          ? "🏢 WFO"
-                          : activeData.mode_kehadiran === "wfh"
-                          ? "🏠 WFH"
-                          : "🚗 Dinas Luar"}
+                        {activeData.mode_kehadiran === "wfo" ? (
+                          <>
+                            <Building2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                            <span>WFO</span>
+                          </>
+                        ) : activeData.mode_kehadiran === "wfh" ? (
+                          <>
+                            <Home className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                            <span>WFH</span>
+                          </>
+                        ) : (
+                          <>
+                            <Briefcase className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                            <span>Dinas Luar</span>
+                          </>
+                        )}
                       </span>
                     )}
                     {durasiKerja && (
@@ -782,6 +815,17 @@ const PresensiDetailModal = ({ data, item, onClose, isDark = false, dk }) => {
                       </div>
                     </div>
 
+                    {/* Alamat Lengkap Titik Lokasi Presensi Masuk */}
+                    {alamatMasuk && (
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-white/5 flex items-start gap-1.5 text-[8.5px] sm:text-[9.5px]">
+                        <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1 leading-snug">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">Alamat Lengkap: </span>
+                          <span className="text-slate-600 dark:text-slate-400">{alamatMasuk}</span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Data Riil Koordinat & Link Google Maps */}
                     {(lokasiMasuk.koordinat || lokasiMasuk.jarak) && (
                       <div className="pt-2 border-t border-slate-200/60 dark:border-white/5 flex flex-wrap items-center justify-between gap-1.5 text-[8.5px] sm:text-[9.5px]">
@@ -989,6 +1033,17 @@ const PresensiDetailModal = ({ data, item, onClose, isDark = false, dk }) => {
                         </p>
                       </div>
                     </div>
+
+                    {/* Alamat Lengkap Titik Lokasi Presensi Pulang */}
+                    {alamatPulang && (
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-white/5 flex items-start gap-1.5 text-[8.5px] sm:text-[9.5px]">
+                        <MapPin className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1 leading-snug">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">Alamat Lengkap: </span>
+                          <span className="text-slate-600 dark:text-slate-400">{alamatPulang}</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Data Riil Koordinat & Link Google Maps */}
                     {(lokasiPulang.koordinat || lokasiPulang.jarak) && (

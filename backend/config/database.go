@@ -72,6 +72,7 @@ func ConnectDatabase() {
 		&models.PenilaianMagang{},
 		&models.TemplateRapor{},
 		&models.MateriPembelajaran{},
+		&models.KategoriMateri{},
 		&models.TugasMagang{},
 		&models.PengumpulanTugas{},
 		&models.UserLoginHistory{},

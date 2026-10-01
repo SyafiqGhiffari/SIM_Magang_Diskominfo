@@ -173,10 +173,80 @@ input::-webkit-credentials-auto-fill-button {
   to   { opacity: 1; transform: translateX(0); }
 }
 
+/* Animasi slide kartu penugasan - lebih smooth, lembut & elegan */
+@keyframes taskSlideInRight {
+  0% {
+    opacity: 0;
+    transform: translate3d(45px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes taskSlideInLeft {
+  0% {
+    opacity: 0;
+    transform: translate3d(-45px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Animasi transisi halus konten evaluasi tugas (KPI stats, toolbar, & tabel data) */
+@keyframes contentSlideInRight {
+  0% {
+    opacity: 0;
+    transform: translate3d(32px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes contentSlideInLeft {
+  0% {
+    opacity: 0;
+    transform: translate3d(-32px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 /* Animasi modal FAQ */
 @keyframes modalFadeUp {
   from { opacity: 0; transform: translateY(30px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Animasi custom dropdown pop */
+@keyframes dropdownPop {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Animasi pop-in halus toolbar mengambang butir soal kuis */
+@keyframes toolbarPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Animasi welcome banner */
@@ -434,6 +504,42 @@ input::-webkit-credentials-auto-fill-button {
 }
 .scroll-halus:hover::-webkit-scrollbar-thumb {
   background: #cbd5e1;
+}
+
+/* Custom Scrollbar untuk Modal - Abu-abu dengan hover Biru Diskominfo persis seperti di luar modal */
+.custom-modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+.dark .custom-modal-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.05);
+}
+.custom-modal-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.custom-modal-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+.dark .custom-modal-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+.custom-modal-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, background 0.2s ease;
+}
+.dark .custom-modal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+}
+.custom-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #004F9F;
+}
+.dark .custom-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #00A5EC;
 }
 
 /* SweetAlert2 dark mode support */

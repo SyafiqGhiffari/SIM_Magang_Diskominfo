@@ -372,7 +372,7 @@ const KelolaSertifikatPage = () => {
           <h2 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
             Kelola Sertifikat
           </h2>
-          <p className={`mt-1 sm:mt-1.5 text-[11px] sm:text-xs max-w-2xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+          <p className={`mt-1 sm:mt-1.5 text-[11px] sm:text-xs max-w-5xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             <span className="inline sm:hidden">Terbitkan &amp; kelola sertifikat magang peserta.</span>
             <span className="hidden sm:inline">Terbitkan sertifikat magang peserta dengan menetapkan nomor. Tanggal terbit terisi otomatis, dan predikat akan mengikuti otomatis dari hasil tugas, logbook, serta absensi.</span>
           </p>

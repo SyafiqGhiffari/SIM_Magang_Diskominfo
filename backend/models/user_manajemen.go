@@ -45,6 +45,12 @@ type UserManajemen struct {
 	OtpRequestedAt    *time.Time `json:"-"`
 	OtpAttemptCount   int        `gorm:"default:0" json:"-"`
 
+	// Field untuk reset password
+	ResetPasswordToken       string     `gorm:"type:varchar(255)" json:"-"`
+	ResetPasswordExpiredAt   *time.Time `json:"-"`
+	ResetPasswordAttempt     int        `gorm:"default:0" json:"-"`
+	ResetPasswordRequestedAt *time.Time `json:"-"`
+
 	PasswordChangedAt *time.Time `json:"password_changed_at,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`

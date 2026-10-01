@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   History,
@@ -280,13 +281,14 @@ export const LogAuditModal = ({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-2.5 sm:p-4 animate-[fadeslide_0.2s_ease-out]"
+      className="fixed inset-0 w-screen h-screen z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs sm:backdrop-blur-sm p-2.5 sm:p-4 overflow-y-auto animate-[fadeIn_0.2s_ease-out]"
+      style={{ margin: 0 }}
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-sm sm:max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-[modalFadeUp_0.3s_ease-out] max-h-[92vh] flex flex-col ${
+        className={`relative w-full max-w-sm sm:max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-[modalFadeUp_0.25s_ease-out] max-h-[90vh] flex flex-col my-auto ${
           isDark ? "bg-[#161b22] border border-white/10" : "bg-white"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -600,7 +602,8 @@ export const LogAuditModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

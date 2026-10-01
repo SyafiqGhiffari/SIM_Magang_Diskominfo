@@ -488,7 +488,7 @@ const SuratPenerimaanPage = () => {
           <h2 className={`text-lg sm:text-2xl font-black tracking-tight ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
             Surat Penerimaan Magang
           </h2>
-          <p className={`mt-1.5 text-[11px] sm:text-xs max-w-3xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+          <p className={`mt-1.5 text-[11px] sm:text-xs max-w-7xl leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             <span className="inline sm:hidden">
               Terbitkan dan kelola surat penerimaan untuk peserta magang.
             </span>

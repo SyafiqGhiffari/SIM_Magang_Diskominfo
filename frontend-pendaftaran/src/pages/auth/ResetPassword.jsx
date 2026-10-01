@@ -1,6 +1,97 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { resetPasswordPendaftaran } from "../../services/authPendaftaranService";
+import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, ShieldCheck, XCircle } from "lucide-react";
+
+const getPasswordStrength = (pwd) => {
+  const len = (pwd || "").length;
+  const hasMinLen = len >= 8;
+  const hasUpper = /[A-Z]/.test(pwd);
+  const hasLower = /[a-z]/.test(pwd);
+  const hasUpperLower = hasUpper && hasLower;
+  const hasNumber = /[0-9]/.test(pwd);
+  const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+
+  const criteriaMet = [hasMinLen, hasUpperLower, hasNumber, hasSpecial].filter(Boolean).length;
+
+  if (!pwd) {
+    return {
+      score: 0,
+      percent: 0,
+      label: "Belum Diisi",
+      textColor: "text-slate-400",
+      barColor: "bg-slate-200",
+      activeBars: 0,
+      hasMinLen: false,
+      hasUpperLower: false,
+      hasNumber: false,
+      hasSpecial: false,
+      len: 0,
+    };
+  }
+
+  if (criteriaMet <= 1) {
+    return {
+      score: 1,
+      percent: 25,
+      label: "Sangat Lemah",
+      textColor: "text-red-500",
+      barColor: "bg-red-500",
+      activeBars: 1,
+      hasMinLen,
+      hasUpperLower,
+      hasNumber,
+      hasSpecial,
+      len,
+    };
+  }
+
+  if (criteriaMet === 2) {
+    return {
+      score: 2,
+      percent: 50,
+      label: "Cukup",
+      textColor: "text-amber-500",
+      barColor: "bg-amber-500",
+      activeBars: 2,
+      hasMinLen,
+      hasUpperLower,
+      hasNumber,
+      hasSpecial,
+      len,
+    };
+  }
+
+  if (criteriaMet === 3) {
+    return {
+      score: 3,
+      percent: 75,
+      label: "Kuat",
+      textColor: "text-[#004F9F]",
+      barColor: "bg-[#004F9F]",
+      activeBars: 3,
+      hasMinLen,
+      hasUpperLower,
+      hasNumber,
+      hasSpecial,
+      len,
+    };
+  }
+
+  return {
+    score: 4,
+    percent: 100,
+    label: "Sangat Kuat",
+    textColor: "text-emerald-600",
+    barColor: "bg-emerald-500",
+    activeBars: 4,
+    hasMinLen,
+    hasUpperLower,
+    hasNumber,
+    hasSpecial,
+    len,
+  };
+};
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -16,6 +107,10 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const strength = useMemo(() => getPasswordStrength(newPassword), [newPassword]);
+  const isMatch = newPassword && confirmPassword && newPassword === confirmPassword;
+  const isMismatch = confirmPassword && newPassword !== confirmPassword;
+
   const tokenError = !token
     ? "Token reset password tidak ditemukan. Pastikan Anda membuka tautan dari email dengan benar."
     : "";
@@ -29,6 +124,10 @@ const ResetPassword = () => {
 
     if (!token) {
       setSubmitError("Token tidak valid.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setSubmitError("Kata sandi baru minimal harus 8 karakter.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -98,16 +197,14 @@ const ResetPassword = () => {
           {/* Glowing mini stats card */}
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md shadow-2xl flex items-center gap-4">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#00A5EC]/20 text-[#00A5EC]">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-              </svg>
+              <ShieldCheck className="w-6 h-6" />
             </span>
             <div>
               <h4 className="text-xs font-bold text-[#00A5EC] uppercase tracking-wider">
                 Keamanan Akun
               </h4>
               <p className="text-sm font-semibold text-white mt-0.5">
-                Gunakan kombinasi huruf dan angka untuk password yang lebih kuat.
+                Gunakan kombinasi minimal 8 karakter dengan huruf besar, kecil, angka, dan simbol.
               </p>
             </div>
           </div>
@@ -128,20 +225,7 @@ const ResetPassword = () => {
             to="/login"
             className="group inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 shadow-sm hover:border-[#004F9F]/30 hover:bg-[#004F9F]/5 hover:text-[#004F9F] hover:-translate-x-0.5 transition-all duration-200 mb-8"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2.5}
-              stroke="currentColor"
-              className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
-              />
-            </svg>
+            <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
             Kembali Masuk Portal
           </Link>
 
@@ -166,7 +250,7 @@ const ResetPassword = () => {
               Atur Ulang Password
             </h2>
             <p className="mt-2 text-xs text-slate-500">
-              Buat password baru untuk akun SIM Magang Anda.
+              Buat password baru yang kuat untuk akun SIM Magang Anda.
             </p>
           </div>
 
@@ -175,16 +259,14 @@ const ResetPassword = () => {
             {success ? (
               <div className="text-center py-4">
                 <div className="mx-auto h-14 w-14 rounded-full bg-emerald-50 flex items-center justify-center mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#059669" className="w-7 h-7">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Z" />
-                  </svg>
+                  <CheckCircle2 className="w-7 h-7 text-emerald-600" />
                 </div>
                 <p className="text-sm font-bold text-[#0B1442] mb-1">Berhasil!</p>
                 <p className="text-xs text-slate-500 leading-relaxed">{success}</p>
                 <p className="text-[11px] text-slate-400 mt-3">Mengalihkan ke halaman masuk...</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-5 text-left">
+              <form onSubmit={handleSubmit} className="space-y-4 text-left">
                 {/* Password Baru Input */}
                 <div>
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
@@ -192,26 +274,16 @@ const ResetPassword = () => {
                   </label>
                   <div className="relative mt-1.5">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="currentColor"
-                        className="w-4 h-4"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
-                        />
-                      </svg>
+                      <Lock className="w-4 h-4" />
                     </span>
                     <input
                       type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
+                      placeholder="Minimal 8 karakter"
                       value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        if (submitError) setSubmitError("");
+                      }}
                       required
                       disabled={!token}
                       className="w-full rounded-xl border border-slate-200 pl-11 pr-12 py-3 text-sm transition-all focus:border-[#004F9F] focus:ring-2 focus:ring-[#00A5EC]/20 focus:outline-none disabled:bg-slate-50 disabled:cursor-not-allowed"
@@ -219,20 +291,77 @@ const ResetPassword = () => {
                     <button
                       type="button"
                       onClick={() => setShowPassword((p) => !p)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 focus:outline-none"
+                      className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
                     >
-                      {showPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.815 7.815 3 3m-3-3-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.43 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                        </svg>
-                      )}
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+
+                  {/* Indikator Kekuatan Password & Checklist Ketentuan */}
+                  {newPassword && (
+                    <div className="mt-2.5 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-bold">
+                        <span className="text-slate-500 text-[10.5px]">Tingkat Keamanan:</span>
+                        <span className={`text-[11px] font-extrabold ${strength.textColor}`}>{strength.label}</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5 h-1.5 w-full">
+                        {[1, 2, 3, 4].map((step) => (
+                          <div
+                            key={step}
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              step <= strength.activeBars ? strength.barColor : "bg-slate-100"
+                            }`}
+                          />
+                        ))}
+                      </div>
+
+                      <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[10px] text-slate-600">
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2
+                            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                              strength.hasMinLen ? "text-emerald-500" : "text-slate-300"
+                            }`}
+                          />
+                          <span className={strength.hasMinLen ? "text-slate-800 font-bold" : "text-slate-500"}>
+                            Minimal 8 karakter ({strength.len}/8)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2
+                            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                              strength.hasUpperLower ? "text-emerald-500" : "text-slate-300"
+                            }`}
+                          />
+                          <span className={strength.hasUpperLower ? "text-slate-800 font-bold" : "text-slate-500"}>
+                            Huruf besar &amp; kecil (A-Z, a-z)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2
+                            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                              strength.hasNumber ? "text-emerald-500" : "text-slate-300"
+                            }`}
+                          />
+                          <span className={strength.hasNumber ? "text-slate-800 font-bold" : "text-slate-500"}>
+                            Mengandung angka (0-9)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2
+                            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                              strength.hasSpecial ? "text-emerald-500" : "text-slate-300"
+                            }`}
+                          />
+                          <span className={strength.hasSpecial ? "text-slate-800 font-bold" : "text-slate-500"}>
+                            Simbol khusus (!@#$%^&amp;*)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Konfirmasi Password Baru Input */}
@@ -242,62 +371,55 @@ const ResetPassword = () => {
                   </label>
                   <div className="relative mt-1.5">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="currentColor"
-                        className="w-4 h-4"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.75 3.75 0 0 1 21 12Z"
-                        />
-                      </svg>
+                      <ShieldCheck className="w-4 h-4" />
                     </span>
                     <input
                       type={showConfirmPassword ? "text" : "password"}
-                      placeholder="••••••••"
+                      placeholder="Ulangi kata sandi baru"
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (submitError) setSubmitError("");
+                      }}
                       required
                       disabled={!token}
-                      className="w-full rounded-xl border border-slate-200 pl-11 pr-12 py-3 text-sm transition-all focus:border-[#004F9F] focus:ring-2 focus:ring-[#00A5EC]/20 focus:outline-none disabled:bg-slate-50 disabled:cursor-not-allowed"
+                      className={`w-full rounded-xl border pl-11 pr-12 py-3 text-sm transition-all focus:ring-2 focus:outline-none disabled:bg-slate-50 disabled:cursor-not-allowed ${
+                        isMismatch
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                          : isMatch
+                          ? "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-200"
+                          : "border-slate-200 focus:border-[#004F9F] focus:ring-[#00A5EC]/20"
+                      }`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword((p) => !p)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 focus:outline-none"
+                      className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
                     >
-                      {showConfirmPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.815 7.815 3 3m-3-3-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.43 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                        </svg>
-                      )}
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2.5 text-[11px] text-slate-500 bg-slate-50 rounded-xl p-3.5 leading-relaxed">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0 text-slate-400">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                  </svg>
-                  <span>Minimal 6 karakter, gunakan kombinasi huruf dan angka agar akun lebih aman.</span>
+                  {/* Password Match Status */}
+                  {confirmPassword && (
+                    <div className="mt-1.5 flex items-center gap-1 text-[10.5px] font-semibold">
+                      {isMatch ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-600">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Kata sandi cocok
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-red-500">
+                          <XCircle className="w-3.5 h-3.5" /> Kata sandi belum cocok
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Error Message */}
                 {error && (
                   <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-xs font-semibold text-red-600 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                    </svg>
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
                     <span>{error}</span>
                   </div>
                 )}
@@ -305,19 +427,19 @@ const ResetPassword = () => {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading || !token}
-                  className="w-full rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-dark/15 hover:from-[#101F5C] hover:to-[#004F9F] transition-all duration-300 disabled:opacity-60 cursor-pointer"
+                  disabled={loading || !token || !newPassword || !confirmPassword || isMismatch || newPassword.length < 8}
+                  className="group flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-dark/15 hover:from-[#101F5C] hover:to-[#004F9F] transition-all duration-300 disabled:opacity-60 cursor-pointer"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
+                      <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
                       Memproses...
                     </span>
                   ) : (
-                    "Simpan Password Baru"
+                    <>
+                      Simpan Password Baru
+                      <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    </>
                   )}
                 </button>
               </form>

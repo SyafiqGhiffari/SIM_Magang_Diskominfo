@@ -1,127 +1,182 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import { formatTanggalLengkap, formatTanggalPresensi } from "../constants/presensiStatus";
+import { formatTanggalPresensi } from "../constants/presensiStatus";
 
-const HEADERS = [
+export const HEADERS_IZIN = [
   "No",
+  "Nama Peserta",
+  "NIM / NISN",
+  "Institusi",
+  "Program Studi / Jurusan",
+  "Bidang",
   "Jenis",
-  "Alasan / Keterangan",
   "Tanggal Mulai",
   "Tanggal Selesai",
   "Durasi",
+  "Alasan",
   "Status",
+  "Catatan Mentor",
   "Tanggal Pengajuan",
-  "Lampiran Bukti",
 ];
 
-const hitungDurasiHari = (tglAwal, tglAkhir) => {
-  if (!tglAwal || !tglAkhir) return "-";
-  try {
-    const d1 = new Date(String(tglAwal).slice(0, 10));
-    const d2 = new Date(String(tglAkhir).slice(0, 10));
-    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return "-";
-    const diffTime = Math.abs(d2 - d1);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return `${diffDays} Hari`;
-  } catch {
-    return "-";
-  }
+const stamp = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
 };
 
-const barisData = (r, index) => [
-  index + 1,
-  r.jenis === "sakit" ? "Surat Sakit" : "Izin Resmi",
-  r.alasan || "-",
-  formatTanggalLengkap(r.tanggal_mulai) || "-",
-  formatTanggalLengkap(r.tanggal_selesai) || "-",
-  hitungDurasiHari(r.tanggal_mulai, r.tanggal_selesai),
-  (r.status || "-").toUpperCase(),
-  r.created_at ? formatTanggalPresensi(r.created_at) : "-",
-  r.file_bukti ? "Ada" : "Tidak Ada",
-];
-
-const stamp = () => new Date().toISOString().slice(0, 10);
-
-const escapeCsv = (value) => {
-  const str = String(value ?? "-");
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
+const hitungHari = (mulai, selesai) => {
+  if (!mulai) return "-";
+  if (!selesai || mulai === selesai) return "1 hari";
+  const d1 = new Date(mulai);
+  const d2 = new Date(selesai);
+  const diff = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+  return `${diff} hari`;
 };
 
-export const exportIzinToCsv = (rows, fileName = "data-pengajuan-izin") => {
-  const isi = [HEADERS, ...rows.map((r, i) => barisData(r, i))]
-    .map((row) => row.map(escapeCsv).join(","))
-    .join("\n");
+const formatTgl = (s) => {
+  if (!s) return "-";
+  return formatTanggalPresensi(s);
+};
 
-  const blob = new Blob(["\uFEFF" + isi], { type: "text/csv;charset=utf-8;" });
+export const barisDataIzin = (r, idx = 0) => {
+  return [
+    idx + 1,
+    r.nama || "-",
+    r.nomor_induk || "-",
+    r.institusi || "-",
+    r.jurusan || "-",
+    r.bidang || "-",
+    (r.jenis || "-").toUpperCase(),
+    formatTgl(r.tanggal_mulai),
+    formatTgl(r.tanggal_selesai),
+    hitungHari(r.tanggal_mulai, r.tanggal_selesai),
+    r.alasan || "-",
+    (r.status || "-").toUpperCase(),
+    r.catatan_mentor || "-",
+    formatTgl(r.created_at),
+  ];
+};
+
+export const exportIzinToCsv = (rows, fileName = "pengajuan-izin") => {
+  const csvContent = [
+    HEADERS_IZIN.join(","),
+    ...rows.map((r, i) =>
+      barisDataIzin(r, i)
+        .map((val) => `"${String(val).replace(/"/g, '""')}"`)
+        .join(",")
+    ),
+  ].join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.href = url;
-  link.download = `${fileName}-${stamp()}.csv`;
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${fileName}-${stamp()}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 };
 
-export const exportIzinToExcel = (rows, fileName = "data-pengajuan-izin") => {
-  const data = rows.map((r, i) => {
-    const b = barisData(r, i);
-    return HEADERS.reduce((obj, h, idx) => ({ ...obj, [h]: b[idx] }), {});
+export const exportIzinToExcel = (rows, fileName = "pengajuan-izin") => {
+  const data = rows.map((r, idx) => {
+    const b = barisDataIzin(r, idx);
+    return HEADERS_IZIN.reduce((obj, h, i) => ({ ...obj, [h]: b[i] }), {});
   });
 
-  const worksheet = XLSX.utils.json_to_sheet(data, { header: HEADERS });
+  const worksheet = XLSX.utils.json_to_sheet(data, { header: HEADERS_IZIN });
   worksheet["!cols"] = [
-    { wch: 6 },
-    { wch: 16 },
-    { wch: 32 },
-    { wch: 20 },
-    { wch: 20 },
-    { wch: 12 },
-    { wch: 14 },
-    { wch: 18 },
-    { wch: 16 },
+    { wch: 6 },  // No
+    { wch: 28 }, // Nama
+    { wch: 18 }, // NIM / NISN
+    { wch: 28 }, // Institusi
+    { wch: 24 }, // Jurusan
+    { wch: 22 }, // Bidang
+    { wch: 12 }, // Jenis
+    { wch: 16 }, // Mulai
+    { wch: 16 }, // Selesai
+    { wch: 12 }, // Durasi
+    { wch: 45 }, // Alasan
+    { wch: 14 }, // Status
+    { wch: 30 }, // Catatan Mentor
+    { wch: 18 }, // Tanggal Pengajuan
   ];
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Pengajuan Izin");
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Pengajuan Izin & Sakit");
   XLSX.writeFile(workbook, `${fileName}-${stamp()}.xlsx`);
 };
 
-export const exportIzinToPdf = (rows, stats = null, fileName = "data-pengajuan-izin") => {
+export const exportIzinToPdf = (rows, stat = null, fileName = "pengajuan-izin") => {
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
 
   doc.setFontSize(14);
   doc.setTextColor(11, 20, 66);
-  doc.text("Data Pengajuan Izin & Sakit Peserta Magang", 40, 40);
+  doc.text("Laporan Rekap Pengajuan Izin & Sakit Peserta Bimbingan", 40, 38);
 
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(100, 116, 139);
   doc.text(
-    `Dicetak pada: ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`,
+    `Dicetak pada: ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}  ·  Total: ${rows.length} permohonan`,
     40,
-    58
+    54
   );
-  doc.text(`Total pengajuan: ${rows.length}`, 40, 72);
-  if (stats) {
+
+  let startYTable = 72;
+  if (stat && typeof stat === "object") {
+    const sMenunggu = stat.menunggu ?? 0;
+    const sDisetujui = stat.disetujui ?? 0;
+    const sDitolak = stat.ditolak ?? 0;
+    const sTotal = stat.total ?? 0;
+
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
     doc.text(
-      `Disetujui: ${stats.disetujui ?? 0} · Menunggu: ${stats.menunggu ?? 0} · Ditolak: ${stats.ditolak ?? 0}`,
+      `Statistik: Menunggu ${sMenunggu}  |  Disetujui ${sDisetujui}  |  Ditolak ${sDitolak}  |  Total ${sTotal}`,
       40,
-      86
+      68
     );
+    startYTable = 84;
   }
 
   autoTable(doc, {
-    head: [HEADERS],
-    body: rows.map((r, i) => barisData(r, i)),
-    startY: stats ? 104 : 90,
+    head: [HEADERS_IZIN],
+    body: rows.map((r, i) => barisDataIzin(r, i)),
+    startY: startYTable,
     theme: "grid",
-    headStyles: { fillColor: [11, 20, 66], textColor: 255, fontStyle: "bold", fontSize: 8.5 },
-    bodyStyles: { fontSize: 8, textColor: [30, 41, 59] },
+    headStyles: {
+      fillColor: [11, 20, 66],
+      textColor: 255,
+      fontStyle: "bold",
+      fontSize: 7.5,
+      halign: "center",
+      cellPadding: 4,
+    },
+    bodyStyles: {
+      fontSize: 7,
+      textColor: [30, 41, 59],
+      cellPadding: 3.5,
+      overflow: "linebreak",
+    },
     alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 22, halign: "center" },  // No
+      1: { cellWidth: 75 },                    // Nama
+      2: { cellWidth: 55 },                    // NIM/NISN
+      3: { cellWidth: 65 },                    // Institusi
+      4: { cellWidth: 60 },                    // Jurusan
+      5: { cellWidth: 55 },                    // Bidang
+      6: { cellWidth: 38, halign: "center" },  // Jenis
+      7: { cellWidth: 50, halign: "center" },  // Mulai
+      8: { cellWidth: 50, halign: "center" },  // Selesai
+      9: { cellWidth: 36, halign: "center" },  // Durasi
+      10: { cellWidth: "auto" },               // Alasan
+      11: { cellWidth: 42, halign: "center" }, // Status
+      12: { cellWidth: 65 },                   // Catatan
+      13: { cellWidth: 48, halign: "center" }, // Tanggal
+    },
     margin: { left: 40, right: 40 },
   });
 

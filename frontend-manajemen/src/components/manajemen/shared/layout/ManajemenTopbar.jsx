@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search, X, Menu, UserPlus, FileEdit, MessageSquare,
-  UserCog, Award, Clock, CheckCheck, Bell, FileSignature, Trash2, BellOff,
-  BookOpen, CheckCircle2, FileText, ShieldAlert, LogIn, LogOut,
+  UserCog, Award, Clock, Check, CheckCheck, Bell, FileSignature, Trash2, BellOff,
+  BookOpen, CheckCircle2, FileText, ShieldAlert, LogIn, LogOut, MailCheck,
 } from "lucide-react";
 import {
   getNotifikasi, bacaNotifikasi, bacaSemuaNotifikasi,
@@ -23,6 +23,7 @@ const NOTIF_META = {
   presensi_masuk:          { icon: LogIn,           color: "text-emerald-500", bg: "bg-emerald-500/10" },
   presensi_pulang:         { icon: LogOut,          color: "text-amber-500",   bg: "bg-amber-500/10" },
   izin_status:             { icon: CheckCircle2,    color: "text-blue-500",    bg: "bg-blue-500/10" },
+  pengajuan_izin:          { icon: MailCheck,       color: "text-amber-500",   bg: "bg-amber-500/10" },
   logbook_reminder:        { icon: Clock,           color: "text-amber-500",   bg: "bg-amber-500/10" },
   logbook_verifikasi:      { icon: FileSignature,   color: "text-indigo-500",  bg: "bg-indigo-500/10" },
   logbook_revisi:          { icon: FileEdit,        color: "text-amber-500",   bg: "bg-amber-500/10" },
@@ -35,6 +36,16 @@ const NOTIF_META = {
   keamanan_login:          { icon: ShieldAlert,     color: "text-amber-500",   bg: "bg-amber-500/10" },
   keamanan_password:       { icon: ShieldAlert,     color: "text-rose-500",    bg: "bg-rose-500/10" },
   sistem:                  { icon: Bell,            color: "text-slate-400",   bg: "bg-slate-500/10" },
+};
+
+const bersihkanTeksPesanNotif = (pesan) => {
+  if (!pesan) return "";
+  return pesan.replace(/\b(\d{4})-(\d{2})-(\d{2})T[\d:+]+/g, (_, y, m, d) => {
+    const bulanSingkat = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+    const bln = bulanSingkat[parseInt(m, 10) - 1] || m;
+    const tgl = parseInt(d, 10);
+    return `${tgl} ${bln} ${y}`;
+  });
 };
 
 const waktuRelatif = (iso) => {
@@ -74,14 +85,29 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
       const data = res.data?.data ?? {};
       const rawList = data.items ?? [];
 
-      // Baca preferensi notifikasi peserta/user dari localStorage
+      // Baca preferensi notifikasi sesuai role (admin / mentor / peserta) dari localStorage
       let userSettings = null;
+      let isAdmin = false;
+      let isMentor = false;
       try {
         const storedUser = sessionStorage.getItem("user") || localStorage.getItem("user");
         const user = storedUser ? JSON.parse(storedUser) : null;
-        const storageKey = user?.id ? `sim_peserta_notif_settings_${user.id}` : "sim_peserta_notif_settings";
-        const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_peserta_notif_settings");
-        if (saved) userSettings = JSON.parse(saved);
+        isAdmin = user?.role === "admin" || user?.role === "super_admin";
+        isMentor = user?.role === "mentor";
+
+        if (isAdmin) {
+          const storageKey = user?.id ? `sim_admin_notif_settings_${user.id}` : "sim_admin_notif_settings";
+          const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_admin_notif_settings");
+          if (saved) userSettings = JSON.parse(saved);
+        } else if (isMentor) {
+          const storageKey = user?.id ? `sim_mentor_notif_settings_${user.id}` : "sim_mentor_notif_settings";
+          const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_mentor_notif_settings");
+          if (saved) userSettings = JSON.parse(saved);
+        } else {
+          const storageKey = user?.id ? `sim_peserta_notif_settings_${user.id}` : "sim_peserta_notif_settings";
+          const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_peserta_notif_settings");
+          if (saved) userSettings = JSON.parse(saved);
+        }
       } catch {
         // ignore
       }
@@ -92,6 +118,38 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
         setIsWebPushDisabled(false);
         filtered = rawList.filter((item) => {
           const tipe = (item.tipe || "").toLowerCase();
+
+          if (isAdmin) {
+            // Filter preferensi role Administrator
+            if ((tipe === "pendaftaran_baru" || tipe === "pendaftaran_tertunda") && userSettings.notifPendaftaranBaru === false) return false;
+            if ((tipe === "revisi_dokumen" || tipe === "surat_belum_terbit" || tipe === "akun_belum_dibuat" || tipe === "mentor_belum_ditugaskan") && userSettings.notifVerifikasiDokumen === false) return false;
+            if ((tipe === "kuota_penuh" || tipe === "kuota_bidang") && userSettings.notifKuotaBidangPenuh === false) return false;
+            if ((tipe === "presensi_masuk" || tipe === "presensi_pulang" || tipe === "presensi_harian") && userSettings.notifPresensiHarian === false) return false;
+            if ((tipe === "izin_status" || tipe === "pengajuan_izin") && userSettings.notifPengajuanIzinPeserta === false) return false;
+            if ((tipe === "keterlambatan" || tipe === "presensi_alfa") && userSettings.notifKeterlambatanPeserta === false) return false;
+            if ((tipe === "laporan_akhir" || tipe === "logbook_verifikasi" || tipe === "logbook_revisi") && userSettings.notifPengumpulanLaporan === false) return false;
+            if ((tipe === "rapor_nilai" || tipe === "tugas_nilai" || tipe === "penilaian_mentor") && userSettings.notifPenilaianMentor === false) return false;
+            if ((tipe === "sertifikat_pending" || tipe === "sertifikat_terbit") && userSettings.notifSertifikatSiapTerbit === false) return false;
+            if (tipe === "keamanan_login" && userSettings.notifLoginKeamanan === false) return false;
+            if (tipe === "keamanan_password" && userSettings.notifPerubahanKredensial === false) return false;
+            return true;
+          }
+
+          if (isMentor) {
+            // Filter preferensi role Mentor
+            if ((tipe === "presensi_masuk" || tipe === "presensi_pulang" || tipe === "presensi_harian") && userSettings.notifPresensiBimbingan === false) return false;
+            if ((tipe === "izin_status" || tipe === "pengajuan_izin") && userSettings.notifPengajuanIzinBimbingan === false) return false;
+            if ((tipe === "keterlambatan" || tipe === "presensi_alfa") && userSettings.notifKeterlambatanBimbingan === false) return false;
+            if (tipe === "tugas_dikumpulkan" && userSettings.notifTugasDikumpulkan === false) return false;
+            if ((tipe === "tugas_baru" || tipe === "tugas_deadline") && userSettings.notifReviewTugasMenunggu === false) return false;
+            if ((tipe === "laporan_akhir" || tipe === "logbook_verifikasi" || tipe === "logbook_revisi") && userSettings.notifLaporanAkhirMasuk === false) return false;
+            if ((tipe === "rapor_nilai" || tipe === "tugas_nilai" || tipe === "penilaian_mentor") && userSettings.notifBatasPenilaianAkhir === false) return false;
+            if (tipe === "keamanan_login" && userSettings.notifLoginKeamanan === false) return false;
+            if (tipe === "keamanan_password" && userSettings.notifPerubahanKredensial === false) return false;
+            return true;
+          }
+
+          // Filter preferensi role Peserta
           if (tipe === "chat_baru" && userSettings.chatMentor === false) return false;
           if (tipe === "presensi_masuk" && userSettings.checkinReminder === false) return false;
           if (tipe === "presensi_pulang" && userSettings.checkoutReminder === false) return false;
@@ -134,12 +192,14 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
       muatNotifikasi();
     };
     window.addEventListener("sim_notif_settings_changed", handleSettingsChanged);
+    window.addEventListener("sim_notifikasi_updated", handleSettingsChanged);
     window.addEventListener("storage", handleSettingsChanged);
 
     return () => {
       clearTimeout(timerAwal);
       clearInterval(interval);
       window.removeEventListener("sim_notif_settings_changed", handleSettingsChanged);
+      window.removeEventListener("sim_notifikasi_updated", handleSettingsChanged);
       window.removeEventListener("storage", handleSettingsChanged);
     };
   }, [muatNotifikasi]);
@@ -172,6 +232,20 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
     setNotifList((p) => p.map((x) => (x.dibaca_pada ? x : { ...x, dibaca_pada: now })));
     setUnreadCount(0);
     try { await bacaSemuaNotifikasi(); } catch { muatNotifikasi(); }
+  };
+
+  // Tandai satu notifikasi sebagai sudah dibaca
+  const handleTandaiDibaca = async (e, n) => {
+    e.stopPropagation();
+    if (n.dibaca_pada) return;
+    const now = new Date().toISOString();
+    setNotifList((p) => p.map((x) => (x.id === n.id ? { ...x, dibaca_pada: now } : x)));
+    setUnreadCount((p) => Math.max(0, p - 1));
+    try {
+      await bacaNotifikasi(n.id);
+    } catch {
+      muatNotifikasi();
+    }
   };
 
   // Hapus satu notifikasi. stopPropagation supaya tidak ikut membuka url tujuan.
@@ -450,7 +524,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
                               {belumDibaca && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" />}
                             </span>
                             <span className={`mt-0.5 block text-[10.5px] leading-snug line-clamp-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                              {n.pesan}
+                              {bersihkanTeksPesanNotif(n.pesan)}
                             </span>
                             <span className={`mt-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
                               isDark ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-500"
@@ -461,15 +535,28 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
                           </span>
                         </button>
 
-                        <button
-                          onClick={(e) => handleHapusNotif(e, n)}
-                          title="Hapus notifikasi"
-                          className={`group/hapus1 mr-2.5 mt-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg opacity-100 md:opacity-0 transition-all duration-200 md:group-hover/notif:opacity-100 focus:opacity-100 hover:bg-rose-500 hover:text-white active:scale-90 cursor-pointer ${
-                            isDark ? "text-slate-500" : "text-slate-400"
-                          }`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/hapus1:scale-110" />
-                        </button>
+                        <div className="mr-2.5 mt-2.5 flex items-center gap-1 shrink-0">
+                          {belumDibaca && (
+                            <button
+                              onClick={(e) => handleTandaiDibaca(e, n)}
+                              title="Tandai sudah dibaca"
+                              className={`flex h-7 w-7 items-center justify-center rounded-lg opacity-100 md:opacity-0 transition-all duration-200 md:group-hover/notif:opacity-100 focus:opacity-100 hover:bg-emerald-500 hover:text-white active:scale-90 cursor-pointer ${
+                                isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-white"
+                              }`}
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => handleHapusNotif(e, n)}
+                            title="Hapus notifikasi"
+                            className={`group/hapus1 flex h-7 w-7 items-center justify-center rounded-lg opacity-100 md:opacity-0 transition-all duration-200 md:group-hover/notif:opacity-100 focus:opacity-100 hover:bg-rose-500 hover:text-white active:scale-90 cursor-pointer ${
+                              isDark ? "text-slate-500" : "text-slate-400"
+                            }`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/hapus1:scale-110" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
@@ -88,6 +89,31 @@ func GetPresensiMentor(c *gin.Context) {
 		return
 	}
 
+	if c.Query("mode") == "terbaru" && len(rows) > 0 {
+		ids := make([]uint, 0, len(rows))
+		for _, r := range rows {
+			ids = append(ids, r.PesertaID)
+		}
+		type hitungRiwayat struct {
+			PesertaID uint `json:"peserta_id"`
+			Jumlah    int  `json:"jumlah"`
+		}
+		var hasil []hitungRiwayat
+		basePresensiQueryTanpaMode(c).
+			Where("p.mentor_id = ? AND pr.peserta_id IN ?", mentorID, ids).
+			Select("pr.peserta_id AS peserta_id, COUNT(*) AS jumlah").
+			Group("pr.peserta_id").
+			Scan(&hasil)
+
+		jumlahPer := make(map[uint]int, len(hasil))
+		for _, h := range hasil {
+			jumlahPer[h.PesertaID] = h.Jumlah
+		}
+		for i := range rows {
+			rows[i].TotalRiwayat = jumlahPer[rows[i].PesertaID]
+		}
+	}
+
 	totalPage := int((total + int64(limit) - 1) / int64(limit))
 	utils.SuccessResponse(c, http.StatusOK, "Data presensi bimbingan berhasil diambil", gin.H{
 		"data": rows,
@@ -101,6 +127,8 @@ func GetPresensiMentor(c *gin.Context) {
 }
 
 // GetStatistikPresensiMentor — angka ringkas untuk kartu statistik mentor.
+// Bersifat harian (default: hari ini) jika rentang tanggal tidak dikirim,
+// persis seperti endpoint statistik data presensi admin.
 func GetStatistikPresensiMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -109,13 +137,48 @@ func GetStatistikPresensiMentor(c *gin.Context) {
 
 	_ = services.PastikanHariTerkunci(config.DB)
 
+	dari := strings.TrimSpace(c.Query("tanggal_dari"))
+	sampai := strings.TrimSpace(c.Query("tanggal_sampai"))
+	if dari == "" && sampai == "" {
+		dari = utils.TanggalHariIni()
+		sampai = dari
+	}
+
+	buatQuery := func() *gorm.DB {
+		q := config.DB.Table("presensis pr").
+			Joins("JOIN user_manajemens u ON u.id = pr.peserta_id").
+			Joins(`LEFT JOIN pendaftaran_magangs p ON p.id = COALESCE(pr.pendaftaran_id, (
+				SELECT p2.id FROM pendaftaran_magangs p2
+				WHERE p2.akun_peserta_id = pr.peserta_id
+				ORDER BY p2.id DESC LIMIT 1
+			))`).
+			Where("p.mentor_id = ?", mentorID)
+
+		if dari != "" {
+			q = q.Where("pr.tanggal >= ?", dari)
+		}
+		if sampai != "" {
+			q = q.Where("pr.tanggal <= ?", sampai)
+		}
+		if raw := strings.TrimSpace(c.Query("kategori")); raw != "" {
+			q = q.Where("p.kategori_pendaftar IN ?", strings.Split(raw, ","))
+		}
+		if s := strings.TrimSpace(c.Query("search")); s != "" {
+			key := "%" + s + "%"
+			q = q.Where(
+				"u.nama LIKE ? OR p.asal_kampus LIKE ? OR p.asal_sekolah LIKE ? OR p.npm_nim LIKE ? OR p.nisn LIKE ?",
+				key, key, key, key, key,
+			)
+		}
+		return q
+	}
+
 	type barisStatus struct {
 		Status string `gorm:"column:status"`
 		Jumlah int64  `gorm:"column:jumlah"`
 	}
 	var baris []barisStatus
-	if err := basePresensiQuery(c).
-		Where("p.mentor_id = ?", mentorID).
+	if err := buatQuery().
 		Select("pr.status AS status, COUNT(*) AS jumlah").
 		Group("pr.status").
 		Scan(&baris).Error; err != nil {
@@ -131,13 +194,44 @@ func GetStatistikPresensiMentor(c *gin.Context) {
 	}
 
 	var lupa int64
-	_ = basePresensiQuery(c).Where("p.mentor_id = ? AND pr.lupa_presensi = 1", mentorID).Count(&lupa).Error
+	buatQuery().Where("pr.lupa_presensi = 1").Count(&lupa)
 
-	var totalPeserta int64
-	_ = config.DB.Table("pendaftaran_magangs").
-		Where("mentor_id = ? AND akun_peserta_id IS NOT NULL", mentorID).
-		Distinct("akun_peserta_id").
-		Count(&totalPeserta).Error
+	// Hitung peserta bimbingan yang aktif dan kewajiban presensi hari ini
+	pesertaSemua, _ := utils.AmbilPesertaPresensi(config.DB)
+	var pesertaBimbingan []utils.PesertaPresensi
+	for _, p := range pesertaSemua {
+		if p.MentorID != nil && *p.MentorID == mentorID {
+			pesertaBimbingan = append(pesertaBimbingan, p)
+		}
+	}
+
+	hariIni := utils.TanggalHariIni()
+	kal, errKal := utils.MuatKalenderKerja(config.DB)
+	hariKerja := false
+	alasanHari := ""
+	wajibHariIni := 0
+	if errKal == nil {
+		info := kal.CekHari(hariIni)
+		hariKerja = info.HariKerja
+		alasanHari = info.Alasan
+		if hariKerja {
+			for _, p := range pesertaBimbingan {
+				if p.WajibPresensiPada(hariIni) {
+					wajibHariIni++
+				}
+			}
+		}
+	}
+
+	var sudahHariIni int64
+	config.DB.Table("presensis pr").
+		Joins("JOIN pendaftaran_magangs p ON p.id = pr.pendaftaran_id").
+		Where("p.mentor_id = ? AND pr.tanggal = ?", mentorID, hariIni).
+		Count(&sudahHariIni)
+	belumHariIni := wajibHariIni - int(sudahHariIni)
+	if belumHariIni < 0 {
+		belumHariIni = 0
+	}
 
 	var izinMenunggu int64
 	_ = config.DB.Table("pengajuan_izins pi").
@@ -146,16 +240,24 @@ func GetStatistikPresensiMentor(c *gin.Context) {
 		Count(&izinMenunggu).Error
 
 	utils.SuccessResponse(c, http.StatusOK, "Statistik presensi bimbingan berhasil diambil", gin.H{
-		"total":          total,
-		"hadir":          hasil["hadir"],
-		"terlambat":      hasil["terlambat"],
-		"izin":           hasil["izin"],
-		"sakit":          hasil["sakit"],
-		"alfa":           hasil["alfa"],
-		"lupa_presensi":  lupa,
-		"total_peserta":  totalPeserta,
-		"izin_menunggu":  izinMenunggu,
-		"hari_ini":       utils.TanggalHariIni(),
+		"periode": gin.H{"dari": dari, "sampai": sampai},
+		"hari_ini": gin.H{
+			"tanggal":        hariIni,
+			"hari_kerja":     hariKerja,
+			"alasan":         alasanHari,
+			"wajib_presensi": wajibHariIni,
+			"sudah_presensi": int(sudahHariIni),
+			"belum_presensi": belumHariIni,
+		},
+		"total":         total,
+		"hadir":         hasil["hadir"],
+		"terlambat":     hasil["terlambat"],
+		"izin":          hasil["izin"],
+		"sakit":         hasil["sakit"],
+		"alfa":          hasil["alfa"],
+		"lupa_presensi": lupa,
+		"total_peserta": len(pesertaBimbingan),
+		"izin_menunggu": izinMenunggu,
 	})
 }
 
@@ -263,7 +365,9 @@ type PengajuanIzinRow struct {
 	PesertaID      uint   `json:"peserta_id"`
 	Nama           string `json:"nama"`
 	FotoProfil     string `json:"foto_profil"`
+	NomorInduk     string `json:"nomor_induk"`
 	Institusi      string `json:"institusi"`
+	Jurusan        string `json:"jurusan"`
 	Bidang         string `json:"bidang"`
 	Jenis          string `json:"jenis"`
 	TanggalMulai   string `json:"tanggal_mulai"`
@@ -324,7 +428,9 @@ func GetPengajuanIzinMentor(c *gin.Context) {
 			pi.alasan, pi.file_bukti, pi.status, pi.catatan_mentor, pi.created_at,
 			u.nama AS nama,
 			COALESCE(u.foto_profil, '') AS foto_profil,
+			COALESCE(NULLIF(p.npm_nim, ''), p.nisn, '') AS nomor_induk,
 			COALESCE(NULLIF(p.asal_kampus, ''), p.asal_sekolah, '') AS institusi,
+			COALESCE(NULLIF(p.program_studi, ''), p.jurusan_sekolah, '') AS jurusan,
 			COALESCE(p.posisi_bidang, '') AS bidang
 		`).
 		Order("FIELD(pi.status,'menunggu','disetujui','ditolak'), pi.created_at desc").
@@ -452,6 +558,12 @@ func ProsesPengajuanIzinMentor(c *gin.Context) {
 		return
 	}
 
+	// Tandai notifikasi mentor untuk izin ini sebagai sudah dibaca
+	now := time.Now()
+	config.DB.Model(&models.Notifikasi{}).
+		Where("target_role = 'mentor' AND ref_tabel = 'pengajuan_izins' AND ref_id = ?", izin.ID).
+		Update("dibaca_pada", now)
+
 	go kirimEmailHasilIzin(izin.ID)
 
 	utils.SuccessResponse(c, http.StatusOK, "Pengajuan izin berhasil diproses", gin.H{
@@ -483,5 +595,60 @@ func GetHitunganAntreanMentor(c *gin.Context) {
 		"data": gin.H{
 			"izin": izinMenunggu,
 		},
+	})
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MENTOR: Statistik ringkas pengajuan izin/sakit peserta bimbingan
+// GET /api/manajemen/mentor/pengajuan-izin/statistik
+// ─────────────────────────────────────────────────────────────────────────────
+
+func GetStatistikPengajuanIzinMentor(c *gin.Context) {
+	mentorID, ok := mentorIDDariToken(c)
+	if !ok {
+		return
+	}
+
+	baseQ := func() *gorm.DB {
+		return config.DB.Table("pengajuan_izins pi").
+			Joins("JOIN user_manajemens u ON u.id = pi.peserta_id").
+			Joins("LEFT JOIN pendaftaran_magangs p ON p.akun_peserta_id = pi.peserta_id").
+			Where("p.mentor_id = ?", mentorID)
+	}
+
+	type barisStat struct {
+		Status string `gorm:"column:status"`
+		Jumlah int64  `gorm:"column:jumlah"`
+	}
+	var baris []barisStat
+	_ = baseQ().
+		Select("pi.status, COUNT(*) as jumlah").
+		Group("pi.status").
+		Scan(&baris).Error
+
+	var menunggu, disetujui, ditolak, total int64
+	for _, b := range baris {
+		total += b.Jumlah
+		switch b.Status {
+		case "menunggu":
+			menunggu = b.Jumlah
+		case "disetujui":
+			disetujui = b.Jumlah
+		case "ditolak":
+			ditolak = b.Jumlah
+		}
+	}
+
+	var izinCount, sakitCount int64
+	_ = baseQ().Where("pi.jenis = ?", "izin").Count(&izinCount).Error
+	_ = baseQ().Where("pi.jenis = ?", "sakit").Count(&sakitCount).Error
+
+	utils.SuccessResponse(c, http.StatusOK, "Statistik pengajuan izin berhasil diambil", gin.H{
+		"menunggu":  menunggu,
+		"disetujui": disetujui,
+		"ditolak":   ditolak,
+		"total":     total,
+		"izin":      izinCount,
+		"sakit":     sakitCount,
 	})
 }

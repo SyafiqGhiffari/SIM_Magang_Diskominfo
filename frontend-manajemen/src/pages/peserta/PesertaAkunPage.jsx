@@ -15,10 +15,10 @@ import { confirmDialog, toastSuccess, toastError } from "../../utils/swal";
 import { getFileUrl } from "../../utils/fileUrl";
 import FotoProfilModal from "../../components/manajemen/shared/FotoProfilModal";
 import UploadDokumenModal from "../../components/manajemen/peserta/akun/UploadDokumenModal";
-import GantiEmailModal from "../../components/manajemen/peserta/akun/GantiEmailModal";
+import GantiEmailModal from "../../components/manajemen/shared/akun/GantiEmailModal";
 import DocumentPreviewModal from "../../components/manajemen/peserta/akun/DocumentPreviewModal";
 import TabBiodataDokumen from "../../components/manajemen/peserta/akun/tabs/TabBiodataDokumen";
-import TabKeamanan from "../../components/manajemen/peserta/akun/tabs/TabKeamanan";
+import TabKeamanan from "../../components/manajemen/shared/akun/TabKeamanan";
 import TabNotifikasi from "../../components/manajemen/peserta/akun/tabs/TabNotifikasi";
 import {
   UserCheck,
@@ -1209,7 +1209,7 @@ export const PesertaAkunPage = () => {
                   {/* Info User */}
                   <div className="min-w-0 text-white flex-1 space-y-0.5 sm:space-y-0">
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                      <h3 className="text-sm sm:text-2xl font-black tracking-tight text-white leading-tight sm:leading-normal truncate max-w-full">
+                      <h3 className="text-sm sm:text-xl lg:text-2xl font-extrabold tracking-tight text-white leading-tight sm:leading-snug break-words max-w-full">
                         {profile?.nama || "Peserta Magang"}
                       </h3>
                       <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-md px-1.5 py-0.5 sm:px-2.5 sm:py-0.5 text-[8.5px] sm:text-[10px] font-bold text-white border border-white/20 shrink-0">

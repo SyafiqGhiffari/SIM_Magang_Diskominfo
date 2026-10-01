@@ -12,11 +12,11 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
+  Eye,
 } from "lucide-react";
 import { formatMenit } from "../../../../constants/presensiStatus";
 import { getFileUrl } from "../../../../utils/fileUrl";
 import { getBidangColor } from "../../../../utils/bidangColor";
-import RekapActionsDropdown from "./RekapActionsDropdown";
 
 const getInitials = (name) => {
   if (!name) return "?";
@@ -368,7 +368,18 @@ const RekapPresensiTable = ({ rows, onDetail, columnSort, setColumnSort, isDark 
 
                     {/* 6. Aksi (Mobile & Desktop) */}
                     <td className="px-2 sm:px-4 py-2.5 sm:py-3.5 text-right">
-                      <RekapActionsDropdown onDetail={() => onDetail(r)} isDark={isDark} />
+                      <button
+                        type="button"
+                        onClick={() => onDetail(r)}
+                        title="Lihat Detail Riwayat Kehadiran"
+                        className={`group inline-flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-lg sm:rounded-xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 cursor-pointer ${
+                          isDark
+                            ? "border-white/10 bg-white/5 text-slate-300 hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-300"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-[#004F9F]/30 hover:bg-blue-50/60 hover:text-[#004F9F]"
+                        }`}
+                      >
+                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200 group-hover:scale-110" />
+                      </button>
                     </td>
                   </tr>
 

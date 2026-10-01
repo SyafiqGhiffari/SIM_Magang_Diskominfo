@@ -21,6 +21,7 @@ import (
 	"sim-magang-backend/utils"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Struktur satu entri status verifikasi per-dokumen (dipakai untuk parse/serialize JSON DetailVerifikasi)
@@ -497,6 +498,46 @@ func UpdateStatusPendaftaranMagang(c *gin.Context) {
 		if input.TanggalMulai != "" {
 			pendaftaran.TanggalMulai = input.TanggalMulai
 		}
+
+		// Otomatis buat atau tautkan akun UserManajemen (role: peserta)
+		if pendaftaran.AkunPesertaID == nil {
+			var existingUser models.UserManajemen
+			if err := config.DB.Where("email = ?", pendaftaran.Email).First(&existingUser).Error; err == nil {
+				// Sudah ada akun UserManajemen dengan email ini, tautkan dan pastikan status aktif
+				pendaftaran.AkunPesertaID = &existingUser.ID
+				config.DB.Model(&existingUser).Updates(map[string]interface{}{
+					"nama":          pendaftaran.NamaLengkap,
+					"status_akun":   "aktif",
+					"status_magang": "aktif",
+					"no_hp":         pendaftaran.NomorHP,
+					"foto_profil":   pendaftaran.FilePasFoto,
+				})
+			} else {
+				// Ambil hash password dari UserPendaftaran
+				passwordHash := pendaftaran.UserPendaftaran.Password
+				if passwordHash == "" {
+					plainPassword := "Magang@" + time.Now().Format("2006")
+					hashed, _ := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
+					passwordHash = string(hashed)
+				}
+
+				newUser := models.UserManajemen{
+					Nama:         pendaftaran.NamaLengkap,
+					Email:        pendaftaran.Email,
+					Password:     passwordHash,
+					Role:         "peserta",
+					StatusAkun:   "aktif",
+					StatusMagang: "aktif",
+					NoHp:         pendaftaran.NomorHP,
+					FotoProfil:   pendaftaran.FilePasFoto,
+				}
+				if err := config.DB.Create(&newUser).Error; err == nil {
+					pendaftaran.AkunPesertaID = &newUser.ID
+				} else {
+					log.Println("Gagal membuat akun peserta otomatis:", err)
+				}
+			}
+		}
 	}
 
 	// Kalau keputusan dibatalkan/diubah, surat yang sudah terbit harus dicabut
@@ -513,27 +554,36 @@ func UpdateStatusPendaftaranMagang(c *gin.Context) {
 
 	if !input.Silent {
 		go func() {
-			subject := emailtemplates.SubjectStatusPendaftaran(pendaftaran.StatusPendaftaran)
-
-			body := emailtemplates.TemplateStatusPendaftaran(
-				pendaftaran.NamaLengkap,
-				pendaftaran.StatusPendaftaran,
-				pendaftaran.CatatanAdmin,
-			)
-
-			err := services.SendEmail(pendaftaran.Email, subject, body)
-			if err != nil {
-				log.Println("Gagal mengirim email status pendaftaran:", err)
+			if pendaftaran.StatusPendaftaran == "diterima" {
+				subject := emailtemplates.SubjectAkunPesertaDibuat()
+				body := emailtemplates.TemplateAkunPesertaDibuat(
+					pendaftaran.NamaLengkap,
+					pendaftaran.Email,
+					"Gunakan kata sandi akun pendaftaran Anda",
+				)
+				if err := services.SendEmail(pendaftaran.Email, subject, body); err != nil {
+					log.Println("Gagal mengirim email akun peserta diterima:", err)
+				}
+			} else {
+				subject := emailtemplates.SubjectStatusPendaftaran(pendaftaran.StatusPendaftaran)
+				body := emailtemplates.TemplateStatusPendaftaran(
+					pendaftaran.NamaLengkap,
+					pendaftaran.StatusPendaftaran,
+					pendaftaran.CatatanAdmin,
+				)
+				if err := services.SendEmail(pendaftaran.Email, subject, body); err != nil {
+					log.Println("Gagal mengirim email status pendaftaran:", err)
+				}
 			}
 		}()
 	}
 
-	// Notifikasi in-app: pendaftaran diterima tapi akun peserta belum dibuat
-	if pendaftaran.StatusPendaftaran == "diterima" && pendaftaran.AkunPesertaID == nil {
+	// Notifikasi in-app: peserta baru diterima tapi belum punya mentor pembimbing
+	if pendaftaran.StatusPendaftaran == "diterima" && pendaftaran.MentorID == nil {
 		go services.KirimNotifikasiAdmin(
-			"akun_belum_dibuat",
-			"Akun peserta perlu dibuat",
-			fmt.Sprintf("%s sudah diterima. Buatkan akun peserta agar bisa mulai presensi.", pendaftaran.NamaLengkap),
+			"mentor_belum_ditugaskan",
+			"Mentor belum ditugaskan",
+			fmt.Sprintf("%s sudah diterima dan akun magang telah aktif. Tentukan mentor pembimbing.", pendaftaran.NamaLengkap),
 			"pendaftaran_magangs", &pendaftaran.ID,
 			"/admin/peserta",
 			"tinggi", true,

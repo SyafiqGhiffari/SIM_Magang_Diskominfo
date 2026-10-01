@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -60,54 +62,6 @@ func simpanFileTugas(c *gin.Context, file *multipart.FileHeader, pesertaID uint,
 	return strings.ReplaceAll(filePath, "\\", "/"), nil
 }
 
-// pastikanMateriBawaan membuat materi standar Diskominfo jika tabel masih kosong
-func pastikanMateriBawaan() {
-	var count int64
-	config.DB.Model(&models.MateriPembelajaran{}).Count(&count)
-	if count > 0 {
-		return
-	}
-
-	materiAwal := []models.MateriPembelajaran{
-		{
-			Judul:           "Buku Panduan Orientasi & Etika Magang Diskominfo",
-			Deskripsi:       "Panduan umum mengenai tata tertib kantor, standar jam kerja, etika komunikasi birokrasi, dan alur pelaporan magang.",
-			Kategori:        "Onboarding & SOP",
-			PosisiBidang:    "semua",
-			TipeMedia:       "dokumen",
-			TautanEksternal: "https://diskominfo.go.id",
-		},
-		{
-			Judul:           "Standar Keamanan Informasi & Pengelolaan Akun Dinas",
-			Deskripsi:       "Prinsip dasar Information Security, manajemen kredensial, proteksi data privasi, dan pencegahan serangan phishing di lingkungan pemerintahan.",
-			Kategori:        "Keamanan Informasi",
-			PosisiBidang:    "semua",
-			TipeMedia:       "slide",
-			TautanEksternal: "",
-		},
-		{
-			Judul:           "Panduan Alur Pengembangan Sistem & Git Workflow",
-			Deskripsi:       "Standar pembuatan branch, commit conventions, code review, dan deployment aplikasi pemerintahan berbasis Clean Code.",
-			Kategori:        "Teknologi Informasi & Kode",
-			PosisiBidang:    "semua",
-			TipeMedia:       "dokumen",
-			TautanEksternal: "https://github.com",
-		},
-		{
-			Judul:           "Pedoman Penulisan Laporan & Dokumentasi Proyek",
-			Deskripsi:       "Format penyusunan laporan teknis mingguan, penulisan dokumentasi API / modul sistem, dan petunjuk format BAB 1-5.",
-			Kategori:        "Administrasi & Pelaporan",
-			PosisiBidang:    "semua",
-			TipeMedia:       "dokumen",
-			TautanEksternal: "",
-		},
-	}
-
-	for _, m := range materiAwal {
-		config.DB.Create(&m)
-	}
-}
-
 // pastikanTugasBawaan membuat tugas orientasi jika belum ada tugas
 func pastikanTugasBawaan(mentorID *uint) {
 	var count int64
@@ -141,17 +95,26 @@ func GetMateriPeserta(c *gin.Context) {
 		return
 	}
 
-	pastikanMateriBawaan()
-
 	var pendaftaran models.PendaftaranMagang
 	config.DB.Where("akun_peserta_id = ?", pesertaID).Order("id desc").First(&pendaftaran)
 
 	bidang := pendaftaran.PosisiBidang
 
 	var materiList []models.MateriPembelajaran
-	q := config.DB.Model(&models.MateriPembelajaran{})
+	q := config.DB.Model(&models.MateriPembelajaran{}).Preload("Mentor")
+
+	jenjang := pendaftaran.KategoriPendaftar
+	if pendaftaran.MentorID != nil {
+		q = q.Where(
+			"(mentor_id = ? AND ((target_peserta = 'semua_bimbingan' AND (target_jenjang = 'semua' OR target_jenjang = ? OR target_jenjang IS NULL OR target_jenjang = '')) OR id IN (SELECT materi_id FROM materi_peserta_akses WHERE peserta_id = ?))) OR (dibuat_oleh_id IN (SELECT id FROM user_manajemens WHERE role = 'admin'))",
+			*pendaftaran.MentorID, jenjang, pesertaID,
+		)
+	} else {
+		q = q.Where("dibuat_oleh_id IN (SELECT id FROM user_manajemens WHERE role = 'admin')")
+	}
+
 	if bidang != "" {
-		q = q.Where("posisi_bidang = 'semua' OR posisi_bidang = ?", bidang)
+		q = q.Where("posisi_bidang = 'semua' OR posisi_bidang = ? OR mentor_id IS NOT NULL", bidang)
 	}
 	q.Order("id desc").Find(&materiList)
 
@@ -188,10 +151,24 @@ func GetTugasPeserta(c *gin.Context) {
 
 	bidang := pendaftaran.PosisiBidang
 
+	jenjang := strings.ToLower(pendaftaran.KategoriPendaftar) // "mahasiswa" atau "siswa"
+
 	// Query tugas yang relevan untuk peserta ini
 	var tugasList []models.TugasMagang
 	q := config.DB.Model(&models.TugasMagang{}).Preload("Mentor")
-	if bidang != "" {
+	if pendaftaran.MentorID != nil {
+		q = q.Where(
+			"(mentor_id IS NULL OR mentor_id = ?) AND ("+
+				"(target_peserta = 'semua_bimbingan' AND (target_jenjang = 'semua' OR target_jenjang = ? OR target_jenjang IS NULL OR target_jenjang = '')) OR "+
+				"(target_peserta = 'mahasiswa' AND ? = 'mahasiswa') OR "+
+				"(target_peserta = 'siswa' AND ? = 'siswa') OR "+
+				"id IN (SELECT tugas_id FROM tugas_peserta_akses WHERE peserta_id = ?) OR "+
+				"peserta_id = ? OR "+
+				"(peserta_id IS NULL AND (target_peserta = '' OR target_peserta IS NULL))"+
+				")",
+			*pendaftaran.MentorID, jenjang, jenjang, jenjang, pesertaID, pesertaID,
+		)
+	} else if bidang != "" {
 		q = q.Where("(posisi_bidang = 'semua' OR posisi_bidang = ?) AND (peserta_id IS NULL OR peserta_id = ?)", bidang, pesertaID)
 	} else {
 		q = q.Where("peserta_id IS NULL OR peserta_id = ?", pesertaID)
@@ -247,6 +224,12 @@ func GetTugasPeserta(c *gin.Context) {
 				item.StatusTugas = "belum_kumpul"
 			}
 			totalBelum++
+		}
+
+		// Sanitasi kunci jawaban kuis jika belum selesai dinilai
+		if t.TipeTugas == "kuis" && t.KuisData != "" {
+			sudahSelesai := item.Pengumpulan != nil && item.Pengumpulan.Status == "dinilai"
+			item.TugasMagang.KuisData = sanitizeKuisDataUntukPeserta(t.KuisData, sudahSelesai)
 		}
 
 		hasil = append(hasil, item)
@@ -365,4 +348,309 @@ func KumpulTugasPeserta(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Tugas berhasil dikumpulkan", pengumpulan)
+}
+
+// ── 4. STRUKTUR & HANDLER KUIS PESERTA ────────────────────────────────────────
+
+type KuisSoalOpsi struct {
+	Key  string `json:"key"`
+	Teks string `json:"teks"`
+}
+
+type KuisSoalItem struct {
+	ID                string         `json:"id"`
+	Pertanyaan        string         `json:"pertanyaan"`
+	Tipe              string         `json:"tipe"` // "pilihan_ganda" | "pilihan_ganda_kompleks" | "esai"
+	Poin              int            `json:"poin"`
+	Gambar            string         `json:"gambar,omitempty"`
+	Opsi              []KuisSoalOpsi `json:"opsi"`
+	KunciJawaban      string         `json:"kunci_jawaban,omitempty"`
+	Pembahasan        string         `json:"pembahasan,omitempty"`
+	PetunjukPenilaian string         `json:"petunjuk_penilaian,omitempty"`
+}
+
+type KuisConfig struct {
+	DurasiMenit         int            `json:"durasi_menit"`
+	KKM                 int            `json:"kkm"`
+	IzinkanRemidi       bool           `json:"izinkan_remidi"`
+	MaksPercobaan       int            `json:"maks_percobaan"`
+	AcakSoal            bool           `json:"acak_soal"`
+	TampilkanPembahasan bool           `json:"tampilkan_pembahasan"`
+	DaftarSoal          []KuisSoalItem `json:"daftar_soal"`
+}
+
+type KumpulKuisInput struct {
+	Jawaban map[string]string `json:"jawaban"` // map id_soal -> jawaban (key opsi atau teks esai)
+}
+
+type DetailNilaiSoal struct {
+	Tipe           string `json:"tipe"`
+	PoinMaksimal   int    `json:"poin_maksimal"`
+	PoinDiperoleh  int    `json:"poin_diperoleh"`
+	Benar          bool   `json:"benar"`
+	JawabanPeserta string `json:"jawaban_peserta"`
+	KunciJawaban   string `json:"kunci_jawaban,omitempty"`
+	Pembahasan     string `json:"pembahasan,omitempty"`
+}
+
+type PayloadJawabanKuis struct {
+	JawabanPeserta   map[string]string          `json:"jawaban_peserta"`
+	SkorPilihanGanda int                        `json:"skor_pilihan_ganda"`
+	SkorEsai         int                        `json:"skor_esai"`
+	TotalSkor        float64                    `json:"total_skor"`
+	KKM              int                        `json:"kkm"`
+	AdaEsai          bool                       `json:"ada_esai"`
+	DetailPerSoal    map[string]DetailNilaiSoal `json:"detail_per_soal"`
+}
+
+// sanitizeKuisDataUntukPeserta menyembunyikan kunci jawaban dan pembahasan sebelum kuis selesai dievaluasi
+func sanitizeKuisDataUntukPeserta(rawJSON string, sudahSelesai bool) string {
+	var cfg KuisConfig
+	if err := json.Unmarshal([]byte(rawJSON), &cfg); err != nil {
+		return rawJSON
+	}
+
+	if !sudahSelesai {
+		for i := range cfg.DaftarSoal {
+			cfg.DaftarSoal[i].KunciJawaban = ""
+			cfg.DaftarSoal[i].Pembahasan = ""
+			cfg.DaftarSoal[i].PetunjukPenilaian = ""
+		}
+	}
+
+	sanitized, err := json.Marshal(cfg)
+	if err != nil {
+		return rawJSON
+	}
+	return string(sanitized)
+}
+
+func KumpulKuisPeserta(c *gin.Context) {
+	pesertaID, ok := pesertaIDDariToken(c)
+	if !ok {
+		return
+	}
+
+	tugasIDParam := c.Param("id")
+	tugasIDUint, err := strconv.ParseUint(tugasIDParam, 10, 32)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "ID tugas tidak valid")
+		return
+	}
+	tugasID := uint(tugasIDUint)
+
+	var tugas models.TugasMagang
+	if err := config.DB.First(&tugas, tugasID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Tugas magang tidak ditemukan")
+		return
+	}
+
+	if tugas.TipeTugas != "kuis" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Penugasan ini bukan berupa kuis interaktif")
+		return
+	}
+
+	var req KumpulKuisInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Format jawaban kuis tidak valid")
+		return
+	}
+
+	if req.Jawaban == nil {
+		req.Jawaban = make(map[string]string)
+	}
+
+	var cfg KuisConfig
+	if err := json.Unmarshal([]byte(tugas.KuisData), &cfg); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memproses data konfigurasi soal kuis")
+		return
+	}
+
+	var pengumpulan models.PengumpulanTugas
+	adaPengumpulan := config.DB.Where("tugas_id = ? AND peserta_id = ?", tugasID, pesertaID).First(&pengumpulan).Error == nil
+
+	percobaanKe := 1
+	if adaPengumpulan {
+		if !cfg.IzinkanRemidi {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Kuis ini tidak mengizinkan pengulangan (remidi)")
+			return
+		}
+		if cfg.MaksPercobaan > 0 && pengumpulan.PercobaanKe >= cfg.MaksPercobaan {
+			utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("Batas maksimal pengerjaan (%d kali) telah tercapai", cfg.MaksPercobaan))
+			return
+		}
+		percobaanKe = pengumpulan.PercobaanKe + 1
+	}
+
+	detailPerSoal := make(map[string]DetailNilaiSoal)
+	totalPoinMC := 0
+	totalPoinMaksimal := 0
+	adaEsai := false
+
+	for _, s := range cfg.DaftarSoal {
+		totalPoinMaksimal += s.Poin
+		ans := strings.TrimSpace(req.Jawaban[s.ID])
+
+		if s.Tipe == "pilihan_ganda" || s.Tipe == "pilihan_ganda_kompleks" {
+			isBenar := false
+			if s.Tipe == "pilihan_ganda_kompleks" {
+				kunciParts := strings.Split(s.KunciJawaban, ",")
+				ansParts := strings.Split(ans, ",")
+				for i := range kunciParts {
+					kunciParts[i] = strings.ToUpper(strings.TrimSpace(kunciParts[i]))
+				}
+				for i := range ansParts {
+					ansParts[i] = strings.ToUpper(strings.TrimSpace(ansParts[i]))
+				}
+				sort.Strings(kunciParts)
+				sort.Strings(ansParts)
+				isBenar = strings.Join(kunciParts, ",") == strings.Join(ansParts, ",") && len(kunciParts) > 0 && len(ansParts) > 0
+			} else {
+				isBenar = strings.EqualFold(ans, strings.TrimSpace(s.KunciJawaban))
+			}
+
+			poin := 0
+			if isBenar {
+				poin = s.Poin
+				totalPoinMC += s.Poin
+			}
+			detailPerSoal[s.ID] = DetailNilaiSoal{
+				Tipe:           s.Tipe,
+				PoinMaksimal:   s.Poin,
+				PoinDiperoleh:  poin,
+				Benar:          isBenar,
+				JawabanPeserta: ans,
+				KunciJawaban:   s.KunciJawaban,
+				Pembahasan:     s.Pembahasan,
+			}
+		} else {
+			adaEsai = true
+			detailPerSoal[s.ID] = DetailNilaiSoal{
+				Tipe:           s.Tipe,
+				PoinMaksimal:   s.Poin,
+				PoinDiperoleh:  0,
+				Benar:          false,
+				JawabanPeserta: ans,
+			}
+		}
+	}
+
+	var nilaiAkhir float64 = float64(totalPoinMC)
+	if totalPoinMaksimal > 0 && totalPoinMaksimal != 100 {
+		nilaiAkhir = float64(int((float64(totalPoinMC) / float64(totalPoinMaksimal) * 100.0) + 0.5))
+	}
+
+	kkm := cfg.KKM
+	if kkm <= 0 {
+		kkm = 75
+	}
+
+	statusPengumpulan := "dinilai"
+	statusRemidi := "tuntas"
+
+	if adaEsai {
+		statusPengumpulan = "menunggu" // menunggu koreksi esai oleh mentor
+		statusRemidi = "menunggu_review"
+	} else {
+		if int(nilaiAkhir) < kkm {
+			if cfg.IzinkanRemidi && (cfg.MaksPercobaan == 0 || percobaanKe < cfg.MaksPercobaan) {
+				statusRemidi = "perlu_remidi"
+			} else {
+				statusRemidi = "tidak_tuntas"
+			}
+		} else {
+			statusRemidi = "tuntas"
+		}
+	}
+
+	payloadJawaban := PayloadJawabanKuis{
+		JawabanPeserta:   req.Jawaban,
+		SkorPilihanGanda: totalPoinMC,
+		SkorEsai:         0,
+		TotalSkor:        nilaiAkhir,
+		KKM:              kkm,
+		AdaEsai:          adaEsai,
+		DetailPerSoal:    detailPerSoal,
+	}
+
+	jawabanBytes, _ := json.Marshal(payloadJawaban)
+	now := time.Now()
+
+	if adaPengumpulan {
+		pengumpulan.JawabanKuis = string(jawabanBytes)
+		pengumpulan.PercobaanKe = percobaanKe
+		pengumpulan.StatusRemidi = statusRemidi
+		pengumpulan.WaktuKumpul = now
+		pengumpulan.Status = statusPengumpulan
+		if !adaEsai {
+			pengumpulan.Nilai = &nilaiAkhir
+			pengumpulan.DinilaiPada = &now
+		} else {
+			pengumpulan.Nilai = nil
+			pengumpulan.DinilaiPada = nil
+		}
+
+		if err := config.DB.Save(&pengumpulan).Error; err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui jawaban kuis")
+			return
+		}
+	} else {
+		var nilaiPtr *float64
+		var dinilaiPadaPtr *time.Time
+		if !adaEsai {
+			nilaiPtr = &nilaiAkhir
+			dinilaiPadaPtr = &now
+		}
+
+		pengumpulan = models.PengumpulanTugas{
+			TugasID:      tugasID,
+			PesertaID:    pesertaID,
+			JawabanKuis:  string(jawabanBytes),
+			PercobaanKe:  percobaanKe,
+			StatusRemidi: statusRemidi,
+			WaktuKumpul:  now,
+			Status:       statusPengumpulan,
+			Nilai:        nilaiPtr,
+			DinilaiPada:  dinilaiPadaPtr,
+		}
+
+		if err := config.DB.Create(&pengumpulan).Error; err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan jawaban kuis")
+			return
+		}
+	}
+
+	// Notifikasi ke mentor
+	if tugas.MentorID != nil {
+		mentorID := *tugas.MentorID
+		var userPeserta models.UserManajemen
+		config.DB.First(&userPeserta, pesertaID)
+
+		pesanNotif := fmt.Sprintf("Peserta %s telah menyelesaikan kuis '%s' (Percobaan ke-%d) dengan skor %.0f", userPeserta.Nama, tugas.Judul, percobaanKe, nilaiAkhir)
+		if adaEsai {
+			pesanNotif = fmt.Sprintf("Peserta %s telah mengumpulkan kuis '%s' (ada soal isian/esai yang perlu dikoreksi)", userPeserta.Nama, tugas.Judul)
+		}
+
+		go services.KirimNotifikasi(services.NotifikasiInput{
+			TargetRole:   "mentor",
+			TargetUserID: &mentorID,
+			Tipe:         "tugas_dikumpulkan",
+			Prioritas:    "normal",
+			Judul:        "Jawaban Kuis Dikumpulkan",
+			Pesan:        pesanNotif,
+			RefTabel:     "pengumpulan_tugas",
+			RefID:        &pengumpulan.ID,
+			UrlTujuan:    "/mentor/tugas/review",
+			Gabungkan:    false,
+		})
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Jawaban kuis berhasil dikumpulkan", gin.H{
+		"pengumpulan":    pengumpulan,
+		"hasil_evaluasi": payloadJawaban,
+		"status_remidi":  statusRemidi,
+		"nilai_akhir":    nilaiAkhir,
+		"kkm":            kkm,
+		"percobaan_ke":   percobaanKe,
+	})
 }

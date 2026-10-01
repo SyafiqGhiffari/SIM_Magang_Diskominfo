@@ -233,7 +233,7 @@ const PendaftaranTable = ({ data, onReview, onVerifikasi, onBuatAkun, onSurat = 
                         onVerifikasi={() => onVerifikasi(p)}
                         verifikasiDisabled={verifikasiDisabled}
                         isFinalStatus={isFinalStatus}
-                        showBuatAkun={p.status_pendaftaran === "diterima"}
+                        showBuatAkun={p.status_pendaftaran === "diterima" && !p.akun_peserta_id}
                         sudahPunyaAkun={Boolean(p.akun_peserta_id)}
                         onBuatAkun={() => onBuatAkun(p)}
                         showSurat={p.status_pendaftaran === "diterima"}

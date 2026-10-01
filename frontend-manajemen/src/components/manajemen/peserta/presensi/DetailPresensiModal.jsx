@@ -31,6 +31,7 @@ import {
 import { getFileUrl } from "../../../../utils/fileUrl";
 import { getUser } from "../../../../utils/authStorage";
 import { getMe } from "../../../../services/authService";
+import { useAlamatPresensi } from "../../../../utils/reverseGeocode";
 
 /* Inisial nama (fallback bila foto tidak ada) */
 const getInisial = (nama) => {
@@ -169,6 +170,25 @@ const DetailPresensiModal = ({ data, item, user: propUser, onClose, isDark = fal
 
   const activeData = data || item;
   const authUser = propUser || getUser() || {};
+
+  const activeLat = activeData?.latitude;
+  const activeLng = activeData?.longitude;
+  const activeMode = activeData?.mode_kehadiran;
+  const activeStatus = activeData?.status;
+
+  const { alamat: alamatMasuk } = useAlamatPresensi(
+    activeData?.jam_masuk ? activeLat : null,
+    activeData?.jam_masuk ? activeLng : null,
+    activeMode,
+    activeStatus,
+  );
+
+  const { alamat: alamatPulang } = useAlamatPresensi(
+    activeData?.jam_pulang ? activeLat : null,
+    activeData?.jam_pulang ? activeLng : null,
+    activeMode,
+    activeStatus,
+  );
 
   // Fetch profil lengkap peserta (termasuk foto pendaftaran, bidang, institusi, mentor, jurusan)
   useEffect(() => {
@@ -754,6 +774,17 @@ const DetailPresensiModal = ({ data, item, user: propUser, onClose, isDark = fal
                       </div>
                     </div>
 
+                    {/* Alamat Lengkap Titik Lokasi Presensi Masuk */}
+                    {alamatMasuk && (
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-white/5 flex items-start gap-1.5 text-[8.5px] sm:text-[9.5px]">
+                        <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1 leading-snug">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">Alamat Lengkap: </span>
+                          <span className="text-slate-600 dark:text-slate-400">{alamatMasuk}</span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Data Riil Koordinat & Link Google Maps */}
                     {(lokasiMasuk.koordinat || lokasiMasuk.jarak) && (
                       <div className="pt-2 border-t border-slate-200/60 dark:border-white/5 flex flex-wrap items-center justify-between gap-1.5 text-[8.5px] sm:text-[9.5px]">
@@ -961,6 +992,17 @@ const DetailPresensiModal = ({ data, item, user: propUser, onClose, isDark = fal
                         </p>
                       </div>
                     </div>
+
+                    {/* Alamat Lengkap Titik Lokasi Presensi Pulang */}
+                    {alamatPulang && (
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-white/5 flex items-start gap-1.5 text-[8.5px] sm:text-[9.5px]">
+                        <MapPin className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1 leading-snug">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">Alamat Lengkap: </span>
+                          <span className="text-slate-600 dark:text-slate-400">{alamatPulang}</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Data Riil Koordinat & Link Google Maps */}
                     {(lokasiPulang.koordinat || lokasiPulang.jarak) && (

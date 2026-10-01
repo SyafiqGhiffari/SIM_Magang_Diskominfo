@@ -430,7 +430,7 @@ const DashboardPage = () => {
     },
     { icon: FilePen, judul: "Menunggu revisi pendaftar", jumlah: antrean.perlu_revisi, warna: W.sky, tujuan: "/admin/pendaftaran?status=revisi" },
     { icon: FileSignature, judul: "Surat belum diterbitkan", jumlah: antrean.surat_belum_terbit, warna: W.violet, tujuan: "/admin/surat-penerimaan" },
-    { icon: UserPlus, judul: "Akun peserta belum dibuat", jumlah: antrean.akun_belum_dibuat, warna: W.biru, tujuan: "/admin/pendaftaran?status=diterima" },
+    ...(antrean.akun_belum_dibuat > 0 ? [{ icon: UserPlus, judul: "Akun peserta belum dibuat", jumlah: antrean.akun_belum_dibuat, warna: W.biru, tujuan: "/admin/pendaftaran?status=diterima" }] : []),
     { icon: UserCog, judul: "Peserta belum punya mentor", jumlah: antrean.belum_punya_mentor, warna: W.rose, tujuan: "/admin/peserta" },
     { icon: Award, judul: "Sertifikat belum terbit", jumlah: antrean.sertifikat_tertunda, warna: W.teal, tujuan: "/admin/sertifikat" },
     { icon: MessagesSquare, judul: "Pesan belum dibalas", jumlah: antrean.chat_belum_dibalas, warna: W.indigo, tujuan: "/admin/bantuan?tab=chat" },

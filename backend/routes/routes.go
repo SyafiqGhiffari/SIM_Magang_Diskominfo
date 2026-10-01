@@ -179,6 +179,12 @@ func SetupRoutes(router *gin.Engine) {
 			controllers.PingManajemen,
 		)
 
+		// Request reset password portal manajemen (kirim link ke email)
+		manajemen.POST("/forgot-password", controllers.RequestForgotPasswordManajemen)
+
+		// Reset password menggunakan token dari link email
+		manajemen.POST("/reset-password", controllers.ResetPasswordManajemen)
+
 		manajemen.PUT("/ganti-password",
 			middlewares.AuthMiddleware("manajemen"),
 			controllers.GantiPasswordManajemen,
@@ -284,21 +290,48 @@ func SetupRoutes(router *gin.Engine) {
 			controllers.GetAllHariLibur,
 		)
 
+		// Pengaturan jam kerja resmi (bisa diakses admin dan mentor)
+		manajemen.GET("/jam-kerja",
+			middlewares.AuthMiddleware("manajemen"),
+			controllers.GetAllJamKerja,
+		)
+
 		// Route khusus Mentor
 		mentor := manajemen.Group("/mentor")
 		mentor.Use(middlewares.AuthMiddleware("manajemen"), middlewares.RoleMiddleware("mentor"))
 		{
 			mentor.GET("/antrean/hitungan", controllers.GetHitunganAntreanMentor)
+			mentor.GET("/peserta", controllers.GetPesertaBimbinganSaya)
 			mentor.GET("/presensi", controllers.GetPresensiMentor)
 			mentor.GET("/presensi/statistik", controllers.GetStatistikPresensiMentor)
 			mentor.PUT("/presensi/:id", controllers.UpdatePresensiMentor)
 			mentor.GET("/pengajuan-izin", controllers.GetPengajuanIzinMentor)
+			mentor.GET("/pengajuan-izin/statistik", controllers.GetStatistikPengajuanIzinMentor)
 			mentor.PUT("/pengajuan-izin/:id", controllers.ProsesPengajuanIzinMentor)
 
 			// ── PENILAIAN PESERTA BIMBINGAN ──
 			mentor.GET("/penilaian", controllers.GetPesertaBimbinganPenilaian)
 			mentor.GET("/penilaian/:peserta_id", controllers.GetDetailPenilaianPeserta)
 			mentor.POST("/penilaian/:peserta_id", controllers.SimpanPenilaianPeserta)
+
+			// ── MATERI PEMBELAJARAN BIMBINGAN MENTOR ──
+			mentor.GET("/materi", controllers.GetMateriMentor)
+			mentor.GET("/materi/kategori", controllers.GetKategoriMateri)
+			mentor.POST("/materi/kategori", controllers.CreateKategoriMateri)
+			mentor.GET("/materi/peserta-bimbingan", controllers.GetPesertaBimbinganUntukMateri)
+			mentor.POST("/materi", controllers.CreateMateriMentor)
+			mentor.PUT("/materi/:id", controllers.UpdateMateriMentor)
+			mentor.DELETE("/materi/:id", controllers.DeleteMateriMentor)
+
+			// ── PENUGASAN MAGANG MENTOR ──
+			mentor.GET("/tugas", controllers.GetTugasMentor)
+			mentor.GET("/tugas/peserta-bimbingan", controllers.GetPesertaBimbinganUntukTugas)
+			mentor.POST("/tugas", controllers.CreateTugasMentor)
+			mentor.PUT("/tugas/:id", controllers.UpdateTugasMentor)
+			mentor.DELETE("/tugas/:id", controllers.DeleteTugasMentor)
+			mentor.GET("/tugas/:id/pengumpulan", controllers.GetPengumpulanTugasMentor)
+			mentor.POST("/tugas/pengumpulan/:pengumpulan_id/review", controllers.ReviewPengumpulanTugasMentor)
+			mentor.POST("/tugas/nilai-nol", controllers.SetNilaiNolTugasMentor)
 		}
 
 		// ── Route khusus Peserta (presensi, pengajuan izin, transkrip nilai) ──
@@ -327,6 +360,7 @@ func SetupRoutes(router *gin.Engine) {
 				aktif.POST("/laporan-akhir", controllers.UploadLaporanAkhirPeserta)
 				aktif.POST("/upload-dokumen", controllers.UploadDokumenPeserta)
 				aktif.POST("/tugas/:id/kumpul", controllers.KumpulTugasPeserta)
+				aktif.POST("/tugas/:id/kumpul-kuis", controllers.KumpulKuisPeserta)
 			}
 		}
 

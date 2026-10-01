@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"unicode"
 
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
@@ -20,9 +19,6 @@ import (
 
 const passwordCharset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
 
-// ==== GANTI domain ini sesuai domain resmi instansi Anda ====
-const loginEmailDomain = "magang.diskominfoponorogo.id"
-
 func generateRandomPassword(length int) string {
 	rand.Seed(time.Now().UnixNano())
 	b := make([]byte, length)
@@ -32,54 +28,14 @@ func generateRandomPassword(length int) string {
 	return string(b)
 }
 
-// slugifyNama mengubah nama jadi bentuk aman untuk bagian depan email,
-// contoh: "Budi Santoso" -> "budi.santoso"
-func slugifyNama(nama string) string {
-	var sb strings.Builder
-	for _, r := range strings.ToLower(nama) {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			sb.WriteRune(r)
-		} else if r == ' ' {
-			sb.WriteRune('.')
-		}
-	}
-	slug := sb.String()
-	if slug == "" {
-		slug = "peserta"
-	}
-	return slug
-}
-
-// generateUniqueLoginEmail membuat email login otomatis berdasarkan nama peserta,
-// dengan penanganan tabrakan (kalau nama yang sama sudah pernah dipakai sebelumnya).
-func generateUniqueLoginEmail(nama string) string {
-	base := slugifyNama(nama)
-	rand.Seed(time.Now().UnixNano())
-
-	candidate := fmt.Sprintf("%s@%s", base, loginEmailDomain)
-	var existing models.UserManajemen
-
-	for attempt := 0; attempt < 10; attempt++ {
-		if err := config.DB.Where("email = ?", candidate).First(&existing).Error; err != nil {
-			return candidate
-		}
-		suffix := rand.Intn(900) + 100
-		candidate = fmt.Sprintf("%s%d@%s", base, suffix, loginEmailDomain)
-	}
-
-	return fmt.Sprintf("%s%d@%s", base, time.Now().UnixNano()%100000, loginEmailDomain)
-}
-
-// CreateAkunPeserta — dipanggil admin dari tabel Kelola Pendaftaran, setelah
-// pendaftaran berstatus "diterima". Membuat akun UserManajemen role=peserta
-// dengan EMAIL LOGIN yang dibuat otomatis oleh sistem (bukan email asli peserta),
-// menautkannya ke PendaftaranMagang, dan mengirim kredensial ke EMAIL ASLI peserta
-// (pendaftaran.Email) — email itulah yang juga dipakai untuk notifikasi selanjutnya.
+// CreateAkunPeserta — dipanggil admin dari tabel Kelola Pendaftaran sebagai fallback jika
+// ada data pendaftaran diterima yang belum memiliki akun UserManajemen.
+// Menggunakan email aktif pribadi peserta dan kata sandi dari pendaftaran.
 func CreateAkunPeserta(c *gin.Context) {
 	pendaftaranID := c.Param("id")
 
 	var pendaftaran models.PendaftaranMagang
-	if err := config.DB.First(&pendaftaran, pendaftaranID).Error; err != nil {
+	if err := config.DB.Preload("UserPendaftaran").First(&pendaftaran, pendaftaranID).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "Data pendaftaran tidak ditemukan")
 		return
 	}
@@ -90,37 +46,48 @@ func CreateAkunPeserta(c *gin.Context) {
 	}
 
 	if pendaftaran.AkunPesertaID != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Peserta ini sudah memiliki akun")
+		utils.ErrorResponse(c, http.StatusBadRequest, "Peserta ini sudah memiliki akun aktif")
 		return
 	}
 
-	loginEmail := generateUniqueLoginEmail(pendaftaran.NamaLengkap)
-	plainPassword := generateRandomPassword(10)
+	var user models.UserManajemen
+	if err := config.DB.Where("email = ?", pendaftaran.Email).First(&user).Error; err == nil {
+		pendaftaran.AkunPesertaID = &user.ID
+		config.DB.Save(&pendaftaran)
+	} else {
+		passwordHash := pendaftaran.UserPendaftaran.Password
+		if passwordHash == "" {
+			plainPassword := generateRandomPassword(10)
+			hashed, _ := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
+			passwordHash = string(hashed)
+		}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengenkripsi password")
-		return
-	}
+		user = models.UserManajemen{
+			Nama:         pendaftaran.NamaLengkap,
+			Email:        pendaftaran.Email,
+			Password:     passwordHash,
+			Role:         "peserta",
+			StatusAkun:   "aktif",
+			StatusMagang: "aktif",
+			NoHp:         pendaftaran.NomorHP,
+			FotoProfil:   pendaftaran.FilePasFoto,
+		}
+		if err := config.DB.Create(&user).Error; err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat akun peserta")
+			return
+		}
 
-	user := models.UserManajemen{
-		Nama:       pendaftaran.NamaLengkap,
-		Email:      loginEmail,
-		Password:   string(hashed),
-		Role:       "peserta",
-		StatusAkun: "aktif",
+		pendaftaran.AkunPesertaID = &user.ID
+		config.DB.Save(&pendaftaran)
 	}
-	if err := config.DB.Create(&user).Error; err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat akun peserta")
-		return
-	}
-
-	pendaftaran.AkunPesertaID = &user.ID
-	config.DB.Save(&pendaftaran)
 
 	go func() {
 		subject := emailtemplates.SubjectAkunPesertaDibuat()
-		body := emailtemplates.TemplateAkunPesertaDibuat(pendaftaran.NamaLengkap, loginEmail, plainPassword)
+		body := emailtemplates.TemplateAkunPesertaDibuat(
+			pendaftaran.NamaLengkap,
+			pendaftaran.Email,
+			"Gunakan kata sandi akun pendaftaran Anda",
+		)
 
 		if err := services.SendEmail(pendaftaran.Email, subject, body); err != nil {
 			fmt.Println("Gagal mengirim email akun peserta:", err)
@@ -132,22 +99,22 @@ func CreateAkunPeserta(c *gin.Context) {
 		go services.KirimNotifikasiAdmin(
 			"mentor_belum_ditugaskan",
 			"Mentor belum ditugaskan",
-			fmt.Sprintf("Akun %s sudah dibuat, tetapi mentor pembimbing belum ditentukan.", pendaftaran.NamaLengkap),
+			fmt.Sprintf("Akun %s sudah aktif, tetapi mentor pembimbing belum ditentukan.", pendaftaran.NamaLengkap),
 			"pendaftaran_magangs", &pendaftaran.ID,
 			"/admin/peserta",
 			"tinggi", true,
 		)
 	}
 
-	utils.SuccessResponse(c, http.StatusCreated, "Akun peserta berhasil dibuat dan kredensial telah dikirim ke email", gin.H{
-		"id":          user.ID,
-		"nama":        user.Nama,
-		"email_login": user.Email,
+	utils.SuccessResponse(c, http.StatusCreated, "Akun peserta berhasil diaktifkan dan notifikasi telah dikirim ke email", gin.H{
+		"id":    user.ID,
+		"nama":  user.Nama,
+		"email": user.Email,
 	})
 }
 
 // GetAllAkunPeserta — daftar semua akun manajemen dengan role=peserta,
-// dilengkapi email asli (untuk notifikasi) dan info pendaftaran magang terkait.
+// dilengkapi info pendaftaran magang dan mentor pembimbing terkait.
 func GetAllAkunPeserta(c *gin.Context) {
 	var users []models.UserManajemen
 	if err := config.DB.Where("role = ?", "peserta").Order("created_at desc").Find(&users).Error; err != nil {
@@ -167,8 +134,9 @@ func GetAllAkunPeserta(c *gin.Context) {
 	type PesertaResp struct {
 		ID              uint   `json:"id"`
 		Nama            string `json:"nama"`
-		EmailLogin      string `json:"email_login"`
-		EmailNotifikasi string `json:"email_notifikasi"`
+		Email           string `json:"email"`
+		EmailLogin      string `json:"email_login"`      // Alias untuk kompatibilitas frontend
+		EmailNotifikasi string `json:"email_notifikasi"` // Alias untuk kompatibilitas frontend
 		StatusAkun      string `json:"status_akun"`
 		IsOnline        bool   `json:"is_online"`
 		Bidang          string `json:"bidang"`
@@ -183,14 +151,33 @@ func GetAllAkunPeserta(c *gin.Context) {
 
 	result := make([]PesertaResp, 0, len(users))
 	for _, u := range users {
-		resp := PesertaResp{ID: u.ID, Nama: u.Nama, EmailLogin: u.Email, StatusAkun: u.StatusAkun, IsOnline: u.IsOnline}
+		emailDisplay := u.Email
+		if p, ok := pendaftaranByAkun[u.ID]; ok && p.Email != "" {
+			if strings.Contains(u.Email, "@magang.") || u.Email != p.Email {
+				// Sinkronkan email lama jika belum bentrok
+				var conflict models.UserManajemen
+				if err := config.DB.Where("email = ? AND id != ?", p.Email, u.ID).First(&conflict).Error; err != nil {
+					config.DB.Model(&u).Update("email", p.Email)
+					emailDisplay = p.Email
+				}
+			}
+		}
+
+		resp := PesertaResp{
+			ID:              u.ID,
+			Nama:            u.Nama,
+			Email:           emailDisplay,
+			EmailLogin:      emailDisplay,
+			EmailNotifikasi: emailDisplay,
+			StatusAkun:      u.StatusAkun,
+			IsOnline:        u.IsOnline,
+		}
 		if p, ok := pendaftaranByAkun[u.ID]; ok {
-			resp.EmailNotifikasi = p.Email
 			resp.Bidang = p.PosisiBidang
 			resp.TanggalMulai = p.TanggalMulai
 			resp.TanggalSelesai = p.TanggalSelesai
 			resp.PendaftaranID = p.ID
-			resp.FotoProfil = p.FilePasFoto // foto yang dikirim peserta saat mendaftar
+			resp.FotoProfil = p.FilePasFoto
 			if p.KategoriPendaftar == "mahasiswa" {
 				resp.Institusi = p.AsalKampus
 			} else {
@@ -208,7 +195,7 @@ func GetAllAkunPeserta(c *gin.Context) {
 }
 
 // ResetPasswordAkunPeserta — admin membuat ulang password acak untuk akun peserta,
-// lalu mengirimkannya ke email notifikasi (email asli) peserta tersebut.
+// lalu mengirimkannya ke email aktif peserta tersebut.
 func ResetPasswordAkunPeserta(c *gin.Context) {
 	id := c.Param("id")
 
@@ -239,6 +226,11 @@ func ResetPasswordAkunPeserta(c *gin.Context) {
 	if err := config.DB.Save(&user).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui password")
 		return
+	}
+
+	// Sinkronkan ke akun UserPendaftaran jika ada
+	if pendaftaran.UserPendaftaranID > 0 {
+		config.DB.Model(&models.UserPendaftaran{}).Where("id = ?", pendaftaran.UserPendaftaranID).Update("password", string(hashed))
 	}
 
 	go func() {
@@ -350,7 +342,7 @@ func AssignMentorPeserta(c *gin.Context) {
 		return
 	}
 
-	// Kirim notifikasi ke email ASLI peserta (bukan email login) setiap kali
+	// Kirim notifikasi ke email peserta setiap kali
 	// mentor pembimbing ditentukan/diganti, supaya peserta tahu siapa mentornya.
 	if input.MentorID != nil {
 		var mentorTerpilih models.UserManajemen

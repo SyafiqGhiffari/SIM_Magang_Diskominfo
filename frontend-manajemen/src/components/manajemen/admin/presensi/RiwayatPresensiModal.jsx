@@ -74,7 +74,7 @@ const RiwayatPresensiModal = ({ peserta, onClose, onSelectDetail, isDark }) => {
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-sm sm:max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-[modalFadeUp_0.3s_ease-out] max-h-[92vh] flex flex-col ${
+        className={`w-full max-w-sm sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-[modalFadeUp_0.3s_ease-out] max-h-[92vh] flex flex-col ${
           isDark ? "bg-[#161b22] border border-white/10" : "bg-white"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -229,17 +229,17 @@ const RiwayatPresensiModal = ({ peserta, onClose, onSelectDetail, isDark }) => {
                       </div>
                     </div>
 
-                    {/* Middle Info: In/Out time & badges */}
-                    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                    {/* Middle Info: In/Out time & badges + Actions */}
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2 shrink-0">
                       <span
-                        className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-md px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10.5px] font-bold ${
+                        className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-md px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10.5px] font-bold shrink-0 ${
                           isDark ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-50 text-emerald-600"
                         }`}
                       >
                         <LogIn className="w-2.5 h-2.5" /> {item.jam_masuk || "--:--"}
                       </span>
                       <span
-                        className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-md px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10.5px] font-bold ${
+                        className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-md px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10.5px] font-bold shrink-0 ${
                           isDark ? "bg-sky-500/15 text-sky-300" : "bg-sky-50 text-sky-600"
                         }`}
                       >
@@ -248,7 +248,7 @@ const RiwayatPresensiModal = ({ peserta, onClose, onSelectDetail, isDark }) => {
 
                       {item.menit_terlambat > 0 && (
                         <span
-                          className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[8.5px] sm:text-[10px] font-bold ${
+                          className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[8.5px] sm:text-[10px] font-bold shrink-0 ${
                             isDark ? "bg-amber-500/15 text-amber-300" : "bg-amber-50 text-amber-600"
                           }`}
                         >
@@ -258,7 +258,7 @@ const RiwayatPresensiModal = ({ peserta, onClose, onSelectDetail, isDark }) => {
 
                       {item.lupa_presensi && (
                         <span
-                          className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[8.5px] sm:text-[10px] font-bold ${
+                          className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[8.5px] sm:text-[10px] font-bold shrink-0 ${
                             isDark ? "bg-amber-500/20 text-amber-300" : "bg-amber-100 text-amber-700"
                           }`}
                         >
@@ -266,13 +266,15 @@ const RiwayatPresensiModal = ({ peserta, onClose, onSelectDetail, isDark }) => {
                         </span>
                       )}
 
-                      <PresensiStatusBadge status={item.status} className="!text-[9px] sm:!text-[10.5px] !py-0.5 !px-1.5 sm:!px-2" />
+                      <span className="shrink-0">
+                        <PresensiStatusBadge status={item.status} className="!text-[9px] sm:!text-[10.5px] !py-0.5 !px-1.5 sm:!px-2" />
+                      </span>
 
                       {/* Detail Button */}
                       <button
                         type="button"
                         onClick={() => onSelectDetail({ ...peserta, ...item })}
-                        className={`group/btn inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-bold shadow-xs transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer ml-auto sm:ml-1 ${
+                        className={`group/btn inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-bold shadow-xs transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer shrink-0 ml-auto sm:ml-1 ${
                           isDark
                             ? "border-white/10 bg-white/5 text-slate-300 hover:border-[#00A5EC]/50 hover:bg-[#00A5EC]/15 hover:text-[#00A5EC]"
                             : "border-slate-200 bg-white text-slate-600 hover:border-[#004F9F]/40 hover:bg-blue-50 hover:text-[#004F9F]"

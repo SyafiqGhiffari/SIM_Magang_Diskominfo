@@ -255,7 +255,11 @@ func GetAllRekapPenilaianAdmin(c *gin.Context) {
 
 // GetPesertaBimbinganPenilaian mengambil daftar peserta bimbingan yang perlu dinilai mentor
 func GetPesertaBimbinganPenilaian(c *gin.Context) {
-	mentorID := c.MustGet("user_id").(uint)
+	mentorID, ok := getUserIDFromContext(c)
+	if !ok || mentorID == 0 {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Sesi tidak valid, silakan login ulang")
+		return
+	}
 
 	type BarisBimbinganPenilaian struct {
 		PesertaID             uint       `json:"peserta_id"`
@@ -375,7 +379,11 @@ func GetDetailPenilaianPeserta(c *gin.Context) {
 // SimpanPenilaianPeserta menyimpan nilai inputan mentor (draf maupun final)
 func SimpanPenilaianPeserta(c *gin.Context) {
 	pesertaIDStr := c.Param("peserta_id")
-	mentorID := c.MustGet("user_id").(uint)
+	mentorID, ok := getUserIDFromContext(c)
+	if !ok || mentorID == 0 {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Sesi tidak valid, silakan login ulang")
+		return
+	}
 
 	var peserta models.UserManajemen
 	if err := config.DB.First(&peserta, pesertaIDStr).Error; err != nil {
@@ -492,7 +500,11 @@ func SimpanPenilaianPeserta(c *gin.Context) {
 
 // GetNilaiSaya mengambil transkrip nilai resmi peserta/alumni
 func GetNilaiSaya(c *gin.Context) {
-	pesertaID := c.MustGet("user_id").(uint)
+	pesertaID, ok := getUserIDFromContext(c)
+	if !ok || pesertaID == 0 {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Sesi tidak valid, silakan login ulang")
+		return
+	}
 
 	var peserta models.UserManajemen
 	if err := config.DB.First(&peserta, pesertaID).Error; err != nil {

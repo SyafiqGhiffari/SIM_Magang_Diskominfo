@@ -687,13 +687,50 @@ func BatalkanPengajuanIzin(c *gin.Context) {
 	}
 	cleanupUploadedFiles(izin.FileBukti)
 
-		utils.SuccessResponse(c, http.StatusOK, "Pengajuan berhasil dibatalkan", gin.H{"id": izin.ID})
+	// Hapus notifikasi terkait di mentor agar tidak menggantung di lonceng
+	config.DB.Where("ref_tabel = 'pengajuan_izins' AND ref_id = ?", izin.ID).Delete(&models.Notifikasi{})
+
+	utils.SuccessResponse(c, http.StatusOK, "Pengajuan berhasil dibatalkan", gin.H{"id": izin.ID})
 }
 
-// ── 6. Notifikasi email pengajuan izin ────────────────────────────────────────
+// ── 6. Notifikasi email & in-app pengajuan izin ──────────────────────────────
 // Dipanggil dengan `go kirimEmail...(id)` agar tidak memblokir response.
 // kirimEmailHasilIzin juga dipakai oleh mentor_presensi_controller.go
 // (satu package, jadi tidak perlu import).
+
+var namaBulanSingkatPeserta = map[string]string{
+	"01": "Jan", "02": "Feb", "03": "Mar", "04": "Apr", "05": "Mei", "06": "Jun",
+	"07": "Jul", "08": "Agu", "09": "Sep", "10": "Okt", "11": "Nov", "12": "Des",
+}
+
+func formatTglIndoSingkatIzin(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	tgl := strings.Split(raw, "T")[0]
+	parts := strings.Split(tgl, "-")
+	if len(parts) == 3 {
+		bln := namaBulanSingkatPeserta[parts[1]]
+		if bln == "" {
+			bln = parts[1]
+		}
+		d := strings.TrimPrefix(parts[2], "0")
+		return fmt.Sprintf("%s %s %s", d, bln, parts[0])
+	}
+	return raw
+}
+
+func formatRentangTglIndoIzin(mulai, selesai string) string {
+	fMulai := formatTglIndoSingkatIzin(mulai)
+	fSelesai := formatTglIndoSingkatIzin(selesai)
+	if fMulai == "" {
+		return fSelesai
+	}
+	if fSelesai == "" || fMulai == fSelesai {
+		return fMulai
+	}
+	return fmt.Sprintf("%s s/d %s", fMulai, fSelesai)
+}
 
 func kirimEmailPengajuanIzinBaru(izinID uint) {
 	var izin models.PengajuanIzin
@@ -723,13 +760,34 @@ func kirimEmailPengajuanIzinBaru(izinID uint) {
 		return
 	}
 
+	// 1. Kirim notifikasi in-app ke lonceng mentor
+	namaJenis := "Izin"
+	if izin.Jenis == "sakit" {
+		namaJenis = "Izin Sakit"
+	}
+	rentangTgl := formatRentangTglIndoIzin(izin.TanggalMulai, izin.TanggalSelesai)
+	mentorID := *pendaftaran.MentorID
+	services.KirimNotifikasi(services.NotifikasiInput{
+		TargetRole:   "mentor",
+		TargetUserID: &mentorID,
+		Tipe:         "pengajuan_izin",
+		Prioritas:    "tinggi",
+		Judul:        fmt.Sprintf("Verifikasi %s Baru", namaJenis),
+		Pesan:        fmt.Sprintf("Peserta %s mengajukan %s (%s). Memerlukan verifikasi Anda.", peserta.Nama, strings.ToLower(namaJenis), rentangTgl),
+		RefTabel:     "pengajuan_izins",
+		RefID:        &izin.ID,
+		UrlTujuan:    "/mentor/pengajuan-izin",
+		Gabungkan:    false,
+	})
+
+	// 2. Kirim notifikasi email ke mentor
 	subject := emailtemplates.SubjectPengajuanIzinBaru(izin.Jenis, peserta.Nama)
 	body := emailtemplates.TemplatePengajuanIzinBaru(
 		mentor.Nama,
 		peserta.Nama,
 		izin.Jenis,
-		izin.TanggalMulai,
-		izin.TanggalSelesai,
+		formatTglIndoSingkatIzin(izin.TanggalMulai),
+		formatTglIndoSingkatIzin(izin.TanggalSelesai),
 		izin.Alasan,
 	)
 
@@ -744,6 +802,31 @@ func kirimEmailHasilIzin(izinID uint) {
 		return
 	}
 
+	// 1. Kirim notifikasi in-app ke lonceng peserta
+	statusText := "Disetujui"
+	if izin.Status == "ditolak" {
+		statusText = "Ditolak"
+	}
+	namaJenis := "Izin"
+	if izin.Jenis == "sakit" {
+		namaJenis = "Izin Sakit"
+	}
+	rentangTgl := formatRentangTglIndoIzin(izin.TanggalMulai, izin.TanggalSelesai)
+	pesertaID := izin.PesertaID
+	services.KirimNotifikasi(services.NotifikasiInput{
+		TargetRole:   "peserta",
+		TargetUserID: &pesertaID,
+		Tipe:         "izin_status",
+		Prioritas:    "tinggi",
+		Judul:        fmt.Sprintf("Pengajuan %s %s", namaJenis, statusText),
+		Pesan:        fmt.Sprintf("Pengajuan %s Anda untuk tanggal %s telah %s oleh mentor.", strings.ToLower(namaJenis), rentangTgl, strings.ToLower(statusText)),
+		RefTabel:     "pengajuan_izins",
+		RefID:        &izin.ID,
+		UrlTujuan:    "/peserta/pengajuan-izin",
+		Gabungkan:    false,
+	})
+
+	// 2. Kirim email ke peserta jika ada alamat email aktif
 	tujuan := utils.EmailAktifPeserta(config.DB, izin.PesertaID)
 	if tujuan == "" {
 		return

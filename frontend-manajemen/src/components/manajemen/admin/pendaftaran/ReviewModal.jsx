@@ -11,14 +11,21 @@ import { updateStatusPendaftaran, getDetailPendaftaran } from "../../../../servi
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-const docList = (p) => [
-  { key: "file_pas_foto", label: "Pas Foto", isImage: true },
-  { key: "file_surat_pengantar", label: "Surat Pengantar", isImage: false },
-  { key: "file_cv", label: "CV", isImage: false },
-  { key: "file_transkrip", label: "Transkrip/Rapor", isImage: false },
-  { key: "file_portofolio", label: "Portofolio", isImage: false },
-  { key: "file_proposal_magang", label: "Proposal Magang", isImage: false },
-].map((d) => ({ ...d, url: getFileUrl(p[d.key]), uploaded: Boolean(p[d.key]) }));
+const docList = (p) => {
+  const raw = [
+    { key: "file_surat_pengantar", label: "Surat Pengantar", shortLabel: "Surat Pengantar", isImage: false },
+    { key: "file_proposal_magang", label: "Proposal Magang", shortLabel: "Proposal Magang", isImage: false },
+    { key: "file_cv", label: "Curriculum Vitae (CV)", shortLabel: "CV", isImage: false },
+    { key: "file_transkrip", label: "Transkrip/Rapor", shortLabel: "Transkrip/Rapor", isImage: false },
+    { key: "file_portofolio", label: "Portofolio", shortLabel: "Portofolio", isImage: false },
+    { key: "file_pas_foto", label: "Pas Foto", shortLabel: "Pas Foto", isImage: true },
+  ].map((d) => ({ ...d, url: getFileUrl(p[d.key]), uploaded: Boolean(p[d.key]) }));
+
+  return [
+    ...raw.filter((d) => d.uploaded),
+    ...raw.filter((d) => !d.uploaded),
+  ];
+};
 
 const getInitials = (nama) => (nama || "?").split(" ").slice(0, 2).map((s) => s[0]).join("").toUpperCase();
 
@@ -36,6 +43,7 @@ const fetchAsBlobUrl = async (url) => {
 };
 
 const ReviewModal = ({ pendaftaran, onClose, onUpdated, isDark }) => {
+  const isDiterima = pendaftaran?.status_pendaftaran === "diterima";
   const documents = docList(pendaftaran);
   const uploadedDocs = documents.filter((d) => d.uploaded);
   const [activeIdx, setActiveIdx] = useState(Math.max(0, documents.findIndex((d) => d.uploaded)));
@@ -138,6 +146,7 @@ const ReviewModal = ({ pendaftaran, onClose, onUpdated, isDark }) => {
   };
 
   const setStatusFor = (key, status) => {
+    if (isDiterima) return;
     setDocStatus((prev) => {
       const next = { ...prev, [key]: prev[key] === status ? null : status };
       persistProgress(next, docNotes);
@@ -145,6 +154,7 @@ const ReviewModal = ({ pendaftaran, onClose, onUpdated, isDark }) => {
     });
   };
   const setNoteFor = (key, text) => {
+    if (isDiterima) return;
     setDocNotes((prev) => {
       const next = { ...prev, [key]: text };
       return next;
@@ -489,32 +499,31 @@ const ReviewModal = ({ pendaftaran, onClose, onUpdated, isDark }) => {
           </div>
 
           {/* Navigasi antar dokumen + halaman PDF */}
-          <div className={`flex items-stretch gap-1 sm:gap-1.5 px-4 md:px-6 py-2 md:py-3 border-b shrink-0 overflow-x-auto scroll-halus ${isDark ? "border-white/5 bg-[#1a202c]/20" : "border-slate-100 bg-slate-50"}`}>
-            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 md:flex-1">
+          <div className={`flex items-center gap-1.5 sm:gap-2 px-3 md:px-5 py-2 md:py-2.5 border-b shrink-0 overflow-x-auto scroll-halus ${isDark ? "border-white/5 bg-[#1a202c]/20" : "border-slate-100 bg-slate-50"}`}>
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-nowrap">
               {documents.map((d, i) => (
                 <button
                   key={d.key}
                   onClick={() => setActiveIdx(i)}
                   disabled={!d.uploaded}
-                  className={`flex-1 min-w-[70px] sm:min-w-0 flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl px-1.5 sm:px-2 py-1.5 md:py-2 text-[10px] md:text-[11px] font-bold transition-all duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:-translate-y-0.5 active:scale-95 ${
+                  className={`w-auto shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-1.5 md:py-2 text-[10px] md:text-[11px] font-bold transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
+                    d.uploaded ? "cursor-pointer hover:-translate-y-0.5 active:scale-95" : ""
+                  } ${
                     i === activeIdx
                       ? isDark
                         ? "bg-[#00A5EC] text-white shadow-md"
                         : "bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white shadow-md"
-                      : i === activeIdx
-                        ? "bg-slate-200 text-slate-800 shadow-sm"
-                        : isDark
-                          ? "text-slate-400 bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10"
-                          : "text-slate-500 bg-white border border-slate-200 hover:border-slate-300"
+                      : isDark
+                        ? "text-slate-300 bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10"
+                        : "text-slate-700 bg-white border border-slate-200/90 hover:border-slate-300 hover:bg-slate-50"
                   }`}
                 >
-                  <span className="truncate">{d.label}</span>
+                  <span className="whitespace-nowrap">{d.shortLabel || d.label}</span>
                   {docStatus[d.key] === "approved" && <CheckCircle2 className={`w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0 ${i === activeIdx ? "text-emerald-300" : "text-emerald-500"}`} />}
                   {docStatus[d.key] === "revision" && <XCircle className={`w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0 ${i === activeIdx ? "text-red-300" : "text-red-500"}`} />}
                 </button>
               ))}
             </div>
-
           </div>
 
           {/* Wrapper Konten viewer + Floating PDF Pagination */}
@@ -689,27 +698,39 @@ const ReviewModal = ({ pendaftaran, onClose, onUpdated, isDark }) => {
 
                               <div className="flex items-center gap-1.5 sm:gap-2">
                                 <button
-                                  onClick={() => setStatusFor(d.key, "approved")}
-                                  className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border py-1.5 sm:py-2.5 text-[9px] sm:text-[11px] font-bold transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
-                                    status === "approved"
-                                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 shadow-sm"
-                                      : isDark
-                                        ? "border-white/10 text-slate-400 hover:border-emerald-500/30 hover:bg-emerald-500/[0.05]"
-                                        : "border-slate-200 text-slate-500 hover:border-emerald-300 hover:bg-emerald-50/50"
+                                  onClick={() => !isDiterima && setStatusFor(d.key, "approved")}
+                                  disabled={isDiterima}
+                                  className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border py-1.5 sm:py-2.5 text-[9px] sm:text-[11px] font-bold transition-all duration-200 ${
+                                    isDiterima
+                                      ? status === "approved"
+                                        ? "border-emerald-300/80 bg-emerald-50/90 text-emerald-700 opacity-90 cursor-not-allowed"
+                                        : "border-slate-200 dark:border-white/10 text-slate-400 opacity-40 cursor-not-allowed"
+                                      : status === "approved"
+                                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 shadow-sm cursor-pointer hover:-translate-y-0.5 active:scale-95"
+                                        : isDark
+                                          ? "border-white/10 text-slate-400 hover:border-emerald-500/30 hover:bg-emerald-500/[0.05] cursor-pointer hover:-translate-y-0.5 active:scale-95"
+                                          : "border-slate-200 text-slate-500 hover:border-emerald-300 hover:bg-emerald-50/50 cursor-pointer hover:-translate-y-0.5 active:scale-95"
                                   }`}
+                                  title={isDiterima ? "Pendaftaran sudah diterima (verifikasi terkunci)" : "Setujui berkas"}
                                 >
                                   <CheckCircle2 className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
                                   Setujui
                                 </button>
                                 <button
-                                  onClick={() => setStatusFor(d.key, "revision")}
-                                  className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border py-1.5 sm:py-2.5 text-[9px] sm:text-[11px] font-bold transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
-                                    status === "revision"
-                                      ? "border-red-300 bg-red-50 text-red-700 shadow-sm"
-                                      : isDark
-                                        ? "border-white/10 text-slate-400 hover:border-red-500/30 hover:bg-red-500/[0.05]"
-                                        : "border-slate-200 text-slate-500 hover:border-red-300 hover:bg-red-50/50"
+                                  onClick={() => !isDiterima && setStatusFor(d.key, "revision")}
+                                  disabled={isDiterima}
+                                  className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border py-1.5 sm:py-2.5 text-[9px] sm:text-[11px] font-bold transition-all duration-200 ${
+                                    isDiterima
+                                      ? status === "revision"
+                                        ? "border-red-300/80 bg-red-50/90 text-red-700 opacity-90 cursor-not-allowed"
+                                        : "border-slate-200 dark:border-white/10 text-slate-400 opacity-40 cursor-not-allowed"
+                                      : status === "revision"
+                                        ? "border-red-300 bg-red-50 text-red-700 shadow-sm cursor-pointer hover:-translate-y-0.5 active:scale-95"
+                                        : isDark
+                                          ? "border-white/10 text-slate-400 hover:border-red-500/30 hover:bg-red-500/[0.05] cursor-pointer hover:-translate-y-0.5 active:scale-95"
+                                          : "border-slate-200 text-slate-500 hover:border-red-300 hover:bg-red-50/50 cursor-pointer hover:-translate-y-0.5 active:scale-95"
                                   }`}
+                                  title={isDiterima ? "Pendaftaran sudah diterima (verifikasi terkunci)" : "Minta revisi berkas"}
                                 >
                                   <XCircle className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
                                   Revisi
@@ -737,9 +758,12 @@ const ReviewModal = ({ pendaftaran, onClose, onUpdated, isDark }) => {
                                   value={docNotes[d.key] || ""}
                                   onChange={(e) => setNoteFor(d.key, e.target.value)}
                                   onBlur={() => persistProgress(docStatus, docNotes)}
+                                  disabled={isDiterima}
                                   placeholder={`Tuliskan catatan atau alasan revisi ${d.label}...`}
                                   rows={2}
                                   className={`w-full rounded-lg sm:rounded-xl border px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 text-[10px] sm:text-[11.5px] font-medium outline-none transition-all duration-200 ${
+                                    isDiterima ? "opacity-60 cursor-not-allowed" : ""
+                                  } ${
                                     isDark
                                       ? "border-red-500/40 bg-red-500/[0.05] text-slate-300 placeholder-slate-500 hover:border-red-500/50 focus:border-red-400 focus:ring-4 focus:ring-red-500/10"
                                       : "border-red-200 bg-red-50/40 text-slate-700 placeholder-slate-300 hover:border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
@@ -759,7 +783,18 @@ const ReviewModal = ({ pendaftaran, onClose, onUpdated, isDark }) => {
 
           {/* Footer aksi */}
           <div className={`shrink-0 border-t p-3 sm:p-6 ${isDark ? "border-white/5 bg-[#161b22]" : "border-slate-200 bg-white"}`}>
-            {hasRevisionMarked ? (
+            {isDiterima ? (
+              <div className={`flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border py-2 sm:py-3.5 px-2.5 sm:px-4 animate-[fadeslide_0.2s_ease-out] ${
+                isDark ? "border-emerald-500/20 bg-emerald-500/[0.05]" : "border-emerald-200 bg-emerald-50"
+              }`}>
+                <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </span>
+                <p className={`text-[10px] sm:text-xs font-semibold leading-relaxed text-left ${isDark ? "text-emerald-400" : "text-emerald-700"}`}>
+                  Pendaftaran ini <b>telah diterima</b> dan akun magang peserta aktif. Verifikasi berkas telah terkunci.
+                </p>
+              </div>
+            ) : hasRevisionMarked ? (
               <button
                 onClick={handleMintaRevisi}
                 disabled={loadingAction !== null || !revisionNotesFilled}

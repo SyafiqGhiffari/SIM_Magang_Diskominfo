@@ -222,6 +222,27 @@ const TabDashboard = ({
                             </div>
                           </div>
                         </div>
+
+                        <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-xl ${
+                          dk ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                        }`}>
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-500 font-bold text-xs">
+                              ✓
+                            </span>
+                            <p className="text-[11px] leading-relaxed">
+                              Akun portal magang Anda telah aktif. Masuk menggunakan <strong>email &amp; kata sandi</strong> akun ini.
+                            </p>
+                          </div>
+                          <a
+                            href="http://localhost:5173/login"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+                          >
+                            Masuk Portal <ArrowRight className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
                       </div>
                     </div>
                     <span className="relative z-10 shrink-0 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-950/20 border border-white/10">

@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   X, UserCog, Mail, Phone, Briefcase, Lock, Camera, Loader2, Save,
   Info, Check, Users2, Sparkles, Building2, Network, Workflow, Boxes,
   FolderKanban, GitBranch, LayoutGrid, MapPin, ShieldCheck, ShieldOff,
-  Infinity as InfinityIcon, Eye, EyeOff, Fingerprint,
+  Infinity as InfinityIcon, Eye, EyeOff, Fingerprint, CheckCircle2,
 } from "lucide-react";
 import { getFileUrl } from "../../../../utils/fileUrl";
 import { toastError } from "../../../../utils/swal";
@@ -118,6 +118,127 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
   const cropImgRef = useRef(null);
 
   const isUnlimitedKapasitas = Number(kapasitas) === 0;
+
+  // ── Validasi Kelengkapan Formulir Realtime ──
+  const isEmailValid = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+
+  const isFormValid = useMemo(() => {
+    if (!nama.trim()) return false;
+    if (!email.trim() || !isEmailValid(email)) return false;
+    if (!noHp.trim()) return false;
+    if (!jabatan.trim()) return false;
+    if (!nip.trim()) return false;
+    if (!selectedBidang) return false;
+
+    if (!isEdit) {
+      if (!password || password.length < 6) return false;
+      if (password !== confirmPassword) return false;
+    } else {
+      if (password) {
+        if (password.length < 6) return false;
+        if (password !== confirmPassword) return false;
+      }
+    }
+
+    return true;
+  }, [nama, email, noHp, jabatan, nip, selectedBidang, password, confirmPassword, isEdit]);
+
+  // ── Realtime Password Strength Calculation ──
+  const passwordStrength = useMemo(() => {
+    const pwd = password || "";
+    const len = pwd.length;
+    const hasMinLen = len >= 8;
+    const hasUpper = /[A-Z]/.test(pwd);
+    const hasLower = /[a-z]/.test(pwd);
+    const hasUpperLower = hasUpper && hasLower;
+    const hasNumber = /[0-9]/.test(pwd);
+    const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+
+    const criteriaMet = [hasMinLen, hasUpperLower, hasNumber, hasSpecial].filter(Boolean).length;
+
+    if (!pwd) {
+      return {
+        score: 0,
+        percent: 0,
+        label: "Belum Diisi",
+        statusText: "Belum Diisi",
+        colorText: "text-slate-400 dark:text-slate-500",
+        barColor: "bg-slate-200 dark:bg-white/10",
+        activeBars: 0,
+        hasMinLen: false,
+        hasUpperLower: false,
+        hasNumber: false,
+        hasSpecial: false,
+        len: 0,
+      };
+    }
+
+    if (criteriaMet <= 1) {
+      return {
+        score: 1,
+        percent: 25,
+        label: "Lemah (Perlu Ditingkatkan)",
+        statusText: "Lemah",
+        colorText: "text-rose-500",
+        barColor: "bg-rose-500",
+        activeBars: 1,
+        hasMinLen,
+        hasUpperLower,
+        hasNumber,
+        hasSpecial,
+        len,
+      };
+    }
+
+    if (criteriaMet === 2) {
+      return {
+        score: 2,
+        percent: 50,
+        label: "Cukup (Bisa Ditingkatkan)",
+        statusText: "Cukup",
+        colorText: "text-amber-500",
+        barColor: "bg-amber-500",
+        activeBars: 2,
+        hasMinLen,
+        hasUpperLower,
+        hasNumber,
+        hasSpecial,
+        len,
+      };
+    }
+
+    if (criteriaMet === 3) {
+      return {
+        score: 3,
+        percent: 75,
+        label: "Kuat (Aman)",
+        statusText: "Kuat (Aman)",
+        colorText: "text-[#004F9F] dark:text-sky-400",
+        barColor: "bg-[#004F9F] dark:bg-sky-500",
+        activeBars: 3,
+        hasMinLen,
+        hasUpperLower,
+        hasNumber,
+        hasSpecial,
+        len,
+      };
+    }
+
+    return {
+      score: 4,
+      percent: 100,
+      label: "Sangat Kuat (Sangat Aman)",
+      statusText: "Sangat Kuat (Sangat Aman)",
+      colorText: "text-emerald-600 dark:text-emerald-400",
+      barColor: "bg-emerald-500 dark:bg-emerald-400",
+      activeBars: 4,
+      hasMinLen,
+      hasUpperLower,
+      hasNumber,
+      hasSpecial,
+      len,
+    };
+  }, [password]);
 
   useEffect(() => {
     const fn = (e) => { if (e.key === "Escape") onClose(); };
@@ -253,6 +374,10 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isFormValid) {
+      toastError("Mohon lengkapi seluruh kolom formulir dan bidang penempatan.");
+      return;
+    }
     if (!isEdit && !password) {
       toastError("Password wajib diisi untuk mentor baru.");
       return;
@@ -262,7 +387,7 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
       return;
     }
     if (password && password !== confirmPassword) {
-      toastError("Konfirmasi password tidak cocok.");
+      toastError("Konfirmasi password tidak cocok. Mohon periksa kembali.");
       return;
     }
 
@@ -288,7 +413,7 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-2.5 sm:p-4 overflow-y-auto" onClick={onClose}>
       <div
-        className={`w-full max-w-sm sm:max-w-4xl max-h-[90vh] sm:max-h-[92vh] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col border animate-[modalFadeUp_0.3s_ease-out] my-auto ${
+        className={`w-full max-w-sm sm:max-w-5xl max-h-[90vh] sm:max-h-[92vh] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col border animate-[modalFadeUp_0.3s_ease-out] my-auto ${
           isDark ? "bg-[#161b22] border-white/10" : "bg-white border-slate-200"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -342,14 +467,14 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-5">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-5 items-start">
                 <div className="lg:col-span-2 space-y-2.5 sm:space-y-4">
                   <div className="flex items-center gap-2.5 sm:gap-4 animate-[fadeslide_0.3s_ease-out]" style={{ animationDelay: "60ms", animationFillMode: "backwards" }}>
                     <div className="relative shrink-0">
                       {fotoPreview ? (
-                        <img src={fotoPreview} alt="Preview" className="h-11 w-11 sm:h-16 sm:w-16 rounded-2xl object-cover border-2 border-white dark:border-slate-700 shadow-md ring-2 ring-slate-200 dark:ring-white/10" />
+                        <img src={fotoPreview} alt="Preview" className="h-11 w-11 sm:h-16 sm:w-16 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-md ring-2 ring-slate-200 dark:ring-white/10" />
                       ) : (
-                        <span className="flex h-11 w-11 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white text-sm sm:text-lg font-black shadow-md">
+                        <span className="flex h-11 w-11 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white text-sm sm:text-lg font-black shadow-md">
                           {getInitials(nama)}
                         </span>
                       )}
@@ -458,7 +583,7 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
                     <div>
                       <label className="flex items-center gap-1 text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-0.5 sm:mb-1">
                         <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        Password {isEdit && <span className="normal-case font-medium text-slate-400">(opsional)</span>}
+                        Password {isEdit && <span className="normal-case font-medium text-amber-500/90 dark:text-amber-400">(opsional)</span>}
                       </label>
                       <div className="relative">
                         <input
@@ -481,6 +606,9 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
                           {showPassword ? <EyeOff className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
                         </button>
                       </div>
+                      {isEdit && !password && (
+                        <p className="text-[8.5px] sm:text-[9.5px] text-slate-400 mt-1">Kosongkan jika tidak ingin mengubah password.</p>
+                      )}
                     </div>
                     <div>
                       <label className="flex items-center gap-1 text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-0.5 sm:mb-1">
@@ -511,15 +639,133 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
                         </button>
                       </div>
                       {confirmPassword && password !== confirmPassword && (
-                        <p className="text-[9px] text-red-500 mt-0.5 sm:mt-1 font-semibold">Password tidak cocok.</p>
+                        <p className="text-[9px] text-red-500 mt-0.5 sm:mt-1 font-semibold">Konfirmasi password tidak cocok.</p>
                       )}
                     </div>
+
+                    {/* Animasi Indikator & Checklist Kekuatan Sandi saat mulai mengetik */}
+                    {Boolean(password && password.length > 0) && (
+                      <div className="sm:col-span-2 space-y-1.5 sm:space-y-2 mt-1 animate-[fadeslide_0.25s_ease-out]">
+                        <div className="flex items-center justify-between text-[9px] sm:text-xs">
+                          <span className="text-slate-600 dark:text-slate-400 font-medium">
+                            Kekuatan Sandi:{" "}
+                            <span className={`font-bold ${passwordStrength.colorText}`}>
+                              {passwordStrength.statusText}
+                            </span>
+                          </span>
+                          <span className={`font-bold ${passwordStrength.colorText}`}>
+                            {passwordStrength.percent}%
+                          </span>
+                        </div>
+
+                        {/* 4-Segmented Progress Bar */}
+                        <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
+                          <div
+                            className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
+                              passwordStrength.activeBars >= 1
+                                ? passwordStrength.barColor
+                                : isDark
+                                ? "bg-white/10"
+                                : "bg-slate-200"
+                            }`}
+                          />
+                          <div
+                            className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
+                              passwordStrength.activeBars >= 2
+                                ? passwordStrength.barColor
+                                : isDark
+                                ? "bg-white/10"
+                                : "bg-slate-200"
+                            }`}
+                          />
+                          <div
+                            className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
+                              passwordStrength.activeBars >= 3
+                                ? passwordStrength.barColor
+                                : isDark
+                                ? "bg-white/10"
+                                : "bg-slate-200"
+                            }`}
+                          />
+                          <div
+                            className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
+                              passwordStrength.activeBars >= 4
+                                ? passwordStrength.barColor
+                                : isDark
+                                ? "bg-white/10"
+                                : "bg-slate-200"
+                            }`}
+                          />
+                        </div>
+
+                        {/* Checklist Ketentuan Sandi 2x2 */}
+                        <div
+                          className={`p-2 sm:p-2.5 rounded-lg sm:rounded-xl border ${
+                            isDark
+                              ? "bg-white/[0.03] border-white/5 text-slate-300"
+                              : "bg-slate-50/90 border-slate-100 text-slate-600"
+                          } grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-1.5 text-[8.5px] sm:text-[10.5px] font-medium`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2
+                              className={`w-3 h-3 shrink-0 transition-colors ${
+                                passwordStrength.hasMinLen
+                                  ? "text-emerald-500 dark:text-emerald-400"
+                                  : "text-slate-300 dark:text-slate-600"
+                              }`}
+                            />
+                            <span className={passwordStrength.hasMinLen ? "text-slate-800 dark:text-slate-100 font-semibold" : ""}>
+                              Minimal 8 karakter (terisi {passwordStrength.len})
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2
+                              className={`w-3 h-3 shrink-0 transition-colors ${
+                                passwordStrength.hasUpperLower
+                                  ? "text-emerald-500 dark:text-emerald-400"
+                                  : "text-slate-300 dark:text-slate-600"
+                              }`}
+                            />
+                            <span className={passwordStrength.hasUpperLower ? "text-slate-800 dark:text-slate-100 font-semibold" : ""}>
+                              Kombinasi Huruf Besar &amp; Kecil
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2
+                              className={`w-3 h-3 shrink-0 transition-colors ${
+                                passwordStrength.hasNumber
+                              ? "text-emerald-500 dark:text-emerald-400"
+                              : "text-slate-300 dark:text-slate-600"
+                              }`}
+                            />
+                            <span className={passwordStrength.hasNumber ? "text-slate-800 dark:text-slate-100 font-semibold" : ""}>
+                              Mengandung angka (0-9)
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2
+                              className={`w-3 h-3 shrink-0 transition-colors ${
+                                passwordStrength.hasSpecial
+                                  ? "text-emerald-500 dark:text-emerald-400"
+                                  : "text-slate-300 dark:text-slate-600"
+                              }`}
+                            />
+                            <span className={passwordStrength.hasSpecial ? "text-slate-800 dark:text-slate-100 font-semibold" : ""}>
+                              Simbol khusus (!@#$%^&amp;*)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 self-start">
                   <div
-                    className="group h-full rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] p-3 sm:p-4 relative overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md"
+                    className="group h-fit rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] p-3.5 sm:p-4 relative overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md"
                     style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
                   >
                     <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#00A5EC]/20 blur-2xl transition-all duration-500 group-hover:scale-150 group-hover:bg-[#00A5EC]/30 pointer-events-none" />
@@ -527,13 +773,18 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
                       <span className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-md sm:rounded-lg bg-white/10 border border-white/15">
                         <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#00A5EC]" />
                       </span>
-                      <h4 className="text-[11px] sm:text-xs font-black text-white">Panduan Penambahan</h4>
+                      <h4 className="text-[11px] sm:text-xs font-black text-white">
+                        {isEdit ? "Panduan Pembaruan" : "Panduan Penambahan"}
+                      </h4>
                     </div>
                     <ul className="relative space-y-1.5 sm:space-y-2">
                       {[
                         "Lengkapi informasi mentor sesuai dengan data yang benar.",
                         "Kapasitas bimbingan membatasi kuota peserta per periode.",
-                        "Pastikan password memenuhi ketentuan keamanan.",
+                        isEdit
+                          ? "Pada mode edit, password dapat dikosongkan jika tidak ingin mengganti kata sandi."
+                          : "Pastikan password memenuhi ketentuan keamanan yang kuat.",
+                        "Pastikan NIP dan jabatan sesuai data penugasan.",
                         "Foto profil bersifat opsional dan dapat diganti kapan saja.",
                         "Periksa kembali seluruh informasi sebelum menyimpan.",
                       ].map((tip, i) => (
@@ -715,10 +966,18 @@ const MentorModal = ({ initialData, bidangOptions, onClose, onSubmit }) => {
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="group flex-[1.5] inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#00A5EC] py-1.5 sm:py-2.5 text-[11px] sm:text-xs font-bold text-white shadow-md shadow-[#00A5EC]/20 transition-all duration-200 hover:shadow-lg active:scale-95 disabled:opacity-60 cursor-pointer"
+              disabled={!isFormValid || loading}
+              className={`group flex-[1.5] inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] via-[#101F5C] to-[#1E3A8A] hover:from-[#101F5C] hover:via-[#1E3A8A] hover:to-[#004F9F] py-1.5 sm:py-2.5 text-[11px] sm:text-xs font-bold text-white shadow-md shadow-[#0B1442]/30 hover:shadow-lg transition-all duration-200 active:scale-95 border border-white/10 ${
+                !isFormValid || loading
+                  ? "opacity-40 cursor-not-allowed pointer-events-none shadow-none"
+                  : "cursor-pointer"
+              }`}
             >
-              {loading ? <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" /> : <Save className="w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform duration-200 group-hover:scale-110" />}
+              {loading ? (
+                <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" />
+              ) : (
+                <Save className="w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform duration-200 group-hover:scale-110" />
+              )}
               {isEdit ? "Simpan Perbarui" : "Tambah Mentor"}
             </button>
           </div>

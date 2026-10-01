@@ -125,10 +125,21 @@ func ResetPassword(c *gin.Context) {
 	user.ResetPasswordToken = ""
 	user.ResetPasswordExpiredAt = nil
 	user.ResetPasswordAttempt = 0
+	now := time.Now()
+	user.PasswordChangedAt = &now
 
 	if err := config.DB.Save(&user).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui password")
 		return
+	}
+
+	// Sinkronkan ke akun UserManajemen jika ada peserta dengan email yang sama
+	var akunPeserta models.UserManajemen
+	if err := config.DB.Where("email = ? AND role = 'peserta'", user.Email).First(&akunPeserta).Error; err == nil {
+		config.DB.Model(&akunPeserta).Updates(map[string]interface{}{
+			"password":            string(hashed),
+			"password_changed_at": &now,
+		})
 	}
 
 	// ── SIAPKAN DATA UNTUK NOTIFIKASI ──
