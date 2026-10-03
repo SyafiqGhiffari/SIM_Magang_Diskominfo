@@ -590,10 +590,26 @@ func GetHitunganAntreanMentor(c *gin.Context) {
 		Where("p.mentor_id = ? AND pi.status = ?", mentorID, "menunggu").
 		Count(&izinMenunggu)
 
+	// Hitung pengumpulan tugas yang menunggu review/penilaian mentor
+	var tugasMenunggu int64
+	config.DB.Table("pengumpulan_tugas pt").
+		Joins("JOIN tugas_magangs tm ON tm.id = pt.tugas_id").
+		Where("(tm.mentor_id = ? OR pt.peserta_id IN (SELECT akun_peserta_id FROM pendaftaran_magangs WHERE mentor_id = ? AND status_pendaftaran = 'diterima')) AND pt.status = ?", mentorID, mentorID, "menunggu").
+		Count(&tugasMenunggu)
+
+	// Laporan akhir yang sudah diunggah oleh peserta bimbingan tetapi belum disetujui
+	var laporanMenunggu int64
+	config.DB.Table("pendaftaran_magangs p").
+		Joins("LEFT JOIN penilaian_magangs pn ON pn.peserta_id = p.akun_peserta_id").
+		Where("p.mentor_id = ? AND p.status_pendaftaran = 'diterima' AND p.file_laporan_akhir != '' AND (pn.laporan_akhir_disetujui IS NULL OR pn.laporan_akhir_disetujui = false)", mentorID).
+		Count(&laporanMenunggu)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"izin": izinMenunggu,
+			"izin":          izinMenunggu,
+			"tugas":         tugasMenunggu,
+			"laporan_akhir": laporanMenunggu,
 		},
 	})
 }

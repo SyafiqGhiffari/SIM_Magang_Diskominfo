@@ -15,4 +15,9 @@ export const prosesPengajuanIzinMentor = (id, data) => api.put(`/manajemen/mento
 export const getDaftarPesertaBimbingan = (params) => api.get("/manajemen/mentor/peserta", { params });
 
 // ── Pengaturan Jam Kerja (Read-only untuk Mentor) ──
-export const getJamKerjaMentor = () => api.get("/manajemen/jam-kerja");
+export const getJamKerjaMentor = () => api.get("/manajemen/jam-kerja");
+
+// ── Laporan Akhir Peserta Bimbingan ──
+export const getLaporanAkhirMentor = (params) => api.get("/manajemen/mentor/laporan-akhir", { params });
+export const verifikasiLaporanAkhirMentor = (pendaftaranId, data) => api.post(`/manajemen/mentor/laporan-akhir/${pendaftaranId}/verifikasi`, data);
+export const kirimPengingatLaporanMentor = (pendaftaranId) => api.post(`/manajemen/mentor/laporan-akhir/${pendaftaranId}/pengingat`);

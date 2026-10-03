@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
 import MentorLayout from "../../layouts/MentorLayout";
 import { useManajemenTheme } from "../../context/useManajemenTheme";
 import {
@@ -33,9 +34,12 @@ const HitungPredikat = (val) => {
 
 const PenilaianMentorPage = () => {
   const { isDark } = useManajemenTheme();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
 
   // Modal Penilaian State
   const [modalOpen, setModalOpen] = useState(false);
@@ -65,27 +69,8 @@ const PenilaianMentorPage = () => {
     bobot_administratif: 20,
   });
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await getPesertaBimbinganPenilaian();
-      setList(res.data?.data || []);
-    } catch {
-      toastError("Gagal memuat daftar peserta bimbingan");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchData();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Buka Modal Form Penilaian
-  const handleOpenForm = async (peserta) => {
+  const handleOpenForm = useCallback(async (peserta) => {
     setSelectedPeserta(peserta);
     setModalOpen(true);
     setLoadingDetail(true);
@@ -153,7 +138,42 @@ const PenilaianMentorPage = () => {
     } finally {
       setLoadingDetail(false);
     }
-  };
+  }, []);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getPesertaBimbinganPenilaian();
+      const items = res.data?.data || [];
+      setList(items);
+
+      // Otomatis buka form penilaian jika diarahkan dari halaman verifikasi laporan akhir
+      const targetId = location.state?.selectedPesertaId || searchParams.get("peserta_id");
+      if (targetId) {
+        const found = items.find(
+          (p) =>
+            String(p.peserta_id) === String(targetId) ||
+            String(p.id) === String(targetId) ||
+            String(p.akun_peserta_id) === String(targetId) ||
+            String(p.pendaftaran_id) === String(targetId)
+        );
+        if (found) {
+          handleOpenForm(found);
+        }
+      }
+    } catch {
+      toastError("Gagal memuat daftar peserta bimbingan");
+    } finally {
+      setLoading(false);
+    }
+  }, [location.state, searchParams, handleOpenForm]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchData]);
 
   // Kalkulasi Nilai
   const getNum = (v) => (v === "" || isNaN(Number(v)) ? 0 : Number(v));
@@ -235,6 +255,7 @@ const PenilaianMentorPage = () => {
     try {
       await simpanPenilaianPeserta(pesertaId, payload);
       toastSuccess(statusTarget === "final" ? "Penilaian berhasil difinalisasi & diterbitkan!" : "Draf penilaian berhasil disimpan.");
+      window.dispatchEvent(new Event("sim_notifikasi_updated"));
       setModalOpen(false);
       fetchData();
     } catch (err) {

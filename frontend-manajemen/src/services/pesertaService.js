@@ -37,18 +37,23 @@ export const batalkanPengajuanIzin = (id) =>
 export const getSertifikatSaya = () =>
   api.get("/manajemen/peserta/sertifikat");
 
-// ── Logbook & Laporan Akhir Peserta ──────────────────────
+// ── Logbook Peserta ───────────────────────────────────────
 export const getLogbookPeserta = () =>
   api.get("/manajemen/peserta/logbook");
 
 export const updateLogbookPeserta = (id, data) =>
   api.put(`/manajemen/peserta/logbook/${id}`, data);
 
+// ── Laporan Akhir Peserta ─────────────────────────────────
+export const getLaporanAkhirPeserta = () =>
+  api.get("/manajemen/peserta/laporan-akhir");
+
 export const uploadLaporanAkhirPeserta = (formData) =>
   api.post("/manajemen/peserta/laporan-akhir", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 
+// ── Dokumen Berkas Profil / Pendaftaran Peserta ───────────
 export const uploadDokumenPeserta = (formData) =>
   api.post("/manajemen/peserta/upload-dokumen", formData, {
     headers: { "Content-Type": "multipart/form-data" },

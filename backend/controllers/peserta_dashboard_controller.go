@@ -3,6 +3,7 @@ package controllers
 import (
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"sim-magang-backend/config"
@@ -205,24 +206,37 @@ func GetDashboardPeserta(c *gin.Context) {
 	}
 
 	// 10. Status Laporan Akhir Magang
-	laporanDisetujui := adaNilai && nilai.LaporanAkhirDisetujui
+	laporanDisetujui := (adaNilai && nilai.LaporanAkhirDisetujui) || pendaftaran.StatusLaporanAkhir == "disetujui"
 	statusLaporan := "belum_unggah"
-	if hasPendaftaran && pendaftaran.FileLaporanAkhir != "" {
+	catatanMentorLaporan := pendaftaran.CatatanMentorLaporan
+	if catatanMentorLaporan == "" && adaNilai {
+		catatanMentorLaporan = nilai.CatatanMentor
+	}
+
+	if hasPendaftaran && strings.TrimSpace(pendaftaran.FileLaporanAkhir) != "" {
 		if laporanDisetujui {
 			statusLaporan = "disetujui"
+		} else if pendaftaran.StatusLaporanAkhir == "revisi" || pendaftaran.StatusLaporanAkhir == "perlu_revisi" {
+			statusLaporan = "perlu_revisi"
 		} else {
 			statusLaporan = "menunggu_review"
 		}
 	}
+
 	var laporanData gin.H = nil
 	if hasPendaftaran {
 		laporanData = gin.H{
 			"file_laporan_akhir":     pendaftaran.FileLaporanAkhir,
 			"judul_laporan_akhir":    pendaftaran.JudulLaporanAkhir,
 			"link_proyek":            pendaftaran.LinkProyek,
+			"catatan_laporan_akhir":  pendaftaran.CatatanLaporanAkhir,
+			"catatan_mentor":         catatanMentorLaporan,
+			"catatan_mentor_laporan": catatanMentorLaporan,
 			"status":                 statusLaporan,
+			"status_laporan":         statusLaporan,
 			"disetujui":              laporanDisetujui,
 			"tanggal_upload_laporan": pendaftaran.TanggalUploadLaporan,
+			"sisa_hari":              sisaHari,
 		}
 	}
 
@@ -245,16 +259,24 @@ func GetDashboardPeserta(c *gin.Context) {
 			"status_magang": user.StatusMagang,
 		},
 		"pendaftaran": gin.H{
-			"ada":                hasPendaftaran,
-			"posisi_bidang":      pendaftaran.PosisiBidang,
-			"institusi":          coalesceStr(pendaftaran.AsalKampus, pendaftaran.AsalSekolah),
-			"jurusan_prodi":      coalesceStr(pendaftaran.ProgramStudi, pendaftaran.JurusanSekolah),
-			"nomor_identitas":    coalesceStr(pendaftaran.NpmNim, pendaftaran.Nisn),
-			"kategori_pendaftar": pendaftaran.KategoriPendaftar,
-			"tanggal_mulai":      pendaftaran.TanggalMulai,
-			"tanggal_selesai":    pendaftaran.TanggalSelesai,
-			"file_pas_foto":      pendaftaran.FilePasFoto,
-			"surat_penerimaan":   suratData,
+			"id":                     pendaftaran.ID,
+			"ada":                    hasPendaftaran,
+			"posisi_bidang":          pendaftaran.PosisiBidang,
+			"institusi":              coalesceStr(pendaftaran.AsalKampus, pendaftaran.AsalSekolah),
+			"jurusan_prodi":          coalesceStr(pendaftaran.ProgramStudi, pendaftaran.JurusanSekolah),
+			"nomor_identitas":        coalesceStr(pendaftaran.NpmNim, pendaftaran.Nisn),
+			"kategori_pendaftar":     pendaftaran.KategoriPendaftar,
+			"tanggal_mulai":          pendaftaran.TanggalMulai,
+			"tanggal_selesai":        pendaftaran.TanggalSelesai,
+			"file_pas_foto":          pendaftaran.FilePasFoto,
+			"surat_penerimaan":       suratData,
+			"file_laporan_akhir":     pendaftaran.FileLaporanAkhir,
+			"judul_laporan_akhir":    pendaftaran.JudulLaporanAkhir,
+			"link_proyek":            pendaftaran.LinkProyek,
+			"catatan_laporan_akhir":  pendaftaran.CatatanLaporanAkhir,
+			"catatan_mentor":         catatanMentorLaporan,
+			"catatan_mentor_laporan": catatanMentorLaporan,
+			"tanggal_upload_laporan": pendaftaran.TanggalUploadLaporan,
 		},
 		"timeline": gin.H{
 			"status":         statusTimeline,

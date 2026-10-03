@@ -1202,7 +1202,10 @@ const PresensiBimbinganPage = () => {
         <KoreksiPresensiModal
           data={koreksi}
           onClose={() => setKoreksi(null)}
-          onSaved={() => setReloadKey((k) => k + 1)}
+          onSaved={() => {
+            setReloadKey((k) => k + 1);
+            window.dispatchEvent(new Event("sim_notifikasi_updated"));
+          }}
           isDark={isDark}
         />
       )}

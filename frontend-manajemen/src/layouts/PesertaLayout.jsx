@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   CalendarDays,
@@ -17,6 +17,11 @@ import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell
 import AlumniBanner from "../components/manajemen/peserta/AlumniBanner";
 import { useManajemenTheme } from "../context/useManajemenTheme";
 import { logoutAdmin, getMe } from "../services/authService";
+import { getNotifikasi } from "../services/notifikasiService";
+import {
+  initialLencanaPeserta,
+  hitungLencanaPesertaDariNotifikasi,
+} from "../utils/notifikasiPesertaHelper";
 import { confirmDialog } from "../utils/swal";
 import { clearAuthData, updateAuthUser, isMagangSelesai, getUser } from "../utils/authStorage";
 
@@ -167,6 +172,73 @@ const PesertaLayout = ({ children, searchValue = "", onSearchChange }) => {
     }
   };
 
+  const [lencanaCounts, setLencanaCounts] = useState(initialLencanaPeserta);
+
+  // Sinkronisasi hitungan lencana notifikasi belum dibaca untuk sidebar
+  const sinkronkanLencana = useCallback(async (listBaru = null) => {
+    if (Array.isArray(listBaru)) {
+      setLencanaCounts(hitungLencanaPesertaDariNotifikasi(listBaru));
+      return;
+    }
+    try {
+      const res = await getNotifikasi({ limit: 100 });
+      const rawList = res.data?.data?.items ?? [];
+      setLencanaCounts(hitungLencanaPesertaDariNotifikasi(rawList));
+    } catch {
+      // diamkan error agar tidak mengganggu UI peserta
+    }
+  }, []);
+
+  useEffect(() => {
+    const timerAwal = setTimeout(() => {
+      sinkronkanLencana();
+    }, 0);
+    const interval = setInterval(() => sinkronkanLencana(), 30000);
+
+    const handleUpdated = () => sinkronkanLencana();
+    const handleSynced = (e) => {
+      if (e?.detail?.items) {
+        sinkronkanLencana(e.detail.items);
+      } else {
+        sinkronkanLencana();
+      }
+    };
+
+    window.addEventListener("sim_notifikasi_updated", handleUpdated);
+    window.addEventListener("sim_notif_settings_changed", handleUpdated);
+    window.addEventListener("sim_notifikasi_synced", handleSynced);
+    window.addEventListener("storage", handleUpdated);
+
+    return () => {
+      clearTimeout(timerAwal);
+      clearInterval(interval);
+      window.removeEventListener("sim_notifikasi_updated", handleUpdated);
+      window.removeEventListener("sim_notif_settings_changed", handleUpdated);
+      window.removeEventListener("sim_notifikasi_synced", handleSynced);
+      window.removeEventListener("storage", handleUpdated);
+    };
+  }, [sinkronkanLencana]);
+
+  // Petakan lencana ke salinan navItems (termasuk submenu dropdown)
+  const navItemsWithBadge = useMemo(() => {
+    const base = buildNavItems(readOnly);
+    return base.map((item) => {
+      if (item.type === "dropdown" && Array.isArray(item.children)) {
+        return {
+          ...item,
+          children: item.children.map((child) => ({
+            ...child,
+            badge: lencanaCounts[child.key] || 0,
+          })),
+        };
+      }
+      return {
+        ...item,
+        badge: lencanaCounts[item.key] || 0,
+      };
+    });
+  }, [readOnly, lencanaCounts]);
+
   const pathname = location.pathname;
   const activeKey =
     pathname === "/peserta" ? "dashboard" :
@@ -184,7 +256,7 @@ const PesertaLayout = ({ children, searchValue = "", onSearchChange }) => {
 
   return (
     <ManajemenShell
-      navItems={buildNavItems(readOnly)}
+      navItems={navItemsWithBadge}
       activeKey={activeKey}
       handleLogout={handleLogout}
       roleLabel={readOnly ? "Alumni Magang" : "Peserta"}

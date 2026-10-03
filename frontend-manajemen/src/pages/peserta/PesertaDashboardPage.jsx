@@ -93,6 +93,7 @@ export const PesertaDashboardPage = () => {
   const stats = data?.statistik_kehadiran;
   const izinTerkini = data?.pengajuan_izin_terkini || [];
   const penilaian = data?.penilaian;
+  const laporanAkhir = data?.laporan_akhir;
 
   const hariKerja = presensiHariIni?.hari_kerja;
   const sudahMasuk = presensiHariIni?.sudah_masuk;
@@ -249,6 +250,72 @@ export const PesertaDashboardPage = () => {
             </div>
           )}
         </div>
+
+        {/* Banner Pengingat Laporan Akhir (Muncul jika sisa waktu <= 14 hari atau ada revisi) */}
+        {timeline &&
+          timeline.status === "berjalan" &&
+          typeof timeline.sisa_hari === "number" &&
+          timeline.sisa_hari <= 14 &&
+          laporanAkhir?.status !== "disetujui" && (
+            <div
+              className={`p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-[fadeslide_0.3s_ease-out] ${
+                laporanAkhir?.status === "perlu_revisi" || timeline.sisa_hari <= 3
+                  ? "bg-rose-50/90 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/40 text-rose-950 dark:text-rose-100"
+                  : timeline.sisa_hari <= 7
+                  ? "bg-amber-50/90 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40 text-amber-950 dark:text-amber-100"
+                  : "bg-blue-50/90 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/40 text-blue-950 dark:text-blue-100"
+              }`}
+            >
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-xs ${
+                    laporanAkhir?.status === "perlu_revisi" || timeline.sisa_hari <= 3
+                      ? "bg-rose-600 animate-pulse"
+                      : timeline.sisa_hari <= 7
+                      ? "bg-amber-500"
+                      : "bg-[#004F9F]"
+                  }`}
+                >
+                  <FileText className="w-5 h-5" />
+                </span>
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs sm:text-sm font-black tracking-tight">
+                      {laporanAkhir?.status === "perlu_revisi"
+                        ? "Permintaan Revisi Laporan Akhir"
+                        : timeline.sisa_hari <= 3
+                        ? "Penting: Laporan Akhir Magang Belum Disetujui"
+                        : timeline.sisa_hari <= 7
+                        ? `Batas Pengumpulan Laporan: Sisa ${timeline.sisa_hari} Hari`
+                        : `Pengingat Laporan Akhir: Sisa ${timeline.sisa_hari} Hari`}
+                    </h4>
+                    <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-white/70 dark:bg-white/10 shadow-2xs">
+                      {laporanAkhir?.status === "perlu_revisi" ? "Revisi" : `${timeline.sisa_hari} Hari`}
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] opacity-85 leading-relaxed line-clamp-2">
+                    {laporanAkhir?.status === "perlu_revisi"
+                      ? "Mentor pembimbing meminta perbaikan pada naskah laporan Anda. Klik di sini untuk melihat catatan dan mengunggah perbaikan."
+                      : "Unggah naskah Laporan Akhir (format bebas mengikuti kampus/sekolah Anda) agar mentor dapat memeriksa dan memberikan pengesahan."}
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                to="/peserta/penilaian/laporan"
+                className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black shadow-xs shrink-0 self-start sm:self-center transition-all hover:scale-105 active:scale-95 ${
+                  laporanAkhir?.status === "perlu_revisi" || timeline.sisa_hari <= 3
+                    ? "bg-rose-600 text-white hover:bg-rose-700"
+                    : timeline.sisa_hari <= 7
+                    ? "bg-amber-600 text-white hover:bg-amber-700"
+                    : "bg-[#004F9F] text-white hover:bg-[#003870]"
+                }`}
+              >
+                <span>{laporanAkhir?.file_laporan_akhir ? "Lihat Status Laporan" : "Unggah Laporan"}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
 
         {/* 2-COLUMN MAIN CONTENT: ATTENDANCE COCKPIT + MENTOR CARD */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

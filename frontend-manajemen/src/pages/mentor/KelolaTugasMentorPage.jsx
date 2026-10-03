@@ -346,6 +346,7 @@ const KelolaTugasMentorPage = () => {
       await deleteTugasMentor(t.id);
       toastSuccess(`Tugas "${t.judul}" berhasil dihapus`);
       muatData(true);
+      window.dispatchEvent(new Event("sim_notifikasi_updated"));
     } catch (err) {
       console.error("Gagal menghapus tugas:", err);
       const msg = err.response?.data?.message || "Gagal menghapus penugasan";
@@ -1183,6 +1184,7 @@ const KelolaTugasMentorPage = () => {
             setProyekModalOpen(false);
             setSelectedTugas(null);
             muatData(true);
+            window.dispatchEvent(new Event("sim_notifikasi_updated"));
           }}
           isDark={isDark}
         />
@@ -1222,6 +1224,7 @@ const KelolaTugasMentorPage = () => {
             setKuisDraft(null);
             setSelectedTugas(null);
             muatData(true);
+            window.dispatchEvent(new Event("sim_notifikasi_updated"));
           }}
           isDark={isDark}
         />

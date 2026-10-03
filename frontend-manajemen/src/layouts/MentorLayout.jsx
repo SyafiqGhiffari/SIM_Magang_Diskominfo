@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   CalendarCheck,
@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import ManajemenShell from "../components/manajemen/shared/layout/ManajemenShell";
 import { getHitunganAntreanMentor } from "../services/mentorService";
+import { getNotifikasi } from "../services/notifikasiService";
+import { initialLencanaMentor, hitungLencanaMentor } from "../utils/notifikasiMentorHelper";
 import { useManajemenTheme } from "../context/useManajemenTheme";
 import { logoutAdmin, getMe } from "../services/authService";
 import { confirmDialog } from "../utils/swal";
@@ -103,39 +105,80 @@ const MentorLayout = ({ children, searchValue = "", onSearchChange }) => {
   const location = useLocation();
   const [profile, setProfile] = useState(() => getUser() || null);
   const { isDark, setIsDark } = useManajemenTheme();
-  const [hitunganIzin, setHitunganIzin] = useState(0);
+  const [lencanaCounts, setLencanaCounts] = useState(initialLencanaMentor);
 
-  useEffect(() => {
-    const ambil = async () => {
+  // Sinkronisasi hitungan lencana notifikasi dan antrean mentor secara komprehensif
+  const sinkronkanLencana = useCallback(async (listBaru = null) => {
+    try {
+      let rawList = listBaru;
+      if (!Array.isArray(rawList)) {
+        const notifRes = await getNotifikasi({ limit: 100 });
+        rawList = notifRes.data?.data?.items ?? [];
+      }
+
+      let antreanData = {};
       try {
-        const res = await getHitunganAntreanMentor();
-        if (res.data?.data) {
-          setHitunganIzin(res.data.data?.izin || 0);
+        const resAntrean = await getHitunganAntreanMentor();
+        if (resAntrean.data?.data) {
+          antreanData = resAntrean.data.data;
         }
       } catch {
-        /* diam */
+        /* diamkan error antrean */
       }
-    };
-    ambil();
-    const t = setInterval(ambil, 30000);
-    return () => clearInterval(t);
+
+      setLencanaCounts(hitungLencanaMentor(rawList, antreanData));
+    } catch {
+      // diamkan error agar tidak mengganggu antarmuka mentor
+    }
   }, []);
 
-  const navItemsWithBadge = useMemo(
-    () =>
-      navItems.map((item) => {
-        if (item.key === "presensi") {
-          return {
-            ...item,
-            children: item.children.map((c) =>
-              c.key === "verifikasi-izin" ? { ...c, badge: hitunganIzin } : c
-            ),
-          };
-        }
-        return item;
-      }),
-    [hitunganIzin]
-  );
+  useEffect(() => {
+    const timerAwal = setTimeout(() => {
+      sinkronkanLencana();
+    }, 0);
+    const interval = setInterval(() => sinkronkanLencana(), 30000);
+
+    const handleUpdated = () => sinkronkanLencana();
+    const handleSynced = (e) => {
+      if (e?.detail?.items) {
+        sinkronkanLencana(e.detail.items);
+      } else {
+        sinkronkanLencana();
+      }
+    };
+
+    window.addEventListener("sim_notifikasi_updated", handleUpdated);
+    window.addEventListener("sim_notif_settings_changed", handleUpdated);
+    window.addEventListener("sim_notifikasi_synced", handleSynced);
+    window.addEventListener("storage", handleUpdated);
+
+    return () => {
+      clearTimeout(timerAwal);
+      clearInterval(interval);
+      window.removeEventListener("sim_notifikasi_updated", handleUpdated);
+      window.removeEventListener("sim_notif_settings_changed", handleUpdated);
+      window.removeEventListener("sim_notifikasi_synced", handleSynced);
+      window.removeEventListener("storage", handleUpdated);
+    };
+  }, [sinkronkanLencana]);
+
+  const navItemsWithBadge = useMemo(() => {
+    return navItems.map((item) => {
+      if (item.type === "dropdown" && Array.isArray(item.children)) {
+        return {
+          ...item,
+          children: item.children.map((child) => ({
+            ...child,
+            badge: lencanaCounts[child.key] || 0,
+          })),
+        };
+      }
+      return {
+        ...item,
+        badge: lencanaCounts[item.key] || 0,
+      };
+    });
+  }, [lencanaCounts]);
 
   useEffect(() => {
     const fetchProfile = async () => {

@@ -13,6 +13,7 @@ import (
 
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
+	"sim-magang-backend/services"
 	"sim-magang-backend/utils"
 
 	"github.com/gin-gonic/gin"
@@ -514,6 +515,41 @@ func CreateTugasMentor(c *gin.Context) {
 	// Preload relasi
 	config.DB.Preload("Peserta").Preload("PesertaAkses").Preload("Mentor").First(&tugasBaru, tugasBaru.ID)
 
+	// Kirim notifikasi in-app ke peserta bimbingan yang bersangkutan
+	go func(tugasID uint, judulTugas, targetP, targetJ string, specificIDs []uint, mID uint) {
+		var recipientUserIDs []uint
+		if targetP == "spesifik" && len(specificIDs) > 0 {
+			recipientUserIDs = specificIDs
+		} else {
+			var mentees []models.PendaftaranMagang
+			q := config.DB.Where("mentor_id = ? AND status_pendaftaran = 'diterima' AND akun_peserta_id IS NOT NULL", mID)
+			if targetJ != "" && targetJ != "semua" {
+				q = q.Where("kategori_pendaftar = ?", targetJ)
+			}
+			q.Find(&mentees)
+			for _, m := range mentees {
+				if m.AkunPesertaID != nil {
+					recipientUserIDs = append(recipientUserIDs, *m.AkunPesertaID)
+				}
+			}
+		}
+
+		for _, pid := range recipientUserIDs {
+			pCopy := pid
+			services.KirimNotifikasi(services.NotifikasiInput{
+				TargetRole:   "peserta",
+				TargetUserID: &pCopy,
+				Tipe:         "tugas_baru",
+				Prioritas:    "normal",
+				Judul:        "Penugasan Magang Baru",
+				Pesan:        fmt.Sprintf("Mentor telah menambahkan tugas baru: \"%s\". Silakan periksa instruksi penugasan.", judulTugas),
+				RefTabel:     "tugas_magangs",
+				RefID:        &tugasID,
+				UrlTujuan:    "/peserta/pembelajaran/tugas",
+			})
+		}
+	}(tugasBaru.ID, tugasBaru.Judul, tugasBaru.TargetPeserta, tugasBaru.TargetJenjang, targetUserIDs, mentorID)
+
 	utils.SuccessResponse(c, http.StatusCreated, "Tugas berhasil diterbitkan untuk peserta bimbingan", tugasBaru)
 }
 
@@ -582,6 +618,7 @@ func UpdateTugasMentor(c *gin.Context) {
 		tugas.TargetJenjang = tj
 	}
 
+	var targetUserIDs []uint
 	if tugas.TargetPeserta == "spesifik" {
 		pesertaIDsRaw := c.PostFormArray("peserta_ids[]")
 		if len(pesertaIDsRaw) == 0 && c.PostForm("peserta_ids") != "" {
@@ -591,7 +628,6 @@ func UpdateTugasMentor(c *gin.Context) {
 			pesertaIDsRaw = []string{c.PostForm("peserta_id")}
 		}
 
-		var targetUserIDs []uint
 		for _, rawID := range pesertaIDsRaw {
 			idTrim := strings.TrimSpace(rawID)
 			if idTrim == "" {
@@ -649,6 +685,43 @@ func UpdateTugasMentor(c *gin.Context) {
 	}
 
 	config.DB.Preload("Peserta").Preload("PesertaAkses").Preload("Mentor").First(&tugas, tugas.ID)
+
+	// Kirim notifikasi in-app pembaruan tugas jika ada perubahan
+	go func(tugasID uint, judulTugas, targetP, targetJ string, specificIDs []uint, mID uint) {
+		var recipientUserIDs []uint
+		if targetP == "spesifik" && len(specificIDs) > 0 {
+			recipientUserIDs = specificIDs
+		} else {
+			var mentees []models.PendaftaranMagang
+			q := config.DB.Where("mentor_id = ? AND status_pendaftaran = 'diterima' AND akun_peserta_id IS NOT NULL", mID)
+			if targetJ != "" && targetJ != "semua" {
+				q = q.Where("kategori_pendaftar = ?", targetJ)
+			}
+			q.Find(&mentees)
+			for _, m := range mentees {
+				if m.AkunPesertaID != nil {
+					recipientUserIDs = append(recipientUserIDs, *m.AkunPesertaID)
+				}
+			}
+		}
+
+		for _, pid := range recipientUserIDs {
+			pCopy := pid
+			services.KirimNotifikasi(services.NotifikasiInput{
+				TargetRole:   "peserta",
+				TargetUserID: &pCopy,
+				Tipe:         "tugas_baru",
+				Prioritas:    "normal",
+				Judul:        "Pembaruan Tugas Magang",
+				Pesan:        fmt.Sprintf("Mentor telah memperbarui tugas \"%s\". Silakan periksa perubahan instruksi atau tenggat waktu.", judulTugas),
+				RefTabel:     "tugas_magangs",
+				RefID:        &tugasID,
+				UrlTujuan:    "/peserta/pembelajaran/tugas",
+				Gabungkan:    true,
+			})
+		}
+	}(tugas.ID, tugas.Judul, tugas.TargetPeserta, tugas.TargetJenjang, targetUserIDs, mentorID)
+
 	utils.SuccessResponse(c, http.StatusOK, "Tugas berhasil diperbarui", tugas)
 }
 
@@ -685,6 +758,14 @@ func DeleteTugasMentor(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menghapus tugas")
 		return
 	}
+
+	// Bersihkan notifikasi terkait tugas ini
+	config.DB.Where("ref_tabel = 'tugas_magangs' AND ref_id = ?", tugas.ID).Delete(&models.Notifikasi{})
+	config.DB.Exec(`
+		DELETE FROM notifikasis 
+		WHERE ref_tabel = 'pengumpulan_tugas' 
+		  AND ref_id NOT IN (SELECT id FROM pengumpulan_tugas)
+	`)
 
 	utils.SuccessResponse(c, http.StatusOK, "Tugas berhasil dihapus", nil)
 }
@@ -905,6 +986,53 @@ func ReviewPengumpulanTugasMentor(c *gin.Context) {
 		return
 	}
 
+	// Kirim notifikasi hasil evaluasi tugas ke peserta
+	go func(pid uint, jdl, act, ctt string, n *float64, qID uint) {
+		if strings.ToLower(act) == "revisi" {
+			pesanNotif := fmt.Sprintf("Mentor meminta revisi untuk tugas '%s'. Silakan periksa catatan evaluasi.", jdl)
+			if ctt != "" {
+				pesanNotif = fmt.Sprintf("Mentor meminta revisi tugas '%s': \"%s\"", jdl, ctt)
+			}
+			services.KirimNotifikasi(services.NotifikasiInput{
+				TargetRole:   "peserta",
+				TargetUserID: &pid,
+				Tipe:         "tugas_feedback",
+				Prioritas:    "tinggi",
+				Judul:        "Permintaan Revisi Tugas",
+				Pesan:        pesanNotif,
+				RefTabel:     "pengumpulan_tugas",
+				RefID:        &qID,
+				UrlTujuan:    "/peserta/pembelajaran/tugas",
+			})
+		} else {
+			skor := 0.0
+			if n != nil {
+				skor = *n
+			}
+			pesanNotif := fmt.Sprintf("Tugas '%s' telah dinilai oleh mentor (Nilai: %.0f).", jdl, skor)
+			if ctt != "" {
+				pesanNotif += fmt.Sprintf(" Catatan: %s", ctt)
+			}
+			services.KirimNotifikasi(services.NotifikasiInput{
+				TargetRole:   "peserta",
+				TargetUserID: &pid,
+				Tipe:         "tugas_nilai",
+				Prioritas:    "normal",
+				Judul:        "Tugas Selesai Dinilai",
+				Pesan:        pesanNotif,
+				RefTabel:     "pengumpulan_tugas",
+				RefID:        &qID,
+				UrlTujuan:    "/peserta/pembelajaran/tugas",
+			})
+		}
+	}(pengumpulan.PesertaID, pengumpulan.Tugas.Judul, req.Action, pengumpulan.CatatanMentor, pengumpulan.Nilai, pengumpulan.ID)
+
+	// Tandai notifikasi mentor untuk pengumpulan ini sebagai sudah dibaca
+	nowNotif := time.Now()
+	config.DB.Model(&models.Notifikasi{}).
+		Where("target_role = 'mentor' AND ref_tabel = 'pengumpulan_tugas' AND ref_id = ?", pengumpulan.ID).
+		Update("dibaca_pada", nowNotif)
+
 	pesan := "Tugas berhasil disetujui (ACC)"
 	if strings.ToLower(req.Action) == "revisi" {
 		pesan = "Permintaan revisi tugas berhasil dikirimkan ke peserta"
@@ -976,6 +1104,26 @@ func SetNilaiNolTugasMentor(c *gin.Context) {
 			return
 		}
 	}
+
+	go func(pid uint, jdl string, qID uint) {
+		services.KirimNotifikasi(services.NotifikasiInput{
+			TargetRole:   "peserta",
+			TargetUserID: &pid,
+			Tipe:         "tugas_nilai",
+			Prioritas:    "tinggi",
+			Judul:        "Penilaian Tugas Magang",
+			Pesan:        fmt.Sprintf("Tugas '%s' telah dinilai oleh mentor (Nilai: 0).", jdl),
+			RefTabel:     "pengumpulan_tugas",
+			RefID:        &qID,
+			UrlTujuan:    "/peserta/pembelajaran/tugas",
+		})
+	}(req.PesertaID, tugas.Judul, pengumpulan.ID)
+
+	// Tandai notifikasi mentor untuk pengumpulan ini sebagai sudah dibaca
+	nowNotif := time.Now()
+	config.DB.Model(&models.Notifikasi{}).
+		Where("target_role = 'mentor' AND ref_tabel = 'pengumpulan_tugas' AND ref_id = ?", pengumpulan.ID).
+		Update("dibaca_pada", nowNotif)
 
 	utils.SuccessResponse(c, http.StatusOK, "Nilai 0 poin berhasil ditetapkan untuk peserta", pengumpulan)
 }

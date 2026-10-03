@@ -301,7 +301,7 @@ const SuratPenerimaanPage = () => {
     const konfirmasi = await confirmDialog({
       title: s.email_terkirim_at ? "Kirim ulang surat?" : "Kirim surat ke peserta?",
       text: `PDF surat akan dikirim ke ${email}.`,
-      confirmButtonText: "Ya, kirim",
+      confirmText: "Ya, Kirim",
     });
     if (!konfirmasi.isConfirmed) return;
 

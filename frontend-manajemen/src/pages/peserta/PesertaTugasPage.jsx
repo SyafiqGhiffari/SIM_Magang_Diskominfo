@@ -14,6 +14,7 @@ import {
   List,
   Clock,
   CheckCircle2,
+  AlertTriangle,
   Sparkles,
   RotateCcw,
   Upload,
@@ -504,10 +505,10 @@ export const PesertaTugasPage = () => {
                     <th className="py-3.5 px-4 font-black uppercase tracking-wider text-[10.5px] min-w-[160px]">
                       Tenggat Waktu
                     </th>
-                    <th className="py-3.5 px-4 font-black uppercase tracking-wider text-[10.5px] min-w-[130px] text-center">
+                    <th className="py-3.5 px-4 font-black uppercase tracking-wider text-[10.5px] min-w-[170px] text-center">
                       Status &amp; Nilai
                     </th>
-                    <th className="py-3.5 px-4 font-black uppercase tracking-wider text-[10.5px] text-right min-w-[120px]">
+                    <th className="py-3.5 px-4 font-black uppercase tracking-wider text-[10.5px] text-right min-w-[140px]">
                       Aksi
                     </th>
                   </tr>
@@ -519,6 +520,33 @@ export const PesertaTugasPage = () => {
                     const isDinilai = pengumpulan?.status === "dinilai";
                     const isMenunggu = pengumpulan?.status === "menunggu";
                     const isRevisi = pengumpulan?.status === "revisi" || tugas.status_tugas === "revisi";
+
+                    // Parse kuis_data jika tugas bertipe kuis
+                    let kuisConfig = null;
+                    if (isKuis && tugas.kuis_data) {
+                      try {
+                        kuisConfig =
+                          typeof tugas.kuis_data === "string"
+                            ? JSON.parse(tugas.kuis_data)
+                            : tugas.kuis_data;
+                      } catch {
+                        kuisConfig = null;
+                      }
+                    }
+
+                    const kkm = kuisConfig?.kkm || 75;
+                    const isTuntas =
+                      pengumpulan?.status_remidi === "tuntas" ||
+                      (isDinilai && (pengumpulan?.nilai || 0) >= kkm);
+                    const isRemidi =
+                      pengumpulan?.status_remidi === "perlu_remidi" ||
+                      (isDinilai && (pengumpulan?.nilai || 0) < kkm);
+
+                    const maksPercobaan = kuisConfig?.maks_percobaan ?? 2;
+                    const percobaanKe = pengumpulan?.percobaan_ke || 1;
+                    const bisaRemidi =
+                      kuisConfig?.izinkan_remidi &&
+                      (maksPercobaan === 0 || percobaanKe < maksPercobaan);
 
                     const dl = tugas.tenggat_waktu ? new Date(tugas.tenggat_waktu) : null;
                     const now = new Date();
@@ -599,55 +627,115 @@ export const PesertaTugasPage = () => {
                           )}
                         </td>
                         <td className="py-3.5 px-4 text-center">
-                          {isDinilai ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>{pengumpulan.nilai}/100</span>
+                          {isKuis ? (
+                            isDinilai ? (
+                              isTuntas ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 shadow-2xs whitespace-nowrap">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  <span>Nilai: {pengumpulan.nilai} • Tuntas</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/40 shadow-2xs whitespace-nowrap">
+                                  <RotateCcw className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  <span>Nilai: {pengumpulan.nilai} • Perlu Remidi</span>
+                                </span>
+                              )
+                            ) : isMenunggu ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/40 shadow-2xs whitespace-nowrap">
+                                <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span>Menunggu Koreksi</span>
+                              </span>
+                            ) : isOverdue ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/40 shadow-2xs whitespace-nowrap">
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                <span>Terlewat</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 shadow-2xs whitespace-nowrap">
+                                <span>Belum Dikerjakan</span>
+                              </span>
+                            )
+                          ) : isDinilai ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 shadow-2xs whitespace-nowrap">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span>Nilai: {pengumpulan.nilai}/100</span>
                             </span>
                           ) : isRevisi ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80">
-                              Revisi
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/40 shadow-2xs whitespace-nowrap">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                              <span>Perlu Revisi</span>
                             </span>
                           ) : isMenunggu ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80">
-                              Review
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/40 shadow-2xs whitespace-nowrap">
+                              <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span>Menunggu Review</span>
+                            </span>
+                          ) : isOverdue ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/40 shadow-2xs whitespace-nowrap">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                              <span>Terlewat</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300 border border-slate-200/80">
-                              Belum
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 shadow-2xs whitespace-nowrap">
+                              <span>Belum Kumpul</span>
                             </span>
                           )}
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenAction(tugas)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-blue-200/80 dark:border-sky-800/40 bg-blue-50 text-[#004F9F] dark:bg-sky-950/60 dark:text-sky-300 hover:bg-blue-100 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
-                          >
-                            {isKuis ? (
-                              pengumpulan ? (
-                                <>
-                                  <Eye className="w-3.5 h-3.5" />
-                                  <span>Hasil</span>
-                                </>
+                          {isKuis ? (
+                            pengumpulan ? (
+                              isRemidi && bisaRemidi ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAction(tugas)}
+                                  className="group/tbl inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 transition-transform duration-300 group-hover/tbl:-rotate-90 group-hover/tbl:scale-110 shrink-0" />
+                                  <span>Remidi #{percobaanKe + 1}</span>
+                                </button>
                               ) : (
-                                <>
-                                  <CirclePlay className="w-3.5 h-3.5" />
-                                  <span>Mulai</span>
-                                </>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAction(tugas)}
+                                  className="group/tbl inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200/90 dark:border-sky-800/60 bg-blue-50/90 hover:bg-blue-100 dark:bg-sky-950/60 text-[#004F9F] dark:text-sky-300 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                                >
+                                  <Eye className="w-3.5 h-3.5 transition-transform duration-200 group-hover/tbl:scale-110 shrink-0" />
+                                  <span>Lihat Kuis</span>
+                                </button>
                               )
-                            ) : pengumpulan ? (
-                              <>
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Detail</span>
-                              </>
                             ) : (
-                              <>
-                                <Upload className="w-3.5 h-3.5" />
-                                <span>Kumpul</span>
-                              </>
-                            )}
-                          </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAction(tugas)}
+                                className="group/tbl inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200/90 dark:border-sky-800/60 bg-blue-50/90 hover:bg-blue-100 dark:bg-sky-950/60 text-[#004F9F] dark:text-sky-300 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                              >
+                                <CirclePlay className="w-3.5 h-3.5 transition-transform duration-200 group-hover/tbl:scale-110 shrink-0" />
+                                <span>Mulai Kuis</span>
+                              </button>
+                            )
+                          ) : pengumpulan ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAction(tugas)}
+                              className="group/tbl inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200/90 dark:border-sky-800/60 bg-blue-50/90 hover:bg-blue-100 dark:bg-sky-950/60 text-[#004F9F] dark:text-sky-300 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                            >
+                              <Upload className="w-3.5 h-3.5 transition-transform duration-300 group-hover/tbl:-translate-y-0.5 group-hover/tbl:scale-110 shrink-0" />
+                              <span>Kelola Jawaban</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAction(tugas)}
+                              className={`group/tbl inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer whitespace-nowrap ${
+                                isOverdue
+                                  ? "border-rose-300 dark:border-rose-800 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:text-rose-300"
+                                  : "border-blue-200/90 dark:border-sky-800/60 bg-blue-50/90 hover:bg-blue-100 dark:bg-sky-950/60 text-[#004F9F] dark:text-sky-300"
+                              }`}
+                            >
+                              <Upload className="w-3.5 h-3.5 transition-transform duration-300 group-hover/tbl:-translate-y-0.5 group-hover/tbl:scale-110 shrink-0" />
+                              <span>Kumpulkan</span>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );

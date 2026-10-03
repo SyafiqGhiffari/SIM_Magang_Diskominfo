@@ -10,6 +10,7 @@ import (
 
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
+	"sim-magang-backend/services"
 	"sim-magang-backend/utils"
 
 	"github.com/gin-gonic/gin"
@@ -147,6 +148,21 @@ func CreateSertifikat(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat sertifikat")
 		return
 	}
+
+	// Kirim notifikasi in-app ke peserta
+	go func(pid uint, noSertif string, sID uint) {
+		services.KirimNotifikasi(services.NotifikasiInput{
+			TargetRole:   "peserta",
+			TargetUserID: &pid,
+			Tipe:         "sertifikat_terbit",
+			Prioritas:    "tinggi",
+			Judul:        "Sertifikat Magang Diterbitkan",
+			Pesan:        fmt.Sprintf("Sertifikat kelulusan magang Diskominfo Anda telah resmi diterbitkan dengan nomor: %s.", noSertif),
+			RefTabel:     "sertifikats",
+			RefID:        &sID,
+			UrlTujuan:    "/peserta/penilaian/sertifikat",
+		})
+	}(user.ID, sertifikat.NomorSertifikat, sertifikat.ID)
 
 	utils.SuccessResponse(c, http.StatusCreated, "Sertifikat berhasil dibuat", sertifikat)
 }

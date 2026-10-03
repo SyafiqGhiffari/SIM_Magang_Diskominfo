@@ -274,14 +274,14 @@ func KumpulTugasPeserta(c *gin.Context) {
 		return
 	}
 
-	linkTugas := strings.TrimSpace(c.PostForm("link_tugas"))
-	catatanPeserta := strings.TrimSpace(c.PostForm("catatan_peserta"))
-	fileHeader, _ := c.FormFile("file_tugas")
+	var pengumpulan models.PengumpulanTugas
+	adaPengumpulan := config.DB.Where("tugas_id = ? AND peserta_id = ?", tugasID, pesertaID).First(&pengumpulan).Error == nil
 
-	if linkTugas == "" && fileHeader == nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Harap lampirkan berkas tugas atau tautan proyek")
-		return
-	}
+	linkTugas, hasLink := c.GetPostForm("link_tugas")
+	linkTugas = strings.TrimSpace(linkTugas)
+	catatanPeserta, hasCatatan := c.GetPostForm("catatan_peserta")
+	catatanPeserta = strings.TrimSpace(catatanPeserta)
+	fileHeader, _ := c.FormFile("file_tugas")
 
 	var filePath string
 	if fileHeader != nil {
@@ -293,21 +293,50 @@ func KumpulTugasPeserta(c *gin.Context) {
 		filePath = path
 	}
 
-	var pengumpulan models.PengumpulanTugas
-	adaPengumpulan := config.DB.Where("tugas_id = ? AND peserta_id = ?", tugasID, pesertaID).First(&pengumpulan).Error == nil
+	// Tentukan status berkas, tautan, dan catatan efektif
+	fileEfektif := filePath
+	if fileEfektif == "" && adaPengumpulan {
+		fileEfektif = pengumpulan.FilePengumpulan
+	}
+
+	linkEfektif := linkTugas
+	if !hasLink && adaPengumpulan {
+		linkEfektif = pengumpulan.LinkTugas
+	}
+
+	catatanEfektif := catatanPeserta
+	if !hasCatatan && adaPengumpulan {
+		catatanEfektif = pengumpulan.CatatanPeserta
+	}
+
+	// Validasi: minimal harus ada berkas ATAU tautan ATAU catatan penyelesaian
+	if fileEfektif == "" && linkEfektif == "" && catatanEfektif == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Harap sertakan berkas tugas, tautan hasil karya, atau catatan penyelesaian.")
+		return
+	}
 
 	now := time.Now()
 	if adaPengumpulan {
+		updates := map[string]interface{}{
+			"waktu_kumpul": now,
+			"status":       "menunggu", // reset ke status menunggu review saat peserta memperbarui jawaban
+		}
 		if filePath != "" {
 			pengumpulan.FilePengumpulan = filePath
+			updates["file_pengumpulan"] = filePath
 		}
-		if linkTugas != "" {
+		if hasLink {
 			pengumpulan.LinkTugas = linkTugas
+			updates["link_tugas"] = linkTugas
 		}
-		pengumpulan.CatatanPeserta = catatanPeserta
+		if hasCatatan {
+			pengumpulan.CatatanPeserta = catatanPeserta
+			updates["catatan_peserta"] = catatanPeserta
+		}
 		pengumpulan.WaktuKumpul = now
-		pengumpulan.Status = "menunggu" // reset ke menunggu review saat submit ulang/revisi
-		if err := config.DB.Save(&pengumpulan).Error; err != nil {
+		pengumpulan.Status = "menunggu"
+
+		if err := config.DB.Model(&pengumpulan).Updates(updates).Error; err != nil {
 			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui pengumpulan tugas")
 			return
 		}
@@ -342,7 +371,7 @@ func KumpulTugasPeserta(c *gin.Context) {
 			Pesan:        fmt.Sprintf("Peserta %s telah mengumpulkan tugas: %s", userPeserta.Nama, tugas.Judul),
 			RefTabel:     "pengumpulan_tugas",
 			RefID:        &pengumpulan.ID,
-			UrlTujuan:    "/mentor/penilaian",
+			UrlTujuan:    fmt.Sprintf("/mentor/tugas/review?tugas_id=%d", tugas.ID),
 			Gabungkan:    false,
 		})
 	}
@@ -640,7 +669,7 @@ func KumpulKuisPeserta(c *gin.Context) {
 			Pesan:        pesanNotif,
 			RefTabel:     "pengumpulan_tugas",
 			RefID:        &pengumpulan.ID,
-			UrlTujuan:    "/mentor/tugas/review",
+			UrlTujuan:    fmt.Sprintf("/mentor/tugas/review?tugas_id=%d", tugas.ID),
 			Gabungkan:    false,
 		})
 	}

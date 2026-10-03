@@ -11,23 +11,56 @@ const baseSwal = Swal.mixin({
   buttonsStyling: true,
 });
 
-export const confirmDialog = ({
-  title = "Yakin?",
-  text = "",
-  confirmText = "Ya, lanjutkan",
-  cancelText = "Batal",
-  icon = "question",
-  danger = false,
-}) => {
+export const confirmDialog = (
+  optionsOrTitle = "Yakin?",
+  textArg = "",
+  confirmTextArg = "Ya, lanjutkan",
+  cancelTextArg = "Batal",
+  iconArg = "question",
+  dangerArg = false
+) => {
+  let title = "Yakin?";
+  let text = "";
+  let confirmText = "Ya, lanjutkan";
+  let cancelText = "Batal";
+  let icon = "question";
+  let danger = false;
+  let confirmButtonColor;
+  let showCancelButton = true;
+
+  if (typeof optionsOrTitle === "object" && optionsOrTitle !== null) {
+    title = optionsOrTitle.title ?? "Yakin?";
+    text = optionsOrTitle.text ?? "";
+    confirmText =
+      optionsOrTitle.confirmText ??
+      optionsOrTitle.confirmButtonText ??
+      "Ya, lanjutkan";
+    cancelText =
+      optionsOrTitle.cancelText ??
+      optionsOrTitle.cancelButtonText ??
+      "Batal";
+    icon = optionsOrTitle.icon ?? "question";
+    danger = optionsOrTitle.danger ?? false;
+    confirmButtonColor = optionsOrTitle.confirmButtonColor;
+    showCancelButton = optionsOrTitle.showCancelButton ?? true;
+  } else if (typeof optionsOrTitle === "string") {
+    title = optionsOrTitle;
+    text = textArg || "";
+    confirmText = confirmTextArg || "Ya, lanjutkan";
+    cancelText = cancelTextArg || "Batal";
+    icon = iconArg || "question";
+    danger = dangerArg || false;
+  }
+
   return baseSwal.fire({
     title,
     text,
     icon,
     iconColor: danger ? "#dc2626" : "#004f9f",
-    showCancelButton: true,
+    showCancelButton,
     confirmButtonText: confirmText,
     cancelButtonText: cancelText,
-    confirmButtonColor: danger ? "#dc2626" : "#004f9f",
+    confirmButtonColor: confirmButtonColor || (danger ? "#dc2626" : "#004f9f"),
     cancelButtonColor: "#94a3b8",
     reverseButtons: true,
     focusCancel: true,

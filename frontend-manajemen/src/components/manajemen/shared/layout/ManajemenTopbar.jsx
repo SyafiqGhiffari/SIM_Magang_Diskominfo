@@ -81,7 +81,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
   // Loader murni: memuat notifikasi & memfilter sesuai preferensi user
   const muatNotifikasi = useCallback(async () => {
     try {
-      const res = await getNotifikasi({ limit: 20 });
+      const res = await getNotifikasi({ limit: 100 });
       const data = res.data?.data ?? {};
       const rawList = data.items ?? [];
 
@@ -173,6 +173,13 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
       setNotifList(filtered);
       const unread = filtered.filter((x) => !x.dibaca_pada).length;
       setUnreadCount(unread);
+
+      // Broadcast hasil filter notifikasi ke sidebar agar instan sinkron
+      window.dispatchEvent(
+        new CustomEvent("sim_notifikasi_synced", {
+          detail: { items: filtered, unreadCount: unread },
+        })
+      );
     } catch {
       // diamkan: notifikasi tidak boleh mengganggu alur utama
     }
@@ -223,6 +230,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
       setNotifList((p) => p.map((x) => (x.id === n.id ? { ...x, dibaca_pada: new Date().toISOString() } : x)));
       setUnreadCount((p) => Math.max(0, p - 1));
       try { await bacaNotifikasi(n.id); } catch { /* abaikan */ }
+      window.dispatchEvent(new CustomEvent("sim_notifikasi_updated"));
     }
     if (n.url_tujuan) navigate(n.url_tujuan);
   };
@@ -232,6 +240,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
     setNotifList((p) => p.map((x) => (x.dibaca_pada ? x : { ...x, dibaca_pada: now })));
     setUnreadCount(0);
     try { await bacaSemuaNotifikasi(); } catch { muatNotifikasi(); }
+    window.dispatchEvent(new CustomEvent("sim_notifikasi_updated"));
   };
 
   // Tandai satu notifikasi sebagai sudah dibaca
@@ -246,6 +255,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
     } catch {
       muatNotifikasi();
     }
+    window.dispatchEvent(new CustomEvent("sim_notifikasi_updated"));
   };
 
   // Hapus satu notifikasi. stopPropagation supaya tidak ikut membuka url tujuan.
@@ -254,12 +264,14 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
     setNotifList((p) => p.filter((x) => x.id !== n.id));
     if (!n.dibaca_pada) setUnreadCount((p) => Math.max(0, p - 1));
     try { await hapusNotifikasi(n.id); } catch { muatNotifikasi(); }
+    window.dispatchEvent(new CustomEvent("sim_notifikasi_updated"));
   };
 
   const handleHapusSemua = async () => {
     setNotifList([]);
     setUnreadCount(0);
     try { await hapusSemuaNotifikasi(); } catch { muatNotifikasi(); }
+    window.dispatchEvent(new CustomEvent("sim_notifikasi_updated"));
   };
 
   useEffect(() => {

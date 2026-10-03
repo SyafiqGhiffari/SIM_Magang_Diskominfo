@@ -332,6 +332,11 @@ func SetupRoutes(router *gin.Engine) {
 			mentor.GET("/tugas/:id/pengumpulan", controllers.GetPengumpulanTugasMentor)
 			mentor.POST("/tugas/pengumpulan/:pengumpulan_id/review", controllers.ReviewPengumpulanTugasMentor)
 			mentor.POST("/tugas/nilai-nol", controllers.SetNilaiNolTugasMentor)
+
+			// ── LAPORAN AKHIR PESERTA BIMBINGAN ──
+			mentor.GET("/laporan-akhir", controllers.GetLaporanAkhirMentor)
+			mentor.POST("/laporan-akhir/:pendaftaran_id/verifikasi", controllers.VerifikasiLaporanAkhirMentor)
+			mentor.POST("/laporan-akhir/:pendaftaran_id/pengingat", controllers.KirimPengingatLaporanMentor)
 		}
 
 		// ── Route khusus Peserta (presensi, pengajuan izin, transkrip nilai) ──
@@ -348,8 +353,14 @@ func SetupRoutes(router *gin.Engine) {
 			peserta.GET("/logbook", controllers.GetLogbookPeserta)
 			peserta.GET("/materi", controllers.GetMateriPeserta)
 			peserta.GET("/tugas", controllers.GetTugasPeserta)
+			peserta.GET("/laporan-akhir", controllers.GetLaporanAkhirPeserta)
 
-			// AKSI TULIS: hanya untuk peserta yang masih aktif magang
+			// Upload berkas laporan akhir dan berkas profil pendaftaran tetap diizinkan
+			// walau masa magang sudah selesai, agar alumni dapat menyelesaikan syarat sertifikat
+			peserta.POST("/laporan-akhir", controllers.UploadLaporanAkhirPeserta)
+			peserta.POST("/upload-dokumen", controllers.UploadDokumenPeserta)
+
+			// AKSI TULIS HARIAN: hanya untuk peserta yang masih aktif magang (presensi, izin, kumpul tugas harian, update logbook)
 			aktif := peserta.Group("", middlewares.MagangAktifMiddleware())
 			{
 				aktif.POST("/presensi/masuk", controllers.PresensiMasuk)
@@ -357,8 +368,6 @@ func SetupRoutes(router *gin.Engine) {
 				aktif.POST("/pengajuan-izin", controllers.BuatPengajuanIzin)
 				aktif.DELETE("/pengajuan-izin/:id", controllers.BatalkanPengajuanIzin)
 				aktif.PUT("/logbook/:id", controllers.UpdateLogbookPeserta)
-				aktif.POST("/laporan-akhir", controllers.UploadLaporanAkhirPeserta)
-				aktif.POST("/upload-dokumen", controllers.UploadDokumenPeserta)
 				aktif.POST("/tugas/:id/kumpul", controllers.KumpulTugasPeserta)
 				aktif.POST("/tugas/:id/kumpul-kuis", controllers.KumpulKuisPeserta)
 			}

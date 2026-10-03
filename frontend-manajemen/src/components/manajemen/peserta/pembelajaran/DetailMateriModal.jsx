@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   X,
   FileText,
@@ -19,9 +19,19 @@ import {
   FolderOpen,
   Image as ImageIcon,
   Globe,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  FileX,
+  Loader2,
 } from "lucide-react";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { getFileUrl } from "../../../../utils/fileUrl";
 import { formatTanggalPresensi } from "../../../../constants/presensiStatus";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 // Helper ekstraksi ID YouTube
 const extractYouTubeId = (url) => {
@@ -57,6 +67,16 @@ export const DetailMateriModal = ({
   const [fotoError, setFotoError] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+
+  const canvasRef = useRef(null);
+  const canvasRefMobile = useRef(null);
+  const defaultZoom = typeof window !== "undefined" && window.innerWidth < 640 ? 50 : 100;
+  const [zoom, setZoom] = useState(defaultZoom);
+  const [pdfDoc, setPdfDoc] = useState(null);
+  const [numPages, setNumPages] = useState(1);
+  const [pageNum, setPageNum] = useState(1);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState(false);
 
   const rawFilePath = materi?.file_materi || materi?.file_path;
   const fileUrl = rawFilePath ? getFileUrl(rawFilePath) : null;
@@ -136,6 +156,79 @@ export const DetailMateriModal = ({
     }
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
+
+  // Muat dokumen PDF dengan pdfjs-dist saat modal terbuka dan file bertipe PDF
+  useEffect(() => {
+    if (!isOpen || !fileUrl || !isPdf) {
+      const resetTimer = setTimeout(() => {
+        setPdfDoc(null);
+        setPageNum(1);
+        setDocLoading(false);
+        setDocError(false);
+      }, 0);
+      return () => clearTimeout(resetTimer);
+    }
+
+    let cancelled = false;
+    const initTimer = setTimeout(() => {
+      setDocLoading(true);
+      setDocError(false);
+      setPageNum(1);
+    }, 0);
+
+    fetch(fileUrl)
+      .then((res) => res.arrayBuffer())
+      .then((buf) => pdfjsLib.getDocument({ data: buf }).promise)
+      .then((doc) => {
+        if (cancelled) return;
+        setPdfDoc(doc);
+        setNumPages(doc.numPages);
+        setPageNum(1);
+        setDocLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Gagal membaca dokumen PDF materi:", err);
+        setDocError(true);
+        setDocLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(initTimer);
+    };
+  }, [isOpen, fileUrl, isPdf]);
+
+  // Render halaman PDF ke canvas saat pageNum, zoom, pdfDoc, atau mobile preview berubah
+  useEffect(() => {
+    if (!pdfDoc || !isPdf) return;
+    let cancelled = false;
+
+    pdfDoc.getPage(pageNum).then((page) => {
+      if (cancelled) return;
+      const viewport = page.getViewport({ scale: zoom / 100 });
+
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d");
+        page.render({ canvasContext: ctx, viewport });
+      }
+
+      const canvasMobile = canvasRefMobile.current;
+      if (canvasMobile) {
+        canvasMobile.width = viewport.width;
+        canvasMobile.height = viewport.height;
+        const ctxMobile = canvasMobile.getContext("2d");
+        page.render({ canvasContext: ctxMobile, viewport });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pdfDoc, pageNum, zoom, showMobilePreview, isPdf]);
 
   if (!isOpen || !materi) return null;
 
@@ -372,6 +465,44 @@ export const DetailMateriModal = ({
                 </div>
               )}
 
+              {/* Kontrol Zoom PDF */}
+              {showFileView && isPdf && !docLoading && !docError && (
+                <div
+                  className={`hidden sm:flex items-center gap-0.5 sm:gap-1 rounded-full border shadow-2xs px-1 sm:px-1.5 py-0.5 md:py-1 shrink-0 ${
+                    isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setZoom((z) => Math.max(25, z - 25))}
+                    disabled={zoom <= 25}
+                    className="rounded-full p-1 text-slate-500 hover:bg-slate-100 hover:text-[#004F9F] dark:hover:bg-white/10 dark:hover:text-[#00A5EC] hover:scale-110 transition-all duration-200 cursor-pointer disabled:opacity-30 disabled:hover:scale-100"
+                    title="Perkecil"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoom(100)}
+                    className={`text-[10px] md:text-xs font-bold w-9 md:w-11 text-center tabular-nums cursor-pointer hover:underline ${
+                      isDark ? "text-slate-300" : "text-[#0B1442]"
+                    }`}
+                    title="Reset Ukuran (100%)"
+                  >
+                    {zoom}%
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoom((z) => Math.min(200, z + 25))}
+                    disabled={zoom >= 200}
+                    className="rounded-full p-1 text-slate-500 hover:bg-slate-100 hover:text-[#004F9F] dark:hover:bg-white/10 dark:hover:text-[#00A5EC] hover:scale-110 transition-all duration-200 cursor-pointer disabled:opacity-30 disabled:hover:scale-100"
+                    title="Perbesar"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              )}
+
               {/* Action Buttons: Buka Tab Baru, Print & Download */}
               {(externalLink || fileUrl) && (
                 <a
@@ -401,7 +532,11 @@ export const DetailMateriModal = ({
                   }`}
                   title="Cetak Berkas"
                 >
-                  <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  {actionLoading === "print" ? (
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                  ) : (
+                    <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  )}
                 </button>
               )}
 
@@ -417,7 +552,11 @@ export const DetailMateriModal = ({
                   }`}
                   title="Unduh Berkas"
                 >
-                  <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  {actionLoading === "download" ? (
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  )}
                 </button>
               )}
             </div>
@@ -437,14 +576,42 @@ export const DetailMateriModal = ({
             >
               {showFileView ? (
                 isPdf ? (
-                  /* 1. Embed PDF Native Viewer */
-                  <div className="w-full h-full rounded-2xl overflow-hidden shadow-md border border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-900">
-                    <iframe
-                      src={`${fileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
-                      title={materi.judul}
-                      className="w-full h-full border-0"
+                  /* 1. Canvas PDF Viewer berbasis pdfjs-dist */
+                  docLoading ? (
+                    <div className="m-auto flex flex-col items-center gap-3 text-slate-400">
+                      <div
+                        className={`h-8 w-8 sm:h-9 sm:w-9 rounded-full border-[3px] border-slate-300 animate-spin ${
+                          isDark ? "border-t-[#00A5EC]" : "border-t-[#004F9F]"
+                        }`}
+                      />
+                      <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-300">
+                        Memuat modul PDF...
+                      </span>
+                    </div>
+                  ) : docError ? (
+                    <div className="m-auto flex flex-col items-center gap-2.5 text-center text-slate-400">
+                      <FileX className="w-8 h-8 sm:w-10 sm:h-10 text-rose-400" />
+                      <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-300">
+                        Gagal memuat pratinjau modul PDF
+                      </span>
+                      <a
+                        href={fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#004F9F] text-white hover:bg-blue-800 transition-all shadow-xs"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Buka Berkas di Tab Baru</span>
+                      </a>
+                    </div>
+                  ) : (
+                    <canvas
+                      ref={canvasRef}
+                      className={`m-auto rounded-xl sm:rounded-2xl shadow-2xl ring-1 ring-black/5 animate-[fadeslide_0.3s_ease-out] ${
+                        isDark ? "bg-[#161b22]" : "bg-white"
+                      }`}
                     />
-                  </div>
+                  )
                 ) : isImage ? (
                   /* 2. Embed Pratinjau Gambar */
                   <div className="m-auto max-w-full max-h-full flex items-center justify-center p-2">
@@ -662,6 +829,33 @@ export const DetailMateriModal = ({
                 </div>
               )}
             </div>
+
+            {/* Floating PDF Pagination (Desktop) */}
+            {showFileView && isPdf && numPages > 1 && !docLoading && !docError && (
+              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 sm:gap-1.5 rounded-full border bg-slate-900/85 border-white/10 px-3.5 py-1.5 shadow-xl backdrop-blur-md text-white transition-all duration-300 hover:scale-105 hover:bg-slate-900 select-none">
+                <button
+                  type="button"
+                  onClick={() => setPageNum((p) => Math.max(1, p - 1))}
+                  disabled={pageNum === 1}
+                  className="rounded-full p-1.5 transition-all duration-200 disabled:opacity-30 disabled:hover:scale-100 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed hover:bg-white/10 hover:scale-115 active:scale-90 text-white/80 hover:text-white"
+                  title="Halaman Sebelumnya"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs font-black whitespace-nowrap px-2 select-none text-white">
+                  Hal {pageNum} / {numPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPageNum((p) => Math.min(numPages, p + 1))}
+                  disabled={pageNum === numPages}
+                  className="rounded-full p-1.5 transition-all duration-200 disabled:opacity-30 disabled:hover:scale-100 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed hover:bg-white/10 hover:scale-115 active:scale-90 text-white/80 hover:text-white"
+                  title="Halaman Selanjutnya"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1080,15 +1274,54 @@ export const DetailMateriModal = ({
             </div>
 
             {/* Konten pratinjau mobile */}
-            <div className="relative flex-1 min-h-0 flex flex-col p-3 bg-black/5 dark:bg-black/20">
+            <div
+              className="relative flex-1 min-h-0 flex flex-col p-3 overflow-auto flex"
+              style={{
+                backgroundColor: isDark ? "#0b0f19" : "#eef1f6",
+                backgroundImage: isDark
+                  ? "radial-gradient(circle, #1e293b 1px, transparent 1px)"
+                  : "radial-gradient(circle, #d8dee8 1px, transparent 1px)",
+                backgroundSize: "18px 18px",
+              }}
+            >
               {showFileView && isPdf ? (
-                <div className="w-full h-full rounded-xl overflow-hidden border border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-900">
-                  <iframe
-                    src={`${fileUrl}#toolbar=1&navpanes=0`}
-                    title={materi.judul}
-                    className="w-full h-full border-0"
-                  />
-                </div>
+                docLoading ? (
+                  <div className="m-auto flex flex-col items-center gap-3 text-slate-400">
+                    <div
+                      className={`h-8 w-8 rounded-full border-[3px] border-slate-300 animate-spin ${
+                        isDark ? "border-t-[#00A5EC]" : "border-t-[#004F9F]"
+                      }`}
+                    />
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
+                      Memuat modul PDF...
+                    </span>
+                  </div>
+                ) : docError ? (
+                  <div className="m-auto flex flex-col items-center gap-2 text-center text-slate-400 p-4">
+                    <FileX className="w-8 h-8 text-rose-400" />
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
+                      Gagal memuat pratinjau PDF
+                    </span>
+                    <a
+                      href={fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#004F9F] text-white hover:bg-blue-800 transition-all mt-2 shadow-xs"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Buka Berkas</span>
+                    </a>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center min-h-full min-w-full overflow-auto p-2">
+                    <canvas
+                      ref={canvasRefMobile}
+                      className={`rounded-xl shadow-xl ring-1 ring-black/5 max-w-full ${
+                        isDark ? "bg-[#161b22]" : "bg-white"
+                      }`}
+                    />
+                  </div>
+                )
               ) : youTubeId ? (
                 <div className="m-auto w-full aspect-video rounded-xl overflow-hidden shadow-lg bg-black">
                   <iframe
@@ -1125,6 +1358,67 @@ export const DetailMateriModal = ({
               ) : (
                 <div className="m-auto text-center p-4">
                   <p className="text-xs text-slate-500">Pratinjau berkas pada tampilan layar penuh.</p>
+                </div>
+              )}
+
+              {/* Floating Toolbar Mobile: Pagination + Print & Download */}
+              {showFileView && isPdf && !docLoading && !docError && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 rounded-full border bg-slate-900/95 border-white/20 px-3.5 py-1.5 shadow-2xl backdrop-blur-md text-white max-w-[92vw] w-max whitespace-nowrap select-none">
+                  {numPages > 1 && (
+                    <div className="flex items-center gap-1 shrink-0 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setPageNum((p) => Math.max(1, p - 1))}
+                        disabled={pageNum === 1}
+                        className="p-1 rounded-full hover:bg-white/20 transition-all hover:scale-110 active:scale-90 disabled:opacity-30 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer text-white"
+                        title="Halaman Sebelumnya"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-[11px] font-black whitespace-nowrap px-1 select-none font-mono text-white shrink-0">
+                        Hal {pageNum}/{numPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPageNum((p) => Math.min(numPages, p + 1))}
+                        disabled={pageNum === numPages}
+                        className="p-1 rounded-full hover:bg-white/20 transition-all hover:scale-110 active:scale-90 disabled:opacity-30 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer text-white"
+                        title="Halaman Selanjutnya"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="h-4 w-px bg-white/20 mx-1 shrink-0" />
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      disabled={actionLoading !== null}
+                      className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-white/20 transition-all hover:scale-110 active:scale-95 cursor-pointer disabled:opacity-30 text-white"
+                      title="Cetak Dokumen"
+                    >
+                      {actionLoading === "print" ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Printer className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownload}
+                      disabled={actionLoading !== null}
+                      className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-white/20 transition-all hover:scale-110 active:scale-95 cursor-pointer disabled:opacity-30 text-white"
+                      title="Unduh Dokumen"
+                    >
+                      {actionLoading === "download" ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

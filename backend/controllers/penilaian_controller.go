@@ -8,6 +8,7 @@ import (
 
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
+	"sim-magang-backend/services"
 	"sim-magang-backend/utils"
 
 	"github.com/gin-gonic/gin"
@@ -459,6 +460,15 @@ func SimpanPenilaianPeserta(c *gin.Context) {
 			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan penilaian: "+errCreate.Error())
 			return
 		}
+		if input.LaporanAkhirDisetujui {
+			_ = config.DB.Model(&models.PendaftaranMagang{}).
+				Where("akun_peserta_id = ? AND file_laporan_akhir IS NOT NULL AND file_laporan_akhir != ''", peserta.ID).
+				Update("status_laporan_akhir", "disetujui")
+		} else {
+			_ = config.DB.Model(&models.PendaftaranMagang{}).
+				Where("akun_peserta_id = ? AND file_laporan_akhir IS NOT NULL AND file_laporan_akhir != '' AND status_laporan_akhir = 'disetujui'", peserta.ID).
+				Update("status_laporan_akhir", "menunggu_review")
+		}
 	} else {
 		// Update yang sudah ada
 		penilaian.MentorID = mentorID
@@ -484,6 +494,62 @@ func SimpanPenilaianPeserta(c *gin.Context) {
 			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui penilaian: "+errSave.Error())
 			return
 		}
+		if input.LaporanAkhirDisetujui {
+			_ = config.DB.Model(&models.PendaftaranMagang{}).
+				Where("akun_peserta_id = ? AND file_laporan_akhir IS NOT NULL AND file_laporan_akhir != ''", peserta.ID).
+				Update("status_laporan_akhir", "disetujui")
+		} else {
+			_ = config.DB.Model(&models.PendaftaranMagang{}).
+				Where("akun_peserta_id = ? AND file_laporan_akhir IS NOT NULL AND file_laporan_akhir != '' AND status_laporan_akhir = 'disetujui'", peserta.ID).
+				Update("status_laporan_akhir", "menunggu_review")
+		}
+	}
+
+	// Kirim notifikasi in-app ke peserta jika nilai akhir difinalisasi
+	if status == "final" {
+		go func(pid uint, na float64, prd string, penID uint) {
+			services.KirimNotifikasi(services.NotifikasiInput{
+				TargetRole:   "peserta",
+				TargetUserID: &pid,
+				Tipe:         "rapor_nilai",
+				Prioritas:    "tinggi",
+				Judul:        "Rapor Nilai Akhir Diterbitkan",
+				Pesan:        fmt.Sprintf("Evaluasi nilai akhir 4 pilar kompetensi magang Anda telah diterbitkan oleh mentor (Nilai: %.1f - %s).", na, prd),
+				RefTabel:     "penilaian_magangs",
+				RefID:        &penID,
+				UrlTujuan:    "/peserta/penilaian/rapor",
+			})
+		}(peserta.ID, nilaiAkhir, predikatAkhir, penilaian.ID)
+	}
+
+	// Kirim notifikasi jika laporan akhir disetujui
+	if input.LaporanAkhirDisetujui {
+		go func(pid uint, penID uint) {
+			services.KirimNotifikasi(services.NotifikasiInput{
+				TargetRole:   "peserta",
+				TargetUserID: &pid,
+				Tipe:         "laporan_akhir",
+				Prioritas:    "normal",
+				Judul:        "Laporan Akhir Disetujui",
+				Pesan:        "Naskah laporan akhir dan luaran proyek magang Anda telah disetujui oleh mentor pembimbing.",
+				RefTabel:     "penilaian_magangs",
+				RefID:        &penID,
+				UrlTujuan:    "/peserta/penilaian/laporan",
+			})
+		}(peserta.ID, penilaian.ID)
+
+		// Tandai notifikasi mentor untuk laporan akhir peserta ini sebagai sudah dibaca
+		nowNotif := time.Now()
+		config.DB.Exec(`
+			UPDATE notifikasis n
+			JOIN pendaftaran_magangs p ON p.id = n.ref_id
+			SET n.dibaca_pada = ?
+			WHERE n.target_role = 'mentor'
+			  AND n.target_user_id = ?
+			  AND n.tipe = 'laporan_akhir'
+			  AND n.ref_tabel = 'pendaftaran_magangs'
+			  AND p.akun_peserta_id = ?
+		`, nowNotif, mentorID, peserta.ID)
 	}
 
 	pesan := "Draf penilaian berhasil disimpan"

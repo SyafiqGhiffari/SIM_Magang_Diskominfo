@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -136,12 +137,252 @@ func sinkronkanNotifikasiMentorIzin(mentorID uint) {
 	`, mentorID)
 }
 
+// sinkronkanNotifikasiMentorTugas memastikan notifikasi in-app untuk pengumpulan tugas
+// berstatus 'menunggu' selalu sinkron dan muncul di lonceng mentor pembimbing.
+func sinkronkanNotifikasiMentorTugas(mentorID uint) {
+	type TugasMenunggu struct {
+		ID          uint      `gorm:"column:id"`
+		PesertaID   uint      `gorm:"column:peserta_id"`
+		NamaPeserta string    `gorm:"column:nama_peserta"`
+		TugasID     uint      `gorm:"column:tugas_id"`
+		JudulTugas  string    `gorm:"column:judul_tugas"`
+		TipeTugas   string    `gorm:"column:tipe_tugas"`
+		CreatedAt   time.Time `gorm:"column:created_at"`
+	}
+
+	var list []TugasMenunggu
+	config.DB.Table("pengumpulan_tugas pt").
+		Select("pt.id, pt.peserta_id, u.nama as nama_peserta, tm.id as tugas_id, tm.judul as judul_tugas, tm.tipe_tugas as tipe_tugas, pt.created_at").
+		Joins("JOIN user_manajemens u ON u.id = pt.peserta_id").
+		Joins("JOIN tugas_magangs tm ON tm.id = pt.tugas_id").
+		Where("(tm.mentor_id = ? OR pt.peserta_id IN (SELECT akun_peserta_id FROM pendaftaran_magangs WHERE mentor_id = ? AND status_pendaftaran = 'diterima')) AND pt.status = 'menunggu'", mentorID, mentorID).
+		Scan(&list)
+
+	for _, item := range list {
+		var count int64
+		config.DB.Model(&models.Notifikasi{}).
+			Where("target_role = 'mentor' AND target_user_id = ? AND tipe = 'tugas_dikumpulkan' AND ref_tabel = 'pengumpulan_tugas' AND ref_id = ?", mentorID, item.ID).
+			Count(&count)
+
+		judul := "Tugas Baru Dikumpulkan"
+		jenisTeks := "tugas"
+		if item.TipeTugas == "kuis" {
+			judul = "Jawaban Kuis Dikumpulkan"
+			jenisTeks = "kuis"
+		}
+		pesan := fmt.Sprintf("Peserta %s telah mengumpulkan %s '%s'. Memerlukan review/penilaian Anda.", item.NamaPeserta, jenisTeks, item.JudulTugas)
+		urlTujuan := fmt.Sprintf("/mentor/tugas/review?tugas_id=%d", item.TugasID)
+
+		if count == 0 {
+			notif := models.Notifikasi{
+				TargetRole:   "mentor",
+				TargetUserID: &mentorID,
+				Tipe:         "tugas_dikumpulkan",
+				Prioritas:    "normal",
+				Judul:        judul,
+				Pesan:        pesan,
+				RefTabel:     "pengumpulan_tugas",
+				RefID:        &item.ID,
+				UrlTujuan:    urlTujuan,
+				CreatedAt:    item.CreatedAt,
+				UpdatedAt:    item.CreatedAt,
+			}
+			config.DB.Create(&notif)
+		}
+	}
+
+	// Otomatis tandai sudah dibaca notifikasi tugas yang statusnya sudah bukan 'menunggu' (misal sudah dinilai)
+	config.DB.Exec(`
+		UPDATE notifikasis n
+		JOIN pengumpulan_tugas pt ON pt.id = n.ref_id
+		SET n.dibaca_pada = NOW()
+		WHERE n.target_role = 'mentor'
+		  AND n.target_user_id = ?
+		  AND n.tipe = 'tugas_dikumpulkan'
+		  AND n.ref_tabel = 'pengumpulan_tugas'
+		  AND n.dibaca_pada IS NULL
+		  AND pt.status != 'menunggu'
+	`, mentorID)
+
+	// Bersihkan notifikasi untuk pengumpulan tugas yang sudah dihapus / reset
+	config.DB.Exec(`
+		DELETE n FROM notifikasis n
+		LEFT JOIN pengumpulan_tugas pt ON pt.id = n.ref_id
+		WHERE n.target_role = 'mentor'
+		  AND n.target_user_id = ?
+		  AND n.tipe = 'tugas_dikumpulkan'
+		  AND n.ref_tabel = 'pengumpulan_tugas'
+		  AND pt.id IS NULL
+	`, mentorID)
+}
+
+// sinkronkanNotifikasiMentorLaporan memastikan notifikasi in-app untuk naskah laporan akhir
+// yang sudah diunggah peserta bimbingan tetapi belum disetujui selalu sinkron di lonceng mentor.
+func sinkronkanNotifikasiMentorLaporan(mentorID uint) {
+	type LaporanMenunggu struct {
+		ID                uint      `gorm:"column:id"`
+		AkunPesertaID     uint      `gorm:"column:akun_peserta_id"`
+		NamaPeserta       string    `gorm:"column:nama_peserta"`
+		JudulLaporanAkhir string    `gorm:"column:judul_laporan_akhir"`
+		CreatedAt         time.Time `gorm:"column:created_at"`
+	}
+
+	var list []LaporanMenunggu
+	config.DB.Table("pendaftaran_magangs p").
+		Select("p.id, p.akun_peserta_id, u.nama as nama_peserta, p.judul_laporan_akhir, p.updated_at as created_at").
+		Joins("JOIN user_manajemens u ON u.id = p.akun_peserta_id").
+		Joins("LEFT JOIN penilaian_magangs pn ON pn.peserta_id = p.akun_peserta_id").
+		Where("p.mentor_id = ? AND p.status_pendaftaran = 'diterima' AND p.file_laporan_akhir != '' AND (pn.laporan_akhir_disetujui IS NULL OR pn.laporan_akhir_disetujui = false)", mentorID).
+		Scan(&list)
+
+	for _, item := range list {
+		var count int64
+		config.DB.Model(&models.Notifikasi{}).
+			Where("target_role = 'mentor' AND target_user_id = ? AND tipe = 'laporan_akhir' AND ref_tabel = 'pendaftaran_magangs' AND ref_id = ?", mentorID, item.ID).
+			Count(&count)
+
+		pesan := fmt.Sprintf("Peserta %s telah mengunggah Laporan Akhir Magang (%s). Silakan tinjau naskah dan luaran proyeknya.", item.NamaPeserta, item.JudulLaporanAkhir)
+		urlTujuan := "/mentor/laporan-akhir"
+
+		if count == 0 {
+			notif := models.Notifikasi{
+				TargetRole:   "mentor",
+				TargetUserID: &mentorID,
+				Tipe:         "laporan_akhir",
+				Prioritas:    "tinggi",
+				Judul:        "Laporan Akhir Menunggu Review",
+				Pesan:        pesan,
+				RefTabel:     "pendaftaran_magangs",
+				RefID:        &item.ID,
+				UrlTujuan:    urlTujuan,
+				CreatedAt:    item.CreatedAt,
+				UpdatedAt:    item.CreatedAt,
+			}
+			config.DB.Create(&notif)
+		}
+	}
+
+	// Otomatis tandai sudah dibaca jika laporan akhir sudah disetujui
+	config.DB.Exec(`
+		UPDATE notifikasis n
+		JOIN pendaftaran_magangs p ON p.id = n.ref_id
+		JOIN penilaian_magangs pn ON pn.peserta_id = p.akun_peserta_id
+		SET n.dibaca_pada = NOW()
+		WHERE n.target_role = 'mentor'
+		  AND n.target_user_id = ?
+		  AND n.tipe = 'laporan_akhir'
+		  AND n.ref_tabel = 'pendaftaran_magangs'
+		  AND n.dibaca_pada IS NULL
+		  AND pn.laporan_akhir_disetujui = true
+	`, mentorID)
+
+	// Bersihkan notifikasi untuk laporan akhir yang berkasnya sudah dikosongkan/dihapus
+	config.DB.Exec(`
+		DELETE n FROM notifikasis n
+		JOIN pendaftaran_magangs p ON p.id = n.ref_id
+		WHERE n.target_role = 'mentor'
+		  AND n.target_user_id = ?
+		  AND n.tipe = 'laporan_akhir'
+		  AND n.ref_tabel = 'pendaftaran_magangs'
+		  AND (p.file_laporan_akhir = '' OR p.file_laporan_akhir IS NULL)
+	`, mentorID)
+}
+
+// sinkronkanNotifikasiPesertaLaporan memeriksa apakah peserta magang aktif mendekati akhir periode magang
+// dan memberikan notifikasi pengingat in-app (H-14, H-7, H-3) untuk mengunggah naskah Laporan Akhir magang.
+func sinkronkanNotifikasiPesertaLaporan(pesertaID uint) {
+	var pendaftaran models.PendaftaranMagang
+	if err := config.DB.Where("akun_peserta_id = ? AND status_pendaftaran = 'diterima'", pesertaID).
+		Order("id desc").First(&pendaftaran).Error; err != nil {
+		return
+	}
+
+	// Cek apakah laporan sudah disetujui mentor
+	var nilai models.PenilaianMagang
+	laporanDisetujui := false
+	if err := config.DB.Where("peserta_id = ?", pesertaID).First(&nilai).Error; err == nil {
+		laporanDisetujui = nilai.LaporanAkhirDisetujui
+	}
+
+	// Jika laporan sudah disetujui atau berkas laporan sudah diunggah,
+	// tandai notifikasi pengingat laporan akhir sebagai sudah dibaca agar tidak terus membebani lonceng/badge
+	if laporanDisetujui || pendaftaran.FileLaporanAkhir != "" {
+		config.DB.Model(&models.Notifikasi{}).
+			Where("target_role = 'peserta' AND target_user_id = ? AND tipe = 'laporan_akhir' AND judul LIKE 'Pengingat%' AND dibaca_pada IS NULL", pesertaID).
+			Update("dibaca_pada", time.Now())
+		return
+	}
+
+	if pendaftaran.TanggalSelesai == "" {
+		return
+	}
+
+	tSelesai, err := time.Parse("2006-01-02", pendaftaran.TanggalSelesai)
+	if err != nil {
+		return
+	}
+
+	now := time.Now()
+	diff := tSelesai.Sub(now)
+	sisaHari := int(math.Ceil(diff.Hours() / 24))
+
+	// Hanya aktifkan pengingat jika sisa hari <= 14 hari
+	if sisaHari > 14 {
+		return
+	}
+
+	var judul, prioritas, pesan string
+
+	if sisaHari <= 3 {
+		prioritas = "tinggi"
+		judul = "Pengingat Penting: Laporan Akhir Magang"
+		if sisaHari <= 0 {
+			pesan = "Periode magang Anda telah berakhir. Segera unggah Laporan Akhir Anda agar nilai akhir dan sertifikat kelulusan dapat diproses oleh mentor."
+		} else {
+			pesan = fmt.Sprintf("Masa magang Anda tersisa %d hari lagi. Segera unggah naskah Laporan Akhir (format kampus/sekolah Anda) untuk diverifikasi mentor pembimbing.", sisaHari)
+		}
+	} else if sisaHari <= 7 {
+		prioritas = "tinggi"
+		judul = "Batas Pengumpulan Laporan Akhir"
+		pesan = fmt.Sprintf("Masa magang Anda tersisa %d hari lagi. Segera unggah naskah Laporan Akhir agar mentor pembimbing memiliki waktu cukup untuk mengevaluasi.", sisaHari)
+	} else {
+		prioritas = "normal"
+		judul = "Pengingat Laporan Akhir Magang"
+		pesan = fmt.Sprintf("Masa magang Anda tersisa %d hari lagi. Silakan mulai menyusun naskah Laporan Akhir sesuai pedoman kampus/sekolah Anda dan unggah ke SIM Magang.", sisaHari)
+	}
+
+	// Cegah duplikasi notifikasi dengan judul yang sama
+	var count int64
+	config.DB.Model(&models.Notifikasi{}).
+		Where("target_role = 'peserta' AND target_user_id = ? AND tipe = 'laporan_akhir' AND judul = ?", pesertaID, judul).
+		Count(&count)
+
+	if count == 0 {
+		notif := models.Notifikasi{
+			TargetRole:   "peserta",
+			TargetUserID: &pesertaID,
+			Tipe:         "laporan_akhir",
+			Prioritas:    prioritas,
+			Judul:        judul,
+			Pesan:        pesan,
+			RefTabel:     "pendaftaran_magangs",
+			RefID:        &pendaftaran.ID,
+			UrlTujuan:    "/peserta/penilaian/laporan",
+		}
+		config.DB.Create(&notif)
+	}
+}
+
 // GET /api/manajemen/notifikasi?only_unread=true&limit=20
 func GetNotifikasiSaya(c *gin.Context) {
 	role, userID := filterNotifikasi(c)
 
 	if role == "mentor" && userID > 0 {
 		sinkronkanNotifikasiMentorIzin(userID)
+		sinkronkanNotifikasiMentorTugas(userID)
+		sinkronkanNotifikasiMentorLaporan(userID)
+	} else if role == "peserta" && userID > 0 {
+		sinkronkanNotifikasiPesertaLaporan(userID)
 	}
 
 	limit := 20
@@ -183,6 +424,10 @@ func GetUnreadNotifikasiCount(c *gin.Context) {
 
 	if role == "mentor" && userID > 0 {
 		sinkronkanNotifikasiMentorIzin(userID)
+		sinkronkanNotifikasiMentorTugas(userID)
+		sinkronkanNotifikasiMentorLaporan(userID)
+	} else if role == "peserta" && userID > 0 {
+		sinkronkanNotifikasiPesertaLaporan(userID)
 	}
 
 	var unread int64

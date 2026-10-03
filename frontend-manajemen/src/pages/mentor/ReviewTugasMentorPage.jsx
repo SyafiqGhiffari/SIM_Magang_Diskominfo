@@ -28,6 +28,7 @@ import {
   Folders,
   LoaderCircle,
   ArrowUpRight,
+  Ban,
 } from "lucide-react";
 import {
   getTugasMentor,
@@ -60,6 +61,24 @@ const PesertaMiniFoto = ({ nama, foto }) => {
       {initial}
     </span>
   );
+};
+
+// Helper format waktu pengumpulan dengan nama bulan lengkap
+const formatWaktuKumpul = (dateStr) => {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const tgl = d.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+  });
+  const jam = d
+    .toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    .replace(":", ".");
+  return `${tgl}, ${jam}`;
 };
 
 const ReviewTugasMentorPage = () => {
@@ -166,11 +185,24 @@ const ReviewTugasMentorPage = () => {
           total_bimbingan: totalBimbingan,
         });
 
-        if (tugasIdFromUrl) {
-          setSelectedTugasId(tugasIdFromUrl);
-        } else if (list.length > 0) {
-          setSelectedTugasId(String(list[0].id));
-          setSearchParams({ tugas_id: String(list[0].id) });
+        // Tentukan tugas yang dibuka pertama kali:
+        // 1. Jika URL memiliki parameter tugas_id dan tugas tersebut ada di daftar
+        // 2. Jika tidak, prioritaskan tugas terbaru yang memiliki antrean review ("menunggu_review" > 0)
+        // 3. Jika tidak ada tugas yang menunggu review, buka tugas pertama di daftar
+        const tugasFromUrl = tugasIdFromUrl
+          ? list.find((t) => String(t.id) === String(tugasIdFromUrl))
+          : null;
+
+        const tugasPerluReview = list.find(
+          (t) => (t.pengumpulan_summary?.menunggu_review || 0) > 0
+        );
+
+        const targetTugas = tugasFromUrl || tugasPerluReview || (list.length > 0 ? list[0] : null);
+
+        if (targetTugas) {
+          setSelectedTugasId(String(targetTugas.id));
+          setCurrentTugas(targetTugas);
+          setSearchParams({ tugas_id: String(targetTugas.id) }, { replace: true });
         }
       })
       .catch((err) => {
@@ -236,6 +268,7 @@ const ReviewTugasMentorPage = () => {
       });
       toastSuccess(`Nilai 0 poin berhasil ditetapkan untuk ${sub.nama}`);
       fetchSubmissions(selectedTugasId);
+      window.dispatchEvent(new Event("sim_notifikasi_updated"));
     } catch (err) {
       console.error("Gagal set nilai 0:", err);
       toastError("Gagal menetapkan nilai 0");
@@ -264,7 +297,7 @@ const ReviewTugasMentorPage = () => {
 
     const dateStr = dl.toLocaleString("id-ID", {
       day: "numeric",
-      month: "short",
+      month: "long",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
@@ -399,7 +432,7 @@ const ReviewTugasMentorPage = () => {
             if (p.created_at) {
               waktuKumpul = new Date(p.created_at).toLocaleString("id-ID", {
                 day: "numeric",
-                month: "short",
+                month: "long",
                 year: "numeric",
                 hour: "2-digit",
                 minute: "2-digit",
@@ -700,9 +733,9 @@ const ReviewTugasMentorPage = () => {
       {
         id: "remidi",
         icon: RotateCcw,
-        label: "Perlu Remidi",
+        label: isKuis ? "Perlu Remidi" : "Menunggu Revisi",
         value: stats.remidi,
-        suffix: "Remidi",
+        suffix: isKuis ? "Remidi" : "Revisi",
         lightGradient: "from-rose-300 to-white",
         gradient: "from-rose-500 to-rose-700",
         iconBg: isDark ? "bg-rose-950/60 text-rose-400" : "bg-rose-50 text-rose-600",
@@ -720,7 +753,7 @@ const ReviewTugasMentorPage = () => {
         colSpan: "col-span-2 sm:col-span-1",
       },
     ],
-    [stats, isDark]
+    [stats, isDark, isKuis]
   );
 
   return (
@@ -1333,7 +1366,7 @@ const ReviewTugasMentorPage = () => {
                 { key: "semua", label: "Semua", count: stats.total },
                 { key: "menunggu", label: "Perlu Dinilai", count: stats.menunggu },
                 { key: "tuntas", label: "Tuntas", count: stats.tuntas },
-                { key: "perlu_remidi", label: "Perlu Remidi", count: stats.remidi },
+                { key: "perlu_remidi", label: isKuis ? "Perlu Remidi" : "Menunggu Revisi", count: stats.remidi },
                 { key: "belum_kumpul", label: "Belum Kumpul", count: stats.belum },
               ].map((tab) => {
                 const isAktif = filterStatus === tab.key;
@@ -1520,7 +1553,9 @@ const ReviewTugasMentorPage = () => {
                   >
                     <th className="py-3.5 px-4 sm:px-6">Peserta Bimbingan</th>
                     <th className="py-3.5 px-4">Waktu &amp; Ketepatan</th>
-                    <th className="py-3.5 px-4">Hasil Pengerjaan</th>
+                    <th className="py-3.5 px-4">
+                      {isKuis ? "Hasil Pengerjaan Kuis" : "Hasil Penyerahan Proyek"}
+                    </th>
                     <th className="py-3.5 px-4">Nilai &amp; Ketuntasan</th>
                     <th className="py-3.5 px-4">Catatan Mentor</th>
                     <th className="py-3.5 px-4 sm:px-6 text-right">Aksi Evaluasi</th>
@@ -1531,11 +1566,12 @@ const ReviewTugasMentorPage = () => {
                     const p = sub.pengumpulan;
                     const hasSubmitted = !!p;
                     const isSudahDinilai = p?.status === "dinilai";
+                    const isRevisiSub = p?.status === "revisi";
                     const isTuntasSub =
                       p?.status_remidi === "tuntas" ||
                       (isSudahDinilai && (p?.nilai || 0) >= (parsedKuis?.kkm || 75));
                     const isRemidiSub =
-                      p?.status_remidi === "perlu_remidi" || p?.status === "revisi";
+                      p?.status_remidi === "perlu_remidi" || isRevisiSub;
 
                     // Cek ketepatan waktu
                     const isTerlambat =
@@ -1543,14 +1579,7 @@ const ReviewTugasMentorPage = () => {
                       currentTugas?.tenggat_waktu &&
                       new Date(p.created_at) > new Date(currentTugas.tenggat_waktu);
 
-                    const waktuKumpulStr = p?.created_at
-                      ? new Date(p.created_at).toLocaleString("id-ID", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : null;
+                    const waktuKumpulStr = formatWaktuKumpul(p?.created_at);
 
                     return (
                       <tr
@@ -1566,7 +1595,7 @@ const ReviewTugasMentorPage = () => {
                                 {sub.nama}
                               </p>
                               <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                                {sub.institusi} • {sub.posisi_bidang}
+                                {sub.institusi}
                               </p>
                             </div>
                           </div>
@@ -1605,53 +1634,70 @@ const ReviewTugasMentorPage = () => {
                           )}
                         </td>
 
-                        {/* 3. Hasil Pengerjaan (Lampiran / Kuis) */}
+                        {/* 3. Hasil Pengerjaan (Lampiran / Dokumen / Kuis) */}
                         <td className="py-4 px-4">
                           {hasSubmitted ? (
                             isKuis ? (
-                              <div className="flex items-center gap-1.5">
-                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/50 text-[#004F9F] dark:text-[#00A5EC] shrink-0">
-                                  <NotebookPen className="w-3.5 h-3.5" />
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#004F9F] dark:text-[#00A5EC] border border-blue-200/80 dark:border-blue-800/40 shrink-0">
+                                  <NotebookPen className="w-4 h-4" />
                                 </span>
                                 <div className="min-w-0">
-                                  <span className="font-bold text-slate-700 dark:text-slate-200 block truncate">
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs block truncate">
                                     Lembar Kuis Terkirim
                                   </span>
-                                  <span className="text-[10.5px] text-slate-400">
-                                    {parsedKuis?.daftar_soal?.length || 0} Soal Dievaluasi
+                                  <span className="text-[10.5px] text-slate-400 font-medium">
+                                    {parsedKuis?.daftar_soal?.length || 0} Soal Diserahkan
                                   </span>
                                 </div>
                               </div>
                             ) : (
-                              <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {/* File Berkas / Laporan Proyek */}
                                 {p.file_pengumpulan && (
-                                  <div className="flex items-center gap-1.5">
-                                    <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                                    <span
-                                      className="font-bold text-slate-700 dark:text-slate-300 truncate max-w-[150px]"
-                                      title={p.file_pengumpulan}
-                                    >
-                                      {p.file_pengumpulan.split("/").pop()}
+                                  <a
+                                    href={getFileUrl(p.file_pengumpulan)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="group/file inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.03] hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-200 dark:hover:border-blue-800/50 transition-all text-left shadow-2xs cursor-pointer"
+                                    title={`Buka file: ${p.file_pengumpulan.split("/").pop()}`}
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-[#004F9F] dark:text-[#00A5EC] shrink-0" />
+                                    <span className="font-bold text-slate-700 dark:text-slate-200 text-[11px] group-hover/file:text-[#004F9F] dark:group-hover/file:text-sky-300">
+                                      File Tugas
                                     </span>
-                                  </div>
+                                    <ArrowUpRight className="w-3 h-3 text-slate-400 group-hover/file:text-[#004F9F] shrink-0 transition-transform group-hover/file:translate-x-0.5 group-hover/file:-translate-y-0.5" />
+                                  </a>
                                 )}
+
+                                {/* Tautan Proyek / Demo / GitHub */}
                                 {p.link_tugas && (
-                                  <div className="flex items-center gap-1.5">
-                                    <ExternalLink className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                                    <a
-                                      href={p.link_tugas}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-[11px] font-bold text-[#004F9F] dark:text-sky-400 hover:underline truncate max-w-[150px]"
-                                    >
-                                      Buka Tautan Demo
-                                    </a>
-                                  </div>
+                                  <a
+                                    href={p.link_tugas}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="group/link inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-sky-200/80 dark:border-sky-800/40 bg-sky-50/60 dark:bg-sky-950/30 hover:bg-sky-100/80 dark:hover:bg-sky-900/40 transition-all text-left shadow-2xs cursor-pointer"
+                                    title={`Buka tautan: ${p.link_tugas}`}
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                                    <span className="font-bold text-sky-700 dark:text-sky-300 text-[11px]">
+                                      Link Tugas
+                                    </span>
+                                    <ArrowUpRight className="w-3 h-3 text-sky-500 shrink-0 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
+                                  </a>
+                                )}
+
+                                {!p.file_pengumpulan && !p.link_tugas && (
+                                  <span className="text-slate-400 text-xs italic">
+                                    Tugas Terkirim (Tanpa Lampiran)
+                                  </span>
                                 )}
                               </div>
                             )
                           ) : (
-                            <span className="text-slate-400 text-xs italic">-</span>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-medium bg-slate-100/80 text-slate-400 dark:bg-white/5 dark:text-slate-500 border border-slate-200/50 dark:border-white/5">
+                              Belum Ada Berkas
+                            </span>
                           )}
                         </td>
 
@@ -1661,52 +1707,87 @@ const ReviewTugasMentorPage = () => {
                             <div className="space-y-1">
                               <span
                                 className={`text-base font-black block ${
-                                  p.nilai !== null && p.nilai !== undefined
+                                  isRevisiSub
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : p.nilai !== null && p.nilai !== undefined
                                     ? isTuntasSub
                                       ? "text-emerald-700 dark:text-emerald-400"
-                                      : "text-amber-700 dark:text-amber-400"
+                                      : isRemidiSub
+                                      ? "text-amber-700 dark:text-amber-400"
+                                      : p.nilai === 0
+                                      ? "text-rose-700 dark:text-rose-400"
+                                      : "text-slate-800 dark:text-slate-200"
                                     : "text-slate-400"
                                 }`}
                               >
-                                {p.nilai !== null && p.nilai !== undefined
+                                {isRevisiSub
+                                  ? (isKuis ? "Perlu Remidi" : "Menunggu Revisi")
+                                  : p.nilai !== null && p.nilai !== undefined
                                   ? `${p.nilai} Poin`
                                   : "Belum Dinilai"}
                               </span>
 
                               <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10.5px] font-black ${
-                                  isTuntasSub
-                                    ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40"
-                                    : isRemidiSub
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10.5px] font-black ${
+                                  isRevisiSub
                                     ? "bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/40"
-                                    : "bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/40 animate-pulse"
+                                    : isSudahDinilai
+                                    ? isTuntasSub
+                                      ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40"
+                                      : "bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/40"
+                                    : "bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/40"
                                 }`}
                               >
-                                {isTuntasSub
-                                  ? "Lulus / Tuntas"
-                                  : isRemidiSub
-                                  ? "Perlu Remidi"
-                                  : "Perlu Dinilai"}
+                                {isRevisiSub ? (
+                                  <>
+                                    <RotateCcw className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                    <span>{isKuis ? "Perlu Remidi" : "Menunggu Revisi"}</span>
+                                  </>
+                                ) : isSudahDinilai ? (
+                                  isTuntasSub ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                      <span>{isKuis ? "Lulus / Tuntas" : "Tuntas / Disetujui"}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <RotateCcw className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                                      <span>Belum Tuntas</span>
+                                    </>
+                                  )
+                                ) : (
+                                  <>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                    <span>Perlu Dinilai</span>
+                                  </>
+                                )}
                               </span>
                             </div>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400">
-                              0 Poin (Belum)
-                            </span>
+                            <div className="space-y-1">
+                              <span className="text-sm font-bold text-slate-400 dark:text-slate-500 block">
+                                -
+                              </span>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border border-slate-200/60 dark:border-white/10">
+                                Belum Kumpul
+                              </span>
+                            </div>
                           )}
                         </td>
 
                         {/* 5. Catatan Mentor Snippet */}
                         <td className="py-4 px-4 max-w-[200px]">
                           {p?.catatan_mentor ? (
-                            <p
-                              className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 italic"
-                              title={p.catatan_mentor}
-                            >
-                              "{p.catatan_mentor}"
-                            </p>
+                            <div className="p-2 rounded-xl border border-slate-200/70 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.02]">
+                              <p
+                                className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 italic"
+                                title={p.catatan_mentor}
+                              >
+                                "{p.catatan_mentor}"
+                              </p>
+                            </div>
                           ) : (
-                            <span className="text-[11px] text-slate-400 italic">
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">
                               Tidak ada catatan
                             </span>
                           )}
@@ -1721,18 +1802,19 @@ const ReviewTugasMentorPage = () => {
                                 setSelectedSubmission(sub);
                                 setModalOpen(true);
                               }}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#004F9F] to-[#00A5EC] text-white text-xs font-black shadow-xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
+                              className="group/btn inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl border border-blue-200/90 dark:border-sky-800/60 bg-blue-50/80 dark:bg-sky-950/40 text-[#004F9F] dark:text-sky-300 hover:bg-[#004F9F] hover:text-white dark:hover:bg-[#004F9F] dark:hover:text-white text-xs font-black shadow-2xs hover:shadow-xs active:scale-95 transition-all duration-200 cursor-pointer"
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>{isSudahDinilai ? "Edit Nilai" : "Koreksi & Nilai"}</span>
+                              <Eye className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-110" />
+                              <span>{isRevisiSub ? "Tinjau Revisi" : isSudahDinilai ? "Edit Nilai" : "Koreksi & Nilai"}</span>
                             </button>
                           ) : (
                             <button
                               type="button"
                               onClick={() => handleBeriNilaiNol(sub)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/30 text-[11px] font-bold hover:bg-rose-600 hover:text-white transition-all cursor-pointer"
+                              className="group/btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200/90 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/30 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white text-xs font-bold shadow-2xs hover:shadow-xs active:scale-95 transition-all duration-200 cursor-pointer"
                               title="Tetapkan nilai 0 untuk peserta yang tidak mengumpulkan tugas"
                             >
+                              <Ban className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-110" />
                               <span>Beri Nilai 0</span>
                             </button>
                           )}
@@ -1751,25 +1833,19 @@ const ReviewTugasMentorPage = () => {
               const p = sub.pengumpulan;
               const hasSubmitted = !!p;
               const isSudahDinilai = p?.status === "dinilai";
+              const isRevisiSub = p?.status === "revisi";
               const isTuntasSub =
                 p?.status_remidi === "tuntas" ||
                 (isSudahDinilai && (p?.nilai || 0) >= (parsedKuis?.kkm || 75));
               const isRemidiSub =
-                p?.status_remidi === "perlu_remidi" || p?.status === "revisi";
+                p?.status_remidi === "perlu_remidi" || isRevisiSub;
 
               const isTerlambat =
                 p?.created_at &&
                 currentTugas?.tenggat_waktu &&
                 new Date(p.created_at) > new Date(currentTugas.tenggat_waktu);
 
-              const waktuKumpulStr = p?.created_at
-                ? new Date(p.created_at).toLocaleString("id-ID", {
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : null;
+              const waktuKumpulStr = formatWaktuKumpul(p?.created_at);
 
               return (
                 <div
@@ -1784,126 +1860,268 @@ const ReviewTugasMentorPage = () => {
                         : "bg-white border-slate-200/90 hover:border-blue-200"
                     }`}
                   >
-                  <div>
-                    {/* Header Kartu: Profil + Status Badge */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <PesertaMiniFoto nama={sub.nama} foto={sub.foto_profil} />
-                        <div className="min-w-0">
-                          <h4 className="font-black text-sm text-slate-800 dark:text-slate-100 truncate">
-                            {sub.nama}
-                          </h4>
-                          <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                            {sub.institusi} • {sub.posisi_bidang}
-                          </p>
+                    <div className="space-y-4">
+                      {/* Header Kartu: Profil + Status Badge */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <PesertaMiniFoto nama={sub.nama} foto={sub.foto_profil} />
+                          <div className="min-w-0">
+                            <h4 className="font-black text-sm text-slate-800 dark:text-slate-100 truncate">
+                              {sub.nama}
+                            </h4>
+                            <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                              {sub.institusi} • {sub.posisi_bidang}
+                            </p>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Status Capaian Badge */}
-                      {hasSubmitted ? (
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10.5px] font-black shrink-0 ${
-                            isTuntasSub
-                              ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/80"
-                              : isRemidiSub
-                              ? "bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/80"
-                              : "bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/80"
-                          }`}
-                        >
-                          {isTuntasSub ? "Tuntas" : isRemidiSub ? "Remidi" : "Perlu Koreksi"}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-400 shrink-0">
-                          Belum Kumpul
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Informasi Waktu & Pengumpulan */}
-                    <div
-                      className={`mt-4 p-3 rounded-2xl border text-xs space-y-2 ${
-                        isDark ? "bg-white/[0.02] border-white/5" : "bg-slate-50/70 border-slate-100"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-400">Waktu Kumpul:</span>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">
-                          {waktuKumpulStr || "-"}
-                        </span>
-                      </div>
-
-                      {hasSubmitted && (
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-400">Ketepatan:</span>
+                        {/* Status Capaian Badge */}
+                        {hasSubmitted ? (
                           <span
-                            className={`font-black ${
-                              isTerlambat ? "text-rose-600" : "text-emerald-600"
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10.5px] font-black shrink-0 ${
+                              isRevisiSub
+                                ? "bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/40"
+                                : isSudahDinilai
+                                ? isTuntasSub
+                                  ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40"
+                                  : "bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/40"
+                                : "bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/40"
                             }`}
                           >
-                            {isTerlambat ? "Terlambat Mengumpulkan" : "Tepat Waktu"}
+                            {isRevisiSub ? (
+                              <>
+                                <RotateCcw className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                <span>{isKuis ? "Remidi" : "Menunggu Revisi"}</span>
+                              </>
+                            ) : isSudahDinilai ? (
+                              isTuntasSub ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                  <span>{isKuis ? "Tuntas" : "Disetujui"}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <RotateCcw className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                                  <span>Belum Tuntas</span>
+                                </>
+                              )
+                            ) : (
+                              <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                <span>Perlu Koreksi</span>
+                              </>
+                            )}
                           </span>
-                        </div>
-                      )}
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-400 shrink-0">
+                            Belum Kumpul
+                          </span>
+                        )}
+                      </div>
 
-                      {p?.catatan_mentor && (
-                        <div className="pt-2 border-t border-slate-200/60 dark:border-white/5">
-                          <p className="text-[11px] text-slate-500 italic line-clamp-2">
-                            "{p.catatan_mentor}"
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                      {/* Hasil Penyerahan Tugas / Lampiran */}
+                      <div>
+                        {hasSubmitted ? (
+                          isKuis ? (
+                            <div className="flex items-center gap-2.5 p-3 rounded-2xl border border-blue-200/70 dark:border-blue-800/40 bg-blue-50/50 dark:bg-blue-950/20">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#004F9F] text-white shrink-0 shadow-2xs">
+                                <NotebookPen className="w-4 h-4" />
+                              </span>
+                              <div className="min-w-0">
+                                <span className="text-xs font-black text-slate-800 dark:text-slate-100 block truncate">
+                                  Lembar Kuis Terkirim
+                                </span>
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                                  {parsedKuis?.daftar_soal?.length || 0} Butir Soal Diserahkan
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-3 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50/60 dark:bg-white/[0.02] space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                  Hasil Penyerahan Proyek
+                                </span>
+                                {p.percobaan_ke && p.percobaan_ke > 1 && (
+                                  <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
+                                    Ke-{p.percobaan_ke}
+                                  </span>
+                                )}
+                              </div>
 
-                  {/* Footer Kartu: Nilai & Tombol Aksi */}
-                  <div className="pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between gap-3">
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
-                        Nilai Akhir
-                      </span>
-                      <span
-                        className={`text-lg font-black ${
-                          p?.nilai !== null && p?.nilai !== undefined
-                            ? isTuntasSub
-                              ? "text-emerald-700 dark:text-emerald-400"
-                              : "text-amber-700 dark:text-amber-400"
-                            : "text-slate-400"
+                              {p.file_pengumpulan && (
+                                <a
+                                  href={getFileUrl(p.file_pengumpulan)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="group/gridfile flex items-center justify-between gap-2 p-2 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-slate-900/60 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 transition-all shadow-2xs cursor-pointer"
+                                  title={`Buka file: ${p.file_pengumpulan.split("/").pop()}`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-950/70 text-[#004F9F] dark:text-[#00A5EC] shrink-0">
+                                      <FileText className="w-3.5 h-3.5" />
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate group-hover/gridfile:text-[#004F9F] dark:group-hover/gridfile:text-sky-300">
+                                      {p.file_pengumpulan.split("/").pop()}
+                                    </span>
+                                  </div>
+                                  <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover/gridfile:text-[#004F9F] shrink-0 transition-transform group-hover/gridfile:translate-x-0.5 group-hover/gridfile:-translate-y-0.5" />
+                                </a>
+                              )}
+
+                              {p.link_tugas && (
+                                <a
+                                  href={p.link_tugas}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="group/gridlink flex items-center justify-between gap-2 p-2 rounded-xl border border-sky-200/80 dark:border-sky-800/40 bg-sky-50/50 dark:bg-sky-950/30 hover:bg-sky-100/70 transition-all shadow-2xs cursor-pointer"
+                                  title={`Buka tautan: ${p.link_tugas}`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 shrink-0">
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                    </span>
+                                    <span className="text-xs font-bold text-sky-700 dark:text-sky-300 truncate">
+                                      {p.link_tugas.replace(/^https?:\/\//, "")}
+                                    </span>
+                                  </div>
+                                  <ArrowUpRight className="w-3.5 h-3.5 text-sky-500 shrink-0 transition-transform group-hover/gridlink:translate-x-0.5 group-hover/gridlink:-translate-y-0.5" />
+                                </a>
+                              )}
+
+                              {p.catatan_peserta && (
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 italic line-clamp-2 px-1 pt-0.5">
+                                  "{p.catatan_peserta}"
+                                </p>
+                              )}
+
+                              {!p.file_pengumpulan && !p.link_tugas && !p.catatan_peserta && (
+                                <span className="text-[11px] text-slate-400 italic block">
+                                  Tugas diserahkan tanpa berkas lampiran
+                                </span>
+                              )}
+                            </div>
+                          )
+                        ) : (
+                          <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 text-center text-xs text-slate-400 dark:text-slate-500 italic bg-slate-50/50 dark:bg-white/[0.01]">
+                            {isKuis
+                              ? "Belum mengerjakan kuis ini"
+                              : "Belum mengunggah dokumen proyek"}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Informasi Waktu & Pengumpulan */}
+                      <div
+                        className={`p-3 rounded-2xl border text-xs space-y-2 ${
+                          isDark
+                            ? "bg-white/[0.02] border-white/5"
+                            : "bg-slate-50/70 border-slate-100"
                         }`}
                       >
-                        {p?.nilai !== null && p?.nilai !== undefined
-                          ? `${p.nilai} Poin`
-                          : "Belum Dinilai"}
-                      </span>
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400">Waktu Kumpul:</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-300">
+                            {waktuKumpulStr || "-"}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400">Ketepatan:</span>
+                          {hasSubmitted ? (
+                            <span
+                              className={`font-black ${
+                                isTerlambat ? "text-rose-600" : "text-emerald-600"
+                              }`}
+                            >
+                              {isTerlambat ? "Terlambat Mengumpulkan" : "Tepat Waktu"}
+                            </span>
+                          ) : (
+                            <span className="font-medium text-slate-400">-</span>
+                          )}
+                        </div>
+
+                        {p?.catatan_mentor && (
+                          <div className="pt-2 border-t border-slate-200/60 dark:border-white/5">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                              Catatan Mentor:
+                            </span>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 italic line-clamp-2">
+                              "{p.catatan_mentor}"
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {hasSubmitted ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedSubmission(sub);
-                          setModalOpen(true);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#004F9F] to-[#00A5EC] text-white text-xs font-black shadow-xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>{isSudahDinilai ? "Edit Nilai" : "Koreksi & Nilai"}</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleBeriNilaiNol(sub)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/30 text-[11px] font-bold hover:bg-rose-600 hover:text-white transition-all cursor-pointer"
-                      >
-                        <span>Beri Nilai 0</span>
-                      </button>
-                    )}
+                    {/* Footer Kartu: Nilai & Tombol Aksi */}
+                    <div className="pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
+                          Nilai Akhir
+                        </span>
+                        {hasSubmitted ? (
+                          <span
+                            className={`text-lg font-black block ${
+                              isRevisiSub
+                                ? "text-amber-600 dark:text-amber-400"
+                                : p?.nilai !== null && p?.nilai !== undefined
+                                ? isTuntasSub
+                                  ? "text-emerald-700 dark:text-emerald-400"
+                                  : isRemidiSub
+                                  ? "text-amber-700 dark:text-amber-400"
+                                  : p?.nilai === 0
+                                  ? "text-rose-700 dark:text-rose-400"
+                                  : "text-slate-800 dark:text-slate-100"
+                                : "text-slate-500"
+                            }`}
+                          >
+                            {isRevisiSub
+                              ? (isKuis ? "Perlu Remidi" : "Menunggu Revisi")
+                              : p?.nilai !== null && p?.nilai !== undefined
+                              ? `${p.nilai} Poin`
+                              : "Belum Dinilai"}
+                          </span>
+                        ) : (
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-base font-bold text-slate-400">-</span>
+                            <span className="text-[10px] font-medium text-slate-400">
+                              (Belum Kumpul)
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {hasSubmitted ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSubmission(sub);
+                            setModalOpen(true);
+                          }}
+                          className="group/btn inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200/90 dark:border-sky-800/60 bg-blue-50/80 dark:bg-sky-950/40 text-[#004F9F] dark:text-sky-300 hover:bg-[#004F9F] hover:text-white dark:hover:bg-[#004F9F] dark:hover:text-white text-xs font-black shadow-2xs hover:shadow-xs active:scale-95 transition-all duration-200 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-110" />
+                          <span>{isRevisiSub ? "Tinjau Revisi" : isSudahDinilai ? "Edit Nilai" : "Koreksi & Nilai"}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleBeriNilaiNol(sub)}
+                          className="group/btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200/90 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/30 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white text-xs font-bold shadow-2xs hover:shadow-xs active:scale-95 transition-all duration-200 cursor-pointer"
+                          title="Tetapkan nilai 0 untuk peserta yang tidak mengumpulkan tugas"
+                        >
+                          <Ban className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-110" />
+                          <span>Beri Nilai 0</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
     </div>
   )}
         </div>
@@ -1914,7 +2132,10 @@ const ReviewTugasMentorPage = () => {
           onClose={() => setModalOpen(false)}
           tugas={currentTugas}
           submission={selectedSubmission}
-          onSuccess={() => fetchSubmissions(selectedTugasId)}
+          onSuccess={() => {
+            fetchSubmissions(selectedTugasId);
+            window.dispatchEvent(new Event("sim_notifikasi_updated"));
+          }}
           isDark={isDark}
         />
       </div>

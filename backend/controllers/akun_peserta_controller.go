@@ -1,9 +1,13 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -393,4 +397,136 @@ func CekPesertaBisaDihapus(userID uint) (bool, []string) {
 	}
 
 	return len(alasan) == 0, alasan
+}
+
+// ── DOKUMEN BERKAS PROFIL / PENDAFTARAN PESERTA ─────────────────────────────
+
+// simpanDokumenPeserta menyimpan berkas dokumen pendaftaran tambahan / perbaikan
+func simpanDokumenPeserta(c *gin.Context, file *multipart.FileHeader, jenis string, pesertaID uint) (string, error) {
+	if file == nil {
+		return "", nil
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if jenis == "file_pas_foto" {
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			return "", errors.New("format pas foto harus berupa JPG, JPEG, atau PNG")
+		}
+		if file.Size > 3*1024*1024 {
+			return "", errors.New("ukuran pas foto maksimal 3 MB")
+		}
+	} else {
+		if ext != ".pdf" && ext != ".zip" && ext != ".rar" && ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			return "", errors.New("format berkas tidak didukung (harus PDF, gambar, atau ZIP)")
+		}
+		if file.Size > 10*1024*1024 {
+			return "", errors.New("ukuran berkas maksimal 10 MB")
+		}
+	}
+
+	uploadDir := filepath.Join("uploads", "dokumen-peserta", utils.SekarangWIB().Format("2006-01"))
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		return "", errors.New("gagal membuat folder penyimpanan dokumen")
+	}
+
+	fileName := fmt.Sprintf("%s_%d_%d%s", jenis, pesertaID, time.Now().Unix(), ext)
+	filePath := filepath.Join(uploadDir, fileName)
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		return "", errors.New("gagal menyimpan berkas dokumen")
+	}
+	return strings.ReplaceAll(filePath, "\\", "/"), nil
+}
+
+// UploadDokumenPeserta menangani pengunggahan dokumen lampiran dari profil akun peserta
+func UploadDokumenPeserta(c *gin.Context) {
+	pesertaID, ok := pesertaIDDariToken(c)
+	if !ok {
+		return
+	}
+
+	jenisDokumen := strings.TrimSpace(c.PostForm("jenis_dokumen"))
+	if jenisDokumen == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Jenis dokumen wajib ditentukan")
+		return
+	}
+
+	allowedJenis := map[string]bool{
+		"file_cv":              true,
+		"file_surat_pengantar": true,
+		"file_transkrip":       true,
+		"file_portofolio":      true,
+		"file_pas_foto":        true,
+		"file_proposal_magang": true,
+	}
+
+	if !allowedJenis[jenisDokumen] {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Jenis dokumen tidak valid")
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Berkas dokumen wajib diunggah")
+		return
+	}
+
+	savedPath, errSave := simpanDokumenPeserta(c, file, jenisDokumen, pesertaID)
+	if errSave != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, errSave.Error())
+		return
+	}
+
+	var pendaftaran models.PendaftaranMagang
+	if err := config.DB.Where("akun_peserta_id = ?", pesertaID).Order("id desc").First(&pendaftaran).Error; err != nil {
+		_ = os.Remove(savedPath)
+		utils.ErrorResponse(c, http.StatusNotFound, "Data pendaftaran magang tidak ditemukan")
+		return
+	}
+
+	var oldFile string
+	switch jenisDokumen {
+	case "file_cv":
+		oldFile = pendaftaran.FileCV
+		pendaftaran.FileCV = savedPath
+	case "file_surat_pengantar":
+		oldFile = pendaftaran.FileSuratPengantar
+		pendaftaran.FileSuratPengantar = savedPath
+	case "file_transkrip":
+		oldFile = pendaftaran.FileTranskrip
+		pendaftaran.FileTranskrip = savedPath
+	case "file_portofolio":
+		oldFile = pendaftaran.FilePortofolio
+		pendaftaran.FilePortofolio = savedPath
+	case "file_pas_foto":
+		oldFile = pendaftaran.FilePasFoto
+		pendaftaran.FilePasFoto = savedPath
+		// Jika user belum punya foto profil, sinkronkan
+		var user models.UserManajemen
+		if config.DB.First(&user, pesertaID).Error == nil && user.FotoProfil == "" {
+			user.FotoProfil = savedPath
+			config.DB.Save(&user)
+		}
+	case "file_proposal_magang":
+		oldFile = pendaftaran.FileProposalMagang
+		pendaftaran.FileProposalMagang = savedPath
+	}
+
+	if err := config.DB.Save(&pendaftaran).Error; err != nil {
+		_ = os.Remove(savedPath)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan berkas dokumen ke database")
+		return
+	}
+
+	// Hapus file dokumen lama dari server jika diperbarui
+	if oldFile != "" && oldFile != savedPath {
+		cleanOld := strings.TrimPrefix(strings.ReplaceAll(oldFile, "\\", "/"), "/")
+		if strings.HasPrefix(cleanOld, "uploads/") && !strings.Contains(cleanOld, "..") {
+			_ = os.Remove(cleanOld)
+		}
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Dokumen berhasil diunggah", gin.H{
+		"jenis_dokumen": jenisDokumen,
+		"file_path":     savedPath,
+	})
 }

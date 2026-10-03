@@ -512,8 +512,8 @@ func UpdateMateriMentor(c *gin.Context) {
 	}
 
 	// Update asosiasi peserta akses
+	var targetUserIDs []uint
 	if materi.TargetPeserta == "spesifik" {
-		var targetUserIDs []uint
 		for _, rawID := range pesertaIDsRaw {
 			idTrim := strings.TrimSpace(rawID)
 			if idTrim == "" {
@@ -535,6 +535,42 @@ func UpdateMateriMentor(c *gin.Context) {
 	}
 
 	config.DB.Preload("PesertaAkses").First(&materi, materi.ID)
+
+	// Kirim notifikasi pembaruan materi ke peserta terkait
+	go func(mID uint, judulMateri, targetP, targetJ string, specificIDs []uint, mntrID uint) {
+		var recipientUserIDs []uint
+		if targetP == "spesifik" && len(specificIDs) > 0 {
+			recipientUserIDs = specificIDs
+		} else {
+			var pendaftarans []models.PendaftaranMagang
+			q := config.DB.Where("mentor_id = ? AND status_pendaftaran = 'diterima' AND akun_peserta_id IS NOT NULL", mntrID)
+			if targetJ != "" && targetJ != "semua" {
+				q = q.Where("kategori_pendaftar = ?", targetJ)
+			}
+			q.Find(&pendaftarans)
+			for _, p := range pendaftarans {
+				if p.AkunPesertaID != nil {
+					recipientUserIDs = append(recipientUserIDs, *p.AkunPesertaID)
+				}
+			}
+		}
+
+		for _, uid := range recipientUserIDs {
+			uCopy := uid
+			services.KirimNotifikasi(services.NotifikasiInput{
+				TargetRole:   "peserta",
+				TargetUserID: &uCopy,
+				Tipe:         "materi_baru",
+				Prioritas:    "normal",
+				Judul:        "Pembaruan Materi Pembelajaran",
+				Pesan:        fmt.Sprintf("Mentor memperbarui materi \"%s\". Buka modul untuk melihat pembaruan materi.", judulMateri),
+				RefTabel:     "materi_pembelajarans",
+				RefID:        &mID,
+				UrlTujuan:    "/peserta/materi",
+				Gabungkan:    true,
+			})
+		}
+	}(materi.ID, materi.Judul, materi.TargetPeserta, materi.TargetJenjang, targetUserIDs, mentorID)
 
 	utils.SuccessResponse(c, http.StatusOK, "Materi pembelajaran berhasil diperbarui", materi)
 }

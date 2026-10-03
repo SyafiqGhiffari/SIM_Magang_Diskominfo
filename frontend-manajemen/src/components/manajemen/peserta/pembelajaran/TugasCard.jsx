@@ -208,26 +208,63 @@ export const TugasCard = ({ tugas, onKumpul, onKerjakanKuis }) => {
   const fileLampiran = tugas.file_lampiran || tugas.file_path;
   const tautanRef = tugas.tautan_eksternal || tugas.link_eksternal;
 
+  // Menentukan status visual kartu secara komprehensif
+  let cardStatus = "normal";
+  if (isKuis) {
+    if (isDinilai) {
+      cardStatus = isRemidi ? "remidi" : "tuntas";
+    } else if (isMenunggu) {
+      cardStatus = "menunggu";
+    } else if (isLewatTenggat) {
+      cardStatus = "lewat";
+    } else if (isMendekatiTenggat) {
+      cardStatus = "mendesak";
+    }
+  } else {
+    // Tugas Proyek
+    if (isRevisi) {
+      cardStatus = "revisi";
+    } else if (isDinilai) {
+      cardStatus = "tuntas";
+    } else if (isMenunggu) {
+      cardStatus = "menunggu";
+    } else if (isLewatTenggat) {
+      cardStatus = "lewat";
+    } else if (isMendekatiTenggat) {
+      cardStatus = "mendesak";
+    }
+  }
+
   return (
     <div
       className={`group relative flex flex-col justify-between rounded-[22px] sm:rounded-3xl border overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-        isDinilai
+        cardStatus === "tuntas"
           ? "border-emerald-200/90 dark:border-emerald-900/40 bg-white dark:bg-[#161b22] shadow-xs"
-          : isRevisi
+          : cardStatus === "remidi"
+          ? "border-amber-300 dark:border-amber-800/60 bg-white dark:bg-[#161b22] shadow-xs"
+          : cardStatus === "revisi"
           ? "border-rose-300 dark:border-rose-800/60 bg-white dark:bg-[#161b22] shadow-xs"
-          : isMenunggu
+          : cardStatus === "menunggu"
           ? "border-amber-200/90 dark:border-amber-900/40 bg-white dark:bg-[#161b22] shadow-xs"
+          : cardStatus === "lewat"
+          ? "border-rose-300 dark:border-rose-800/60 bg-white dark:bg-[#161b22] shadow-xs"
+          : cardStatus === "mendesak"
+          ? "border-amber-300/80 dark:border-amber-800/50 bg-white dark:bg-[#161b22] shadow-xs"
           : "border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#161b22] hover:border-blue-300 dark:hover:border-sky-500/30 shadow-xs"
       }`}
     >
       {/* Accent Indicator Bar on Top (terpotong rapi dengan overflow-hidden) */}
-      {isDinilai ? (
+      {cardStatus === "tuntas" ? (
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 pointer-events-none" />
-      ) : isRevisi ? (
-        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-rose-500 to-amber-500 pointer-events-none" />
-      ) : isMenunggu ? (
+      ) : cardStatus === "remidi" ? (
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-500 via-orange-400 to-amber-500 pointer-events-none" />
-      ) : isMendekatiTenggat ? (
+      ) : cardStatus === "revisi" ? (
+        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-rose-500 to-amber-500 pointer-events-none" />
+      ) : cardStatus === "menunggu" ? (
+        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-500 via-orange-400 to-amber-500 pointer-events-none" />
+      ) : cardStatus === "lewat" ? (
+        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-rose-500 via-red-500 to-rose-600 pointer-events-none" />
+      ) : cardStatus === "mendesak" ? (
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-500 to-rose-500 pointer-events-none" />
       ) : null}
 
@@ -264,9 +301,9 @@ export const TugasCard = ({ tugas, onKumpul, onKerjakanKuis }) => {
                   </span>
                 )
               ) : isMenunggu ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/40 shadow-2xs">
-                  <Clock className="w-3 h-3 text-purple-600" />
-                  <span>Koreksi Esai</span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/40 shadow-2xs">
+                  <Clock className="w-3 h-3 text-amber-600" />
+                  <span>Menunggu Koreksi Esai</span>
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 shadow-2xs">
@@ -599,18 +636,18 @@ export const TugasCard = ({ tugas, onKumpul, onKerjakanKuis }) => {
                 <button
                   type="button"
                   onClick={handleActionClick}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
+                  className="group/btn inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
+                  <RotateCcw className="w-3.5 h-3.5 transition-transform duration-300 group-hover/btn:-rotate-90 group-hover/btn:scale-110 shrink-0" />
                   <span>Remidi #{percobaanKe + 1}</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleActionClick}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-200/90 dark:border-sky-800/60 bg-blue-50/90 hover:bg-blue-100 dark:bg-sky-950/60 text-[#004F9F] dark:text-sky-300 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
+                  className="group/btn inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-200/90 dark:border-sky-800/60 bg-blue-50/90 hover:bg-blue-100 dark:bg-sky-950/60 text-[#004F9F] dark:text-sky-300 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
                 >
-                  <Eye className="w-3.5 h-3.5" />
+                  <Eye className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-110 shrink-0" />
                   <span>Lihat Kuis</span>
                 </button>
               )
@@ -618,9 +655,9 @@ export const TugasCard = ({ tugas, onKumpul, onKerjakanKuis }) => {
               <button
                 type="button"
                 onClick={handleActionClick}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-200/90 dark:border-sky-800/60 bg-blue-50/90 hover:bg-blue-100 dark:bg-sky-950/60 text-[#004F9F] dark:text-sky-300 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
+                className="group/btn inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-200/90 dark:border-sky-800/60 bg-blue-50/90 hover:bg-blue-100 dark:bg-sky-950/60 text-[#004F9F] dark:text-sky-300 text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
               >
-                <CirclePlay className="w-3.5 h-3.5" />
+                <CirclePlay className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:scale-110 shrink-0" />
                 <span>Mulai Kuis</span>
               </button>
             )
@@ -628,7 +665,7 @@ export const TugasCard = ({ tugas, onKumpul, onKerjakanKuis }) => {
             <button
               type="button"
               onClick={handleActionClick}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer ${
+              className={`group/btn inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-bold shadow-2xs hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer ${
                 pengumpulan
                   ? "border-blue-200/90 dark:border-sky-800/60 bg-blue-50/90 hover:bg-blue-100 dark:bg-sky-950/60 text-[#004F9F] dark:text-sky-300"
                   : isLewatTenggat
@@ -636,7 +673,7 @@ export const TugasCard = ({ tugas, onKumpul, onKerjakanKuis }) => {
                   : "border-blue-200/90 dark:border-sky-800/60 bg-blue-50/90 hover:bg-blue-100 dark:bg-sky-950/60 text-[#004F9F] dark:text-sky-300"
               }`}
             >
-              <Upload className="w-3.5 h-3.5" />
+              <Upload className="w-3.5 h-3.5 transition-transform duration-300 group-hover/btn:-translate-y-0.5 group-hover/btn:scale-110 shrink-0" />
               <span>{pengumpulan ? "Kelola Jawaban" : "Kumpulkan Tugas"}</span>
             </button>
           )}
