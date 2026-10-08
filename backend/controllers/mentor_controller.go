@@ -1,7 +1,16 @@
+// ==============================================================================
+// CONTROLLER: MENTOR CONTROLLER
+// DESKRIPSI : Pengelolaan data mentor, penugasan bidang mentor oleh admin, serta
+//             pemantauan daftar peserta bimbingan oleh mentor dan admin.
+// ROLE TERKAIT: [ROLE: ADMIN], [ROLE: MENTOR]
+// ==============================================================================
+
 package controllers
 
 import (
 	"net/http"
+	"strings"
+	"time"
 
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
@@ -14,9 +23,9 @@ type AssignBidangMentorInput struct {
 	BidangID *uint `json:"bidang_id"`
 }
 
-// AssignBidangMentor — menetapkan atau melepas bidang tempat mentor ini ditugaskan.
-// Sumber kebenaran sekarang ada di UserManajemen.BidangID (bukan lagi di BidangMagang),
-// sehingga satu bidang bisa memiliki banyak mentor sekaligus.
+// [ROLE: ADMIN]
+// AssignBidangMentor menetapkan atau melepas bidang tempat mentor ditugaskan.
+// Endpoint: PUT /api/manajemen/admin/akun/:id/bidang
 func AssignBidangMentor(c *gin.Context) {
 	id := c.Param("id")
 
@@ -45,8 +54,9 @@ func AssignBidangMentor(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Penugasan bidang berhasil diperbarui", nil)
 }
 
-// CekMentorMasihDipakai — dipakai DeleteUserManajemen & CekUserBisaDihapus untuk
-// memvalidasi mentor sebelum dihapus (cek apakah masih membimbing peserta tertentu).
+// [HELPER VALIDATOR]
+// CekMentorMasihDipakai memvalidasi apakah seorang mentor masih memiliki peserta bimbingan
+// sebelum akunnya dihapus dari sistem oleh admin.
 func CekMentorMasihDipakai(userID uint) (int64, []string) {
 	var pendaftaranList []models.PendaftaranMagang
 	config.DB.Where("mentor_id = ?", userID).Find(&pendaftaranList)
@@ -58,8 +68,9 @@ func CekMentorMasihDipakai(userID uint) (int64, []string) {
 	return int64(len(pendaftaranList)), namaPeserta
 }
 
-// GetPesertaBimbinganMentor — daftar peserta yang dibimbing oleh mentor tertentu,
-// untuk ditampilkan di modal "Peserta Bimbingan" pada halaman Kelola Mentor.
+// [ROLE: ADMIN]
+// GetPesertaBimbinganMentor mengambil daftar peserta yang dibimbing oleh mentor tertentu untuk modal detail pada manajemen akun mentor.
+// Endpoint: GET /api/manajemen/admin/mentor/:id/peserta
 func GetPesertaBimbinganMentor(c *gin.Context) {
 	mentorID := c.Param("id")
 
@@ -115,7 +126,9 @@ func GetPesertaBimbinganMentor(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Data peserta bimbingan berhasil diambil", result)
 }
 
-// GetPesertaBimbinganSaya — daftar peserta bimbingan untuk mentor yang sedang login
+// [ROLE: MENTOR]
+// GetPesertaBimbinganSaya mengambil daftar lengkap peserta bimbingan aktif bagi mentor yang login, disertai statistik kehadiran, nilai akhir, dan status penugasan terbaru.
+// Endpoint: GET /api/manajemen/mentor/peserta
 func GetPesertaBimbinganSaya(c *gin.Context) {
 	mentorID, ok := getUserIDFromContext(c)
 	if !ok || mentorID == 0 {
@@ -319,6 +332,15 @@ func GetPesertaBimbinganSaya(c *gin.Context) {
 			}
 		} else {
 			resp.FotoProfil = p.FilePasFoto
+		}
+
+		if p.TanggalSelesai != "" {
+			datePart := strings.Split(p.TanggalSelesai, "T")[0]
+			if tSelesai, err := time.Parse("2006-01-02", datePart); err == nil {
+				if time.Now().Truncate(24 * time.Hour).After(tSelesai) {
+					resp.StatusMagang = "selesai"
+				}
+			}
 		}
 
 		result = append(result, resp)

@@ -1,10 +1,12 @@
 package services
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"sim-magang-backend/models"
+	emailtemplates "sim-magang-backend/services/email_templates"
 	"sim-magang-backend/utils"
 
 	"gorm.io/gorm"
@@ -133,7 +135,7 @@ func TutupHariPresensi(db *gorm.DB, kal *utils.KalenderKerja, peserta []utils.Pe
 		})
 	}
 
-	return db.Transaction(func(tx *gorm.DB) error {
+	err := db.Transaction(func(tx *gorm.DB) error {
 		if len(barisAlfa) > 0 {
 			// OnConflict DoNothing: aman bila proses berjalan bersamaan
 			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).
@@ -155,4 +157,37 @@ func TutupHariPresensi(db *gorm.DB, kal *utils.KalenderKerja, peserta []utils.Pe
 			JumlahAlfa: len(barisAlfa),
 		}).Error
 	})
+
+	if err == nil && len(barisAlfa) > 0 {
+		tglIndo := FormatTanggalSurat(tanggal)
+		for _, alfa := range barisAlfa {
+			aCopy := alfa.PesertaID
+			KirimNotifikasi(NotifikasiInput{
+				TargetRole:   "peserta",
+				TargetUserID: &aCopy,
+				Tipe:         "presensi_alfa",
+				Prioritas:    "tinggi",
+				Judul:        "Pemberitahuan: Tercatat Alpa (Tidak Hadir)",
+				Pesan:        fmt.Sprintf("Anda tercatat alpa pada tanggal %s karena tidak melakukan presensi sampai hari kerja ditutup sistem.", tglIndo),
+				RefTabel:     "presensis",
+				UrlTujuan:    "/peserta/riwayat-aktivitas",
+			})
+
+			emailTarget := utils.EmailAktifPeserta(db, aCopy)
+			if emailTarget != "" {
+				var u models.UserManajemen
+				_ = db.Select("nama").First(&u, aCopy)
+				namaUser := u.Nama
+				if namaUser == "" {
+					namaUser = "Peserta Magang"
+				}
+				bodyEmail := emailtemplates.TemplatePresensiAlfa(namaUser, tglIndo)
+				go func(target, subject, body string) {
+					_ = SendEmail(target, subject, body)
+				}(emailTarget, "Pemberitahuan: Tercatat Alpa - "+tglIndo, bodyEmail)
+			}
+		}
+	}
+
+	return err
 }

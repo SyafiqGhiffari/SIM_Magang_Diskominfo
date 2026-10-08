@@ -1,78 +1,139 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import PesertaLayout from "../../layouts/PesertaLayout";
 import { useManajemenTheme } from "../../context/useManajemenTheme";
 import TranskripHeroCard from "../../components/manajemen/peserta/penilaian/TranskripHeroCard";
 import KompetensiPillarCard from "../../components/manajemen/peserta/penilaian/KompetensiPillarCard";
-import { Download, Clock, RefreshCw, Award, FileText } from "lucide-react";
+import RaporProgressionStepperCard from "../../components/manajemen/peserta/penilaian/RaporProgressionStepperCard";
+import RaporMockupCard from "../../components/manajemen/peserta/penilaian/RaporMockupCard";
+import {
+  RefreshCw,
+  Layers,
+  LayoutGrid,
+  Eye,
+  Briefcase,
+  UserCheck,
+  Users,
+  ClipboardCheck,
+  FileEdit,
+  BadgeCheck,
+} from "lucide-react";
 import { getNilaiSaya } from "../../services/penilaianService";
-import { getSertifikatSaya } from "../../services/pesertaService";
+import { getDashboardPeserta, getSertifikatSaya } from "../../services/pesertaService";
+import { getTemplateRaporAktif } from "../../services/templateRaporService";
+import { getFileUrl } from "../../utils/fileUrl";
 import { exportTranskripNilaiPdf } from "../../utils/exportTranskripPdf";
-import { exportSertifikatPdf } from "../../utils/exportSertifikatPdf";
 import { toastSuccess, toastError } from "../../utils/swal";
 
 const HitungIndeks = (val) => {
   const n = Number(val) || 0;
   if (n >= 85) return "A";
-  if (n >= 80) return "A-";
-  if (n >= 75) return "B+";
   if (n >= 70) return "B";
-  if (n >= 65) return "B-";
   if (n >= 60) return "C";
   if (n >= 40) return "D";
   return "E";
 };
 
-const TranskripNilaiPesertaPage = () => {
+// Master butir indikator baku jika data detail_nilai kosong
+const DEFAULT_INDIKATOR = [
+  {
+    kategori: "profesional",
+    items: [
+      { id: "prof_1", teks: "Kemampuan memahami tugas yang diberikan" },
+      { id: "prof_2", teks: "Kemampuan melaksanakan tugas" },
+      { id: "prof_3", teks: "Kemampuan menyelesaikan tugas tepat waktu" },
+      { id: "prof_4", teks: "Kualitas hasil pekerjaan" },
+    ],
+  },
+  {
+    kategori: "personal",
+    items: [
+      { id: "pers_1", teks: "Kedisiplinan dan tanggung jawab" },
+      { id: "pers_2", teks: "Kejujuran dan integritas" },
+      { id: "pers_3", teks: "Kemandirian dan inisiatif" },
+      { id: "pers_4", teks: "Antusias kerja dan kemampuan beradaptasi" },
+      { id: "pers_5", teks: "Sikap dan etika kerja" },
+    ],
+  },
+  {
+    kategori: "sosial",
+    items: [
+      { id: "sos_1", teks: "Kemampuan berkomunikasi" },
+      { id: "sos_2", teks: "Kerja sama dengan mentor dan pegawai" },
+      { id: "sos_3", teks: "Sopan santun dalam lingkungan kerja" },
+      { id: "sos_4", teks: "Kemampuan menerima arahan dan masukan" },
+    ],
+  },
+  {
+    kategori: "administratif",
+    items: [
+      { id: "adm_1", teks: "Ketertiban melakukan absensi (dihitung otomatis)" },
+      { id: "adm_2", teks: "Kelengkapan pengisian logbook (dihitung otomatis)" },
+      { id: "adm_3", teks: "Ketepatan waktu pengumpulan tugas (dihitung otomatis)" },
+      { id: "adm_4", teks: "Kelengkapan laporan akhir magang (dikonfirmasi)" },
+    ],
+  },
+];
+
+export const TranskripNilaiPesertaPage = () => {
   const { isDark } = useManajemenTheme();
   const [data, setData] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
   const [sertifikatInfo, setSertifikatInfo] = useState(null);
+  const [templateRapor, setTemplateRapor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloadingTranskrip, setDownloadingTranskrip] = useState(false);
-  const [downloadingSertifikat, setDownloadingSertifikat] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
+  const [activeTab, setActiveTab] = useState("ringkasan"); // "ringkasan" | "dokumen"
+
+  const loadData = useCallback(async () => {
+    try {
+      const [nilaiRes, dashRes, sertRes, tplRes] = await Promise.allSettled([
+        getNilaiSaya(),
+        getDashboardPeserta(),
+        getSertifikatSaya(),
+        getTemplateRaporAktif(),
+      ]);
+
+      if (nilaiRes.status === "fulfilled") {
+        setData(nilaiRes.value?.data?.data || null);
+      }
+      if (dashRes.status === "fulfilled") {
+        setDashboardData(dashRes.value?.data?.data || null);
+      }
+      if (sertRes.status === "fulfilled") {
+        setSertifikatInfo(sertRes.value?.data?.data || null);
+      }
+      if (tplRes.status === "fulfilled") {
+        setTemplateRapor(tplRes.value?.data?.data || null);
+      }
+    } catch {
+      toastError("Gagal memuat data rapor nilai");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const loadData = async () => {
-      try {
-        const [nilaiRes, sertifikatRes] = await Promise.allSettled([
-          getNilaiSaya(),
-          getSertifikatSaya(),
-        ]);
-
-        if (isMounted) {
-          if (nilaiRes.status === "fulfilled") {
-            setData(nilaiRes.value?.data?.data || null);
-          }
-          if (sertifikatRes.status === "fulfilled") {
-            setSertifikatInfo(sertifikatRes.value?.data?.data || null);
-          }
-        }
-      } catch {
-        if (isMounted) {
-          toastError("Gagal memuat data transkrip nilai");
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [reloadKey]);
+    const id = setTimeout(() => {
+      loadData();
+    }, 0);
+    return () => clearTimeout(id);
+  }, [loadData]);
 
   const handleDownloadTranskripPdf = async () => {
     if (!data || !data.penilaian) return;
     setDownloadingTranskrip(true);
     try {
-      await exportTranskripNilaiPdf(data);
-      toastSuccess("Transkrip nilai PDF berhasil diunduh");
+      await exportTranskripNilaiPdf(
+        {
+          ...data,
+          template_rapor: templateRapor,
+          peserta: p,
+          mentor: m,
+          instansi,
+        },
+        templateRapor
+      );
+      toastSuccess("Dokumen transkrip nilai resmi PDF berhasil diunduh");
     } catch (err) {
       toastError("Gagal mengekspor Transkrip PDF: " + err.message);
     } finally {
@@ -80,36 +141,31 @@ const TranskripNilaiPesertaPage = () => {
     }
   };
 
-  const handleDownloadSertifikatPdf = async () => {
-    if (!sertifikatInfo || !sertifikatInfo.ada_sertifikat) {
-      toastError("Sertifikat belum diterbitkan oleh admin.");
-      return;
-    }
-    setDownloadingSertifikat(true);
-    try {
-      await exportSertifikatPdf(sertifikatInfo.data, sertifikatInfo.pengaturan);
-      toastSuccess("Sertifikat resmi PDF berhasil diunduh");
-    } catch (err) {
-      toastError("Gagal mengekspor Sertifikat PDF: " + err.message);
-    } finally {
-      setDownloadingSertifikat(false);
-    }
-  };
-
-  const p = data?.peserta || {};
+  const p = data?.peserta || dashboardData?.pendaftaran || {};
   const pn = data?.penilaian || {};
-  const m = data?.mentor || {};
-  const isEvaluated = Boolean(
-    data?.sudah_dinilai &&
-      (pn.status_penilaian === "final" || pn.nilai_akhir_angka != null)
-  );
+  const m = {
+    ...(dashboardData?.mentor || {}),
+    ...(data?.mentor || {}),
+    foto_profil:
+      data?.mentor?.foto_profil ||
+      dashboardData?.mentor?.foto_profil ||
+      "",
+  };
+  const instansi = data?.instansi || {};
+  const isEvaluated = Boolean(data?.sudah_dinilai && pn.status_penilaian === "final");
 
   const adaSertifikat = Boolean(
     sertifikatInfo?.ada_sertifikat &&
-      sertifikatInfo?.data?.sertifikat?.nomor_sertifikat
+      sertifikatInfo?.data?.sertifikat?.nomor_sertifikat &&
+      sertifikatInfo?.data?.sertifikat?.nomor_sertifikat !== "-"
   );
 
-  // Parse detail items jika ada
+  // Status Laporan & Timeline dari Dashboard
+  const statusLaporan = dashboardData?.laporan_akhir?.status || "belum_unggah";
+  const catatanMentorLaporan = dashboardData?.laporan_akhir?.catatan_mentor || "";
+  const statusTimeline = dashboardData?.timeline?.status_timeline || "berjalan";
+
+  // Parse detail items riil dari database (pn.detail_nilai)
   let detailItems = [];
   try {
     if (typeof pn.detail_nilai === "string") {
@@ -122,131 +178,73 @@ const TranskripNilaiPesertaPage = () => {
   }
 
   const rawProf = detailItems.filter(
-    (x) => x.kategori === "profesional" || x.id?.startsWith("prof_")
+    (x) =>
+      x.kategori?.toLowerCase() === "profesional" ||
+      x.id?.startsWith("prof_") ||
+      x.id?.startsWith("profesional_")
   );
   const rawPers = detailItems.filter(
-    (x) => x.kategori === "personal" || x.id?.startsWith("pers_")
+    (x) =>
+      x.kategori?.toLowerCase() === "personal" ||
+      x.id?.startsWith("pers_") ||
+      x.id?.startsWith("personal_")
   );
   const rawSos = detailItems.filter(
-    (x) => x.kategori === "sosial" || x.id?.startsWith("sos_")
+    (x) =>
+      x.kategori?.toLowerCase() === "sosial" ||
+      x.id?.startsWith("sos_") ||
+      x.id?.startsWith("sosial_")
   );
   const rawAdm = detailItems.filter(
-    (x) => x.kategori === "administratif" || x.id?.startsWith("adm_")
+    (x) =>
+      x.kategori?.toLowerCase() === "administratif" ||
+      x.id?.startsWith("adm_") ||
+      x.id?.startsWith("administratif_")
   );
 
-  const profItems =
-    rawProf.length > 0
-      ? rawProf
-      : [
-          {
-            teks: "Kemampuan memahami tugas yang diberikan",
-            nilai: pn.nilai_profesional || 0,
-            indeks: HitungIndeks(pn.nilai_profesional || 0),
-          },
-          {
-            teks: "Kemampuan melaksanakan tugas",
-            nilai: pn.nilai_profesional || 0,
-            indeks: HitungIndeks(pn.nilai_profesional || 0),
-          },
-          {
-            teks: "Kemampuan menyelesaikan tugas tepat waktu",
-            nilai: pn.nilai_profesional || 0,
-            indeks: HitungIndeks(pn.nilai_profesional || 0),
-          },
-          {
-            teks: "Kualitas hasil pekerjaan",
-            nilai: pn.nilai_profesional || 0,
-            indeks: HitungIndeks(pn.nilai_profesional || 0),
-          },
-        ];
+  // Helper untuk mengekstrak data indikator riil langsung dari database
+  const getPillarItems = (rawList, defaultCategory, fallbackValue) => {
+    if (rawList && rawList.length > 0) {
+      return rawList.map((it) => ({
+        judul: it.teks || it.judul || "Indikator Penilaian",
+        nilai: it.nilai !== undefined && it.nilai !== null ? it.nilai : fallbackValue,
+      }));
+    }
+    const def = DEFAULT_INDIKATOR.find((k) => k.kategori === defaultCategory);
+    if (def?.items) {
+      return def.items.map((it) => ({
+        judul: it.teks,
+        nilai: fallbackValue,
+      }));
+    }
+    return [];
+  };
 
-  const persItems =
-    rawPers.length > 0
-      ? rawPers
-      : [
-          {
-            teks: "Kedisiplinan dan tanggung jawab",
-            nilai: pn.nilai_personal || 0,
-            indeks: HitungIndeks(pn.nilai_personal || 0),
-          },
-          {
-            teks: "Kejujuran dan integritas",
-            nilai: pn.nilai_personal || 0,
-            indeks: HitungIndeks(pn.nilai_personal || 0),
-          },
-          {
-            teks: "Kemandirian dan inisiatif",
-            nilai: pn.nilai_personal || 0,
-            indeks: HitungIndeks(pn.nilai_personal || 0),
-          },
-          {
-            teks: "Antusias kerja dan kemampuan beradaptasi",
-            nilai: pn.nilai_personal || 0,
-            indeks: HitungIndeks(pn.nilai_personal || 0),
-          },
-          {
-            teks: "Sikap dan etika kerja",
-            nilai: pn.nilai_personal || 0,
-            indeks: HitungIndeks(pn.nilai_personal || 0),
-          },
-        ];
+  const profItems = getPillarItems(rawProf, "profesional", pn.nilai_profesional || 0);
+  const persItems = getPillarItems(rawPers, "personal", pn.nilai_personal || 0);
+  const sosItems = getPillarItems(rawSos, "sosial", pn.nilai_sosial || 0);
+  const admItems = getPillarItems(rawAdm, "administratif", pn.nilai_administratif || 0);
 
-  const sosItems =
-    rawSos.length > 0
-      ? rawSos
-      : [
-          {
-            teks: "Kemampuan berkomunikasi",
-            nilai: pn.nilai_sosial || 0,
-            indeks: HitungIndeks(pn.nilai_sosial || 0),
-          },
-          {
-            teks: "Kerja sama dengan mentor dan pegawai",
-            nilai: pn.nilai_sosial || 0,
-            indeks: HitungIndeks(pn.nilai_sosial || 0),
-          },
-          {
-            teks: "Sopan santun dalam lingkungan kerja",
-            nilai: pn.nilai_sosial || 0,
-            indeks: HitungIndeks(pn.nilai_sosial || 0),
-          },
-          {
-            teks: "Kemampuan menerima arahan dan masukan",
-            nilai: pn.nilai_sosial || 0,
-            indeks: HitungIndeks(pn.nilai_sosial || 0),
-          },
-        ];
+  // Ekstrak inisial mentor untuk avatar (mis. "Aris Setiawan, S.Kom" => "AS")
+  const getMentorInitials = (nama) => {
+    if (!nama) return "M";
+    const clean = nama.split(",")[0].replace(/^(Drs\.|Dr\.|Ir\.|H\.|Hj\.)\s+/i, "").trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+  };
 
-  const admItems =
-    rawAdm.length > 0
-      ? rawAdm
-      : [
-          {
-            teks: "Ketertiban melakukan absensi (dihitung otomatis dari presensi)",
-            nilai: pn.nilai_administratif || 0,
-            indeks: HitungIndeks(pn.nilai_administratif || 0),
-          },
-          {
-            teks: "Kelengkapan pengisian logbook harian",
-            nilai: pn.nilai_administratif || 0,
-            indeks: HitungIndeks(pn.nilai_administratif || 0),
-          },
-          {
-            teks: "Ketepatan waktu pengumpulan tugas",
-            nilai: pn.nilai_administratif || 0,
-            indeks: HitungIndeks(pn.nilai_administratif || 0),
-          },
-          {
-            teks: "Kelengkapan laporan akhir magang",
-            nilai: pn.laporan_akhir_disetujui ? 100 : 75,
-            indeks: HitungIndeks(pn.laporan_akhir_disetujui ? 100 : 75),
-          },
-        ];
+  const mentorInitials = getMentorInitials(m.nama);
+  const fotoMentorSrc = m.foto_profil ? getFileUrl(m.foto_profil) : null;
+  const rawCatatan =
+    pn.catatan_mentor ||
+    "Peserta menunjukkan dedikasi dan kapasitas yang sangat baik dalam menyelesaikan seluruh tugas dan kegiatan praktik kerja lapangan / magang di lingkungan dinas.";
+  const cleanCatatan = rawCatatan.replace(/^["“]+|["”]+$/g, "").trim();
 
   return (
     <PesertaLayout>
       <div className="space-y-6 animate-[fadeslide_0.35s_ease-out]">
-        {/* Header */}
+        {/* Header Halaman & Aksi Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2
@@ -261,91 +259,31 @@ const TranskripNilaiPesertaPage = () => {
                 isDark ? "text-slate-400" : "text-slate-500"
               }`}
             >
-              Lihat hasil evaluasi kinerja magang Anda dan unduh dokumen resmi bertanda tangan.
+              Lembar evaluasi capaian 4 pilar kompetensi magang resmi diterbitkan langsung oleh Mentor Pembimbing.
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => setReloadKey((k) => k + 1)}
-              disabled={loading}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-all cursor-pointer"
-            >
-              <RefreshCw
-                className={`w-3.5 h-3.5 ${
-                  loading ? "animate-spin text-[#00A5EC]" : ""
-                }`}
-              />
-              Segarkan
-            </button>
-
-            {adaSertifikat && (
-              <button
-                onClick={handleDownloadSertifikatPdf}
-                disabled={downloadingSertifikat}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Award className="w-4 h-4" />
-                {downloadingSertifikat
-                  ? "Menyiapkan Sertifikat..."
-                  : "Unduh Sertifikat PDF"}
-              </button>
-            )}
-
-            {isEvaluated && (
-              <button
-                onClick={handleDownloadTranskripPdf}
-                disabled={downloadingTranskrip}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] text-white text-xs font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Download className="w-4 h-4" />
-                {downloadingTranskrip
-                  ? "Menyiapkan Transkrip..."
-                  : "Unduh Transkrip PDF"}
-              </button>
-            )}
           </div>
         </div>
 
+        {/* State Loading */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400 text-xs">
             <RefreshCw className="w-6 h-6 animate-spin text-[#004F9F] mb-2" />
-            Memuat data transkrip nilai &amp; sertifikat...
+            <span>Memuat lembar evaluasi dan transkrip nilai resmi...</span>
           </div>
         ) : !isEvaluated ? (
-          /* State Belum Dinilai */
-          <div
-            className={`rounded-3xl border p-8 sm:p-12 text-center space-y-4 shadow-sm ${
-              isDark
-                ? "border-white/10 bg-[#161b22]"
-                : "border-slate-200/80 bg-white"
-            }`}
-          >
-            <div className="flex justify-center">
-              <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                <Clock className="w-8 h-8" />
-              </span>
-            </div>
-            <div className="max-w-md mx-auto space-y-1.5">
-              <h3
-                className={`text-base font-extrabold ${
-                  isDark ? "text-slate-100" : "text-[#0B1442]"
-                }`}
-              >
-                Penilaian Sedang Dalam Proses
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Mentor pembimbing ({m.nama || "Mentor Anda"}) belum menerbitkan
-                transkrip nilai akhir magang. Nilai resmi beserta sertifikat
-                akan otomatis muncul di halaman ini setelah difinalisasi.
-              </p>
-            </div>
-          </div>
+          /* STATE BELUM DINILAI: Tampilkan Alur Bimbingan Stepper */
+          <RaporProgressionStepperCard
+            mentor={m}
+            peserta={p}
+            statusLaporan={statusLaporan}
+            catatanMentorLaporan={catatanMentorLaporan}
+            statusTimeline={statusTimeline}
+            isDark={isDark}
+          />
         ) : (
-          /* State Sudah Dinilai */
+          /* STATE SUDAH DINILAI: Tampilkan Halaman Rapor Lengkap */
           <div className="space-y-6">
-            {/* Hero Card Summary Nilai Component */}
+            {/* Hero Card Summary Nilai Akhir */}
             <TranskripHeroCard
               peserta={p}
               mentor={m}
@@ -353,67 +291,253 @@ const TranskripNilaiPesertaPage = () => {
               adaSertifikat={adaSertifikat}
             />
 
-            {/* Catatan Mentor */}
-            {pn.catatan_mentor && (
-              <div
-                className={`rounded-2xl border p-4 sm:p-5 shadow-sm space-y-1.5 ${
-                  isDark
-                    ? "border-white/10 bg-[#161b22]"
-                    : "border-slate-200/80 bg-white"
-                }`}
-              >
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                  <FileText className="w-4 h-4 text-[#00A5EC]" />
-                  Ulasan &amp; Evaluasi Mentor Pembimbing
-                </div>
-                <div
-                  className={`italic text-xs sm:text-sm pl-6 leading-relaxed ${
-                    isDark ? "text-slate-200" : "text-slate-800"
+            {/* Tab Navigasi Tampilan (Segmented Control Track Tanpa Garis Sekat Bawah) */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="inline-flex p-1 rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 gap-1 sm:gap-1.5 self-start">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("ringkasan")}
+                  className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs font-black transition-all duration-200 cursor-pointer outline-none focus:outline-none focus:ring-0 select-none ${
+                    activeTab === "ringkasan"
+                      ? "bg-gradient-to-r from-[#060D2A] via-[#0B1A4C] to-[#004F9F] text-white shadow-md ring-1 ring-sky-400/30"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/10"
                   }`}
                 >
-                  "{pn.catatan_mentor}"
+                  <Layers className="w-4 h-4 shrink-0" />
+                  <span>Ringkasan Kompetensi</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("dokumen")}
+                  className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs font-black transition-all duration-200 cursor-pointer outline-none focus:outline-none focus:ring-0 select-none ${
+                    activeTab === "dokumen"
+                      ? "bg-gradient-to-r from-[#060D2A] via-[#0B1A4C] to-[#004F9F] text-white shadow-md ring-1 ring-sky-400/30"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-white/10"
+                  }`}
+                >
+                  
+                  <Eye className="w-4 h-4 shrink-0" />
+                  <span>Pratinjau Lembar Rapor Resmi (A4)</span>
+                </button>
+              </div>
+
+              <span className="hidden sm:inline text-[11px] text-slate-400 font-medium">
+                {activeTab === "ringkasan"
+                  ? "4 Pilar Kompetensi Bimbingan"
+                  : "Format Cetak Lembar Rapor"}
+              </span>
+            </div>
+
+            {/* TAB KONTEN 1: RINGKASAN KOMPETENSI INTERAKTIF */}
+            {activeTab === "ringkasan" && (
+              <div className="space-y-6 animate-[fadeslide_0.25s_ease-out]">
+                {/* 1. CARD TABEL/GRID 4 PILAR KOMPETENSI (GAYA CARD RIWAYAT PRESENSI BULANAN) */}
+                <div
+                  className={`w-full rounded-2xl border shadow-sm overflow-hidden ${
+                    isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
+                  }`}
+                >
+                  {/* Header Card di dalam (Tanpa Garis Sekat ke Konten) */}
+                  <div className="flex items-center justify-between gap-3 px-3.5 sm:px-6 pt-4 sm:pt-6 pb-1 sm:pb-2">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <span className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
+                        <LayoutGrid className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <h3
+                          className={`text-sm sm:text-base font-black truncate ${
+                            isDark ? "text-slate-100" : "text-[#0B1442]"
+                          }`}
+                        >
+                          Rincian Capaian 4 Pilar Kompetensi Magang
+                        </h3>
+                        <p
+                          className={`mt-0.5 text-[10px] sm:text-xs leading-relaxed max-w-xl truncate ${
+                            isDark ? "text-slate-400" : "text-slate-500"
+                          }`}
+                        >
+                          Evaluasi kuantitatif menyeluruh aspek profesional, personal, sosial, dan administratif oleh Mentor
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold bg-blue-50 dark:bg-sky-950/60 text-[#004F9F] dark:text-[#00A5EC] border border-blue-200/60 dark:border-sky-800/40 shrink-0 shadow-2xs">
+                      4 Pilar Evaluasi
+                    </span>
+                  </div>
+
+                  {/* Body Card: Grid 4 Pilar Kompetensi */}
+                  <div className="px-3.5 sm:px-6 pb-4 sm:pb-6 pt-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+                      <KompetensiPillarCard
+                        title="Pilar I: Kompetensi Profesional"
+                        icon={Briefcase}
+                        bobot={pn.bobot_profesional || 30}
+                        rataRata={pn.nilai_profesional}
+                        predikat={HitungIndeks(pn.nilai_profesional)}
+                        items={profItems}
+                        isDark={isDark}
+                      />
+
+                      <KompetensiPillarCard
+                        title="Pilar II: Kompetensi Personal"
+                        icon={UserCheck}
+                        bobot={pn.bobot_personal || 25}
+                        rataRata={pn.nilai_personal}
+                        predikat={HitungIndeks(pn.nilai_personal)}
+                        items={persItems}
+                        isDark={isDark}
+                      />
+
+                      <KompetensiPillarCard
+                        title="Pilar III: Kompetensi Sosial"
+                        icon={Users}
+                        bobot={pn.bobot_sosial || 20}
+                        rataRata={pn.nilai_sosial}
+                        predikat={HitungIndeks(pn.nilai_sosial)}
+                        items={sosItems}
+                        isDark={isDark}
+                      />
+
+                      <KompetensiPillarCard
+                        title="Pilar IV: Kompetensi Administratif"
+                        icon={ClipboardCheck}
+                        bobot={pn.bobot_administratif || 25}
+                        rataRata={pn.nilai_administratif}
+                        predikat={HitungIndeks(pn.nilai_administratif)}
+                        items={admItems}
+                        isDark={isDark}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. CARD ULASAN & EVALUASI PEMBIMBING LAPANGAN (GAYA CARD RIWAYAT PRESENSI BULANAN) */}
+                <div
+                  className={`w-full rounded-2xl border shadow-sm overflow-hidden ${
+                    isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200/80 bg-white"
+                  }`}
+                >
+                  {/* Header Card di dalam (Dengan Garis Sekat ke Konten) */}
+                  <div
+                    className={`flex items-center justify-between gap-3 px-3.5 sm:px-6 pt-3.5 sm:pt-5 pb-2.5 sm:pb-3 border-b ${
+                      isDark ? "border-white/10" : "border-slate-100"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <span className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
+                        <FileEdit className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <h3
+                          className={`text-sm sm:text-base font-black truncate ${
+                            isDark ? "text-slate-100" : "text-[#0B1442]"
+                          }`}
+                        >
+                          Ulasan &amp; Evaluasi Pembimbing Lapangan
+                        </h3>
+                        <p
+                          className={`mt-0.5 text-[10px] sm:text-xs leading-relaxed max-w-2xl truncate ${
+                            isDark ? "text-slate-400" : "text-slate-500"
+                          }`}
+                        >
+                          Penilaian kualitatif resmi dan catatan perkembangan kompetensi dari Mentor Dinas Komunikasi dan Informatika
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold bg-blue-50 dark:bg-sky-950/60 text-[#004F9F] dark:text-[#00A5EC] border border-blue-200/60 dark:border-sky-800/40 shrink-0 shadow-2xs">
+                      <BadgeCheck className="w-3.5 h-3.5 text-[#004F9F] dark:text-[#00A5EC]" />
+                      <span>Telah Diverifikasi</span>
+                    </div>
+                  </div>
+
+                  {/* Body Card: Isi Ulasan & Profil Mentor */}
+                  <div className="px-3.5 sm:px-6 pt-2.5 sm:pt-3.5 pb-3.5 sm:pb-5 relative overflow-hidden">
+                    {/* Watermark Quote Mark */}
+                    <div className="text-slate-200/60 dark:text-slate-700/20 text-4xl sm:text-5xl font-sans font-black absolute top-3 right-5 select-none pointer-events-none leading-none">
+                      ”
+                    </div>
+
+                    {/* Isi Catatan Mentor Aktual Berformat Miring / Italic */}
+                    <p
+                      className={`italic text-xs sm:text-sm leading-relaxed pr-8 relative z-10 ${
+                        isDark ? "text-slate-200" : "text-slate-700"
+                      }`}
+                    >
+                      “{cleanCatatan}”
+                    </p>
+
+                    {/* Garis Sekat Pemisah antara Kalimat Evaluasi dan Profil Mentor */}
+                    <div
+                      className={`border-t pt-3.5 mt-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10 ${
+                        isDark ? "border-white/10" : "border-slate-100"
+                      }`}
+                    >
+                      {/* Kiri: Foto Profil Mentor (jika ada) atau Avatar Biru Gradasi (jika belum ada foto) */}
+                      <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          {fotoMentorSrc ? (
+                            <img
+                              src={fotoMentorSrc}
+                              alt={m.nama || "Mentor"}
+                              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-[#004F9F]/20 shadow-xs"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const fallback = e.currentTarget.parentElement?.querySelector(".avatar-fallback");
+                                if (fallback) fallback.style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            className={`avatar-fallback w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-[#0B1442] via-[#004F9F] to-[#00A5EC] text-white items-center justify-center font-black text-xs sm:text-sm shadow-xs ring-1 ring-white/20 ${
+                              fotoMentorSrc ? "hidden" : "flex"
+                            }`}
+                          >
+                            {mentorInitials}
+                          </div>
+                        </div>
+                        <div>
+                          <h5
+                            className={`font-bold text-xs sm:text-sm leading-tight ${
+                              isDark ? "text-white" : "text-slate-900"
+                            }`}
+                          >
+                            {m.nama || "Pembimbing Lapangan"}
+                          </h5>
+                          <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {m.jabatan || "Pranata Komputer Ahli Muda"}
+                            {m.nip ? ` • NIP. ${m.nip}` : ""}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Kanan: Keterangan Pembimbing */}
+                      <div className="text-[11px] sm:text-xs text-slate-400 font-medium">
+                        Pembimbing Lapangan
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* 4 Pilar Kompetensi Detail Cards Components */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <KompetensiPillarCard
-                title="1. Kompetensi Profesional"
-                bobot={pn.bobot_profesional || 35}
-                rataRata={pn.nilai_profesional}
-                items={profItems}
-                colorScheme="blue"
-                isDark={isDark}
-              />
-
-              <KompetensiPillarCard
-                title="2. Kompetensi Personal"
-                bobot={pn.bobot_personal || 25}
-                rataRata={pn.nilai_personal}
-                items={persItems}
-                colorScheme="emerald"
-                isDark={isDark}
-              />
-
-              <KompetensiPillarCard
-                title="3. Kompetensi Sosial"
-                bobot={pn.bobot_sosial || 20}
-                rataRata={pn.nilai_sosial}
-                items={sosItems}
-                colorScheme="amber"
-                isDark={isDark}
-              />
-
-              <KompetensiPillarCard
-                title="4. Kompetensi Administratif"
-                bobot={pn.bobot_administratif || 20}
-                rataRata={pn.nilai_administratif}
-                items={admItems}
-                colorScheme="purple"
-                isDark={isDark}
-              />
-            </div>
+            {/* TAB KONTEN 2: LEMBAR DOKUMEN RAPOR RESMI (A4 PAPER VIEW) */}
+            {activeTab === "dokumen" && (
+              <div className="animate-[fadeslide_0.25s_ease-out]">
+                <RaporMockupCard
+                  peserta={p}
+                  mentor={m}
+                  penilaian={pn}
+                  instansi={instansi}
+                  templateRapor={templateRapor}
+                  onDownloadPdf={handleDownloadTranskripPdf}
+                  downloading={downloadingTranskrip}
+                  isDark={isDark}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

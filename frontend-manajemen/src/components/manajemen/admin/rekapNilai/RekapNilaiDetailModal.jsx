@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
-  X, Sparkles, Award, GraduationCap, Building2, UserCog,
+  X, Sparkles, Award, UserCog,
   Briefcase, Heart, Users, FileCheck, CheckCircle2, TrendingUp,
   Clock, Download, Info, BookOpen, CheckSquare, FileText, MessageSquareQuote
 } from "lucide-react";
@@ -124,7 +125,16 @@ export const RekapNilaiDetailModal = ({
   isDark = false,
   onDownloadPdf,
   downloadingPdf,
+  showSertifikatButton,
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const canManageSertifikat =
+    showSertifikatButton !== undefined
+      ? showSertifikatButton
+      : location.pathname.startsWith("/admin");
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") onClose();
@@ -174,8 +184,8 @@ export const RekapNilaiDetailModal = ({
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-sm sm:max-w-2xl md:max-w-3xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-[modalFadeUp_0.3s_ease-out] max-h-[92vh] flex flex-col border ${
-          isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200 bg-white ring-1 ring-slate-900/5"
+        className={`w-full max-w-sm sm:max-w-2xl md:max-w-3xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-[modalFadeUp_0.3s_ease-out] max-h-[92vh] flex flex-col border-0 ${
+          isDark ? "bg-[#161b22]" : "bg-white"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -188,21 +198,39 @@ export const RekapNilaiDetailModal = ({
           />
 
           <div className="relative flex items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
               <PesertaAvatarModal
                 nama={peserta.nama}
                 foto={peserta.foto_profil || peserta.file_pas_foto || peserta.foto}
               />
               <div className="min-w-0">
-                <div className="inline-flex items-center gap-1 sm:gap-1.5 text-[7.5px] sm:text-[9px] font-bold uppercase tracking-widest text-[#00A5EC] mb-0.5 bg-white/5 border border-white/10 rounded-full px-1.5 py-0.5">
-                  <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 animate-pulse" />
-                  Pratinjau Transkrip Nilai
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                  <div className="inline-flex items-center gap-1 sm:gap-1.5 text-[7.5px] sm:text-[9.5px] font-bold uppercase tracking-widest text-[#00A5EC] bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                    <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 animate-pulse" />
+                    Pratinjau Transkrip Nilai
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[8px] sm:text-[9.5px] font-black text-[#0B1442] shadow-2xs">
+                    <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                    {nilaiAkhir != null ? `${nilaiAkhir.toFixed(2)} (${indeks})` : "Belum Dinilai"}
+                  </span>
+                  {isFinal ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[8px] sm:text-[9.5px] font-bold text-emerald-200 ring-1 ring-emerald-300/30 backdrop-blur-sm">
+                      <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Diterbitkan
+                    </span>
+                  ) : isDraf ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-2 py-0.5 text-[8px] sm:text-[9.5px] font-bold text-amber-200 ring-1 ring-amber-300/30 backdrop-blur-sm">
+                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Draf Mentor
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-400/20 px-2 py-0.5 text-[8px] sm:text-[9.5px] font-bold text-slate-200 ring-1 ring-white/10 backdrop-blur-sm">
+                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Belum Dinilai
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-xs sm:text-base font-black text-white leading-tight truncate">
                   {peserta.nama || "Memuat Peserta..."}
                 </h3>
                 <p className="flex items-center gap-1 text-[8.5px] sm:text-[11px] text-white/60 mt-0.5 truncate">
-                  <GraduationCap className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
                   <span className="truncate">{peserta.institusi || "-"}</span>
                   {peserta.jurusan && <span className="opacity-75">• {peserta.jurusan}</span>}
                 </p>
@@ -215,31 +243,6 @@ export const RekapNilaiDetailModal = ({
             >
               <X className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
             </button>
-          </div>
-
-          {/* Deretan badge informasi */}
-          <div className="relative mt-2 sm:mt-4 flex flex-wrap items-center gap-1 sm:gap-1.5">
-            <span className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full bg-white/95 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[10.5px] font-black text-[#0B1442] shadow-sm">
-              <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-              {nilaiAkhir != null ? `${nilaiAkhir.toFixed(2)} (${indeks})` : "Belum Dinilai"}
-            </span>
-            <span className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full bg-white/10 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[10.5px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
-              <Building2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-              {peserta.bidang || "Bidang Magang"}
-            </span>
-            {isFinal ? (
-              <span className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full bg-emerald-400/20 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[10.5px] font-bold text-emerald-200 ring-1 ring-emerald-300/30 backdrop-blur-sm">
-                <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Diterbitkan
-              </span>
-            ) : isDraf ? (
-              <span className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full bg-amber-400/20 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[10.5px] font-bold text-amber-200 ring-1 ring-amber-300/30 backdrop-blur-sm">
-                <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Draf Mentor
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full bg-slate-400/20 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[10.5px] font-bold text-slate-200 ring-1 ring-white/10 backdrop-blur-sm">
-                <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Belum Dinilai
-              </span>
-            )}
           </div>
         </div>
 
@@ -463,7 +466,7 @@ export const RekapNilaiDetailModal = ({
                 <p className={`text-[8.5px] sm:text-[11px] font-medium leading-relaxed ${
                   isDark ? "text-slate-300" : "text-slate-500"
                 }`}>
-                  Transkrip ini memuat hasil evaluasi kinerja magang resmi 4 pilar kompetensi. Dokumen PDF yang diunduh mencakup verifikasi barcode digital dan tanda tangan instansi resmi Diskominfo.
+                  Transkrip ini memuat rekapitulasi evaluasi nilai akhir magang peserta. Dokumen format PDF dapat diunduh untuk kebutuhan arsip dan administrasi.
                 </p>
               </div>
             </>
@@ -488,24 +491,39 @@ export const RekapNilaiDetailModal = ({
             <button
               type="button"
               onClick={onClose}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold transition-colors cursor-pointer ${
+              className={`px-3.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-2xs hover:shadow-xs ${
                 isDark
-                  ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-                  : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                  ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                  : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100 hover:border-slate-400 hover:text-slate-800"
               }`}
             >
               Tutup
             </button>
 
+            {canManageSertifikat && isFinal && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate(`/admin/sertifikat?cari=${encodeURIComponent(peserta.nama || "")}`);
+                }}
+                className="group inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl border border-emerald-500/30 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-500/30 dark:text-emerald-300 text-[10px] sm:text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer shadow-2xs hover:shadow-xs"
+                title="Buka halaman Kelola Sertifikat untuk peserta ini"
+              >
+                <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400 transition-transform duration-300 ease-out group-hover:scale-120 group-hover:rotate-12" />
+                <span className="hidden sm:inline">Kelola Sertifikat</span>
+                <span className="inline sm:hidden">Sertifikat</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={onDownloadPdf}
               disabled={downloadingPdf || !hasScore}
-              className="group relative inline-flex items-center justify-center gap-1.5 sm:gap-2 overflow-hidden rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] to-[#00A5EC] px-3.5 py-1.5 sm:px-5 sm:py-2.5 text-[10px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="group inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#0B1442] via-[#101F5C] to-[#1E3A8A] px-3.5 py-1.5 sm:px-5 sm:py-2.5 text-[10px] sm:text-xs font-bold text-white shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
-              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent group-hover:animate-[shine_0.9s_ease-out]" />
-              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 relative shrink-0" />
-              <span className="relative">
+              <Download className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-transform duration-300 ease-out group-hover:-translate-y-1 ${downloadingPdf ? "animate-bounce" : ""}`} />
+              <span>
                 {downloadingPdf ? (
                   "Menyiapkan PDF..."
                 ) : (

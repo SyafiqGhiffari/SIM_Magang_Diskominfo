@@ -2,18 +2,14 @@ import { useState, useMemo } from "react";
 import {
   UserPlus,
   FileCheck2,
-  CalendarCheck2,
-  Clock,
-  FileText,
   Award,
-  ShieldAlert,
   KeyRound,
   RotateCcw,
   BellRing,
   ChevronDown,
   Check,
-  Building2,
-  AlertTriangle,
+  MessageSquare,
+  FileSignature,
 } from "lucide-react";
 import { toastSuccess } from "../../../../../utils/swal";
 
@@ -70,23 +66,18 @@ export const TabNotifikasiAdmin = ({ dk, profile }) => {
   // ── Default State Preferensi Notifikasi Valid SIM Magang (Role: Administrator) ──
   const defaultSettings = useMemo(
     () => ({
-      // 1. Pendaftaran & Seleksi Magang
+      // 1. Pendaftaran & Administrasi Seleksi
       notifPendaftaranBaru: true,
-      notifVerifikasiDokumen: true,
-      notifKuotaBidangPenuh: true,
+      notifTindakanAdministrasi: true,
 
-      // 2. Presensi & Kehadiran Peserta
-      notifPresensiHarian: true,
-      notifPengajuanIzinPeserta: true,
-      notifKeterlambatanPeserta: true,
-
-      // 3. Laporan Akhir & Penerbitan Sertifikat
-      notifPengumpulanLaporan: true,
+      // 2. Evaluasi Kelulusan & Sertifikasi
       notifPenilaianMentor: true,
       notifSertifikatSiapTerbit: true,
 
+      // 3. Layanan Chat & Bantuan Sistem
+      notifChatBantuan: true,
+
       // 4. Keamanan Sistem & Akun Administrator
-      notifLoginKeamanan: true,
       notifPerubahanKredensial: true,
     }),
     []
@@ -96,9 +87,14 @@ export const TabNotifikasiAdmin = ({ dk, profile }) => {
 
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem(storageKey);
+      const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_admin_notif_settings");
       if (saved) {
-        return { ...defaultSettings, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        const sanitized = {};
+        for (const key of Object.keys(defaultSettings)) {
+          sanitized[key] = parsed[key] !== undefined ? Boolean(parsed[key]) : defaultSettings[key];
+        }
+        return sanitized;
       }
     } catch {
       // ignore
@@ -106,13 +102,34 @@ export const TabNotifikasiAdmin = ({ dk, profile }) => {
     return defaultSettings;
   });
 
+  // Sinkronkan state jika profile baru selesai dimuat atau storageKey berubah (pola resmi React tanpa useEffect cascading render)
+  const [prevStorageKey, setPrevStorageKey] = useState(storageKey);
+  if (prevStorageKey !== storageKey) {
+    setPrevStorageKey(storageKey);
+    let initial = defaultSettings;
+    try {
+      const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_admin_notif_settings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const sanitized = {};
+        for (const key of Object.keys(defaultSettings)) {
+          sanitized[key] = parsed[key] !== undefined ? Boolean(parsed[key]) : defaultSettings[key];
+        }
+        initial = sanitized;
+      }
+    } catch {
+      // ignore
+    }
+    setSettings(initial);
+  }
+
   const [isResetting, setIsResetting] = useState(false);
 
   // Collapsible Accordion states: buka section pendaftaran secara default
   const [openSections, setOpenSections] = useState({
     pendaftaran: true,
-    presensi: false,
-    laporan: false,
+    kelulusan: false,
+    bantuan: false,
     keamanan: false,
   });
 
@@ -154,95 +171,67 @@ export const TabNotifikasiAdmin = ({ dk, profile }) => {
     }, 600);
   };
 
-  // Hitung metrik aktif
+  // Hitung metrik aktif (hanya menghitung kunci valid yang ada di defaultSettings)
   const totalItems = Object.keys(defaultSettings).length;
-  const activeItemsCount = Object.values(settings).filter(Boolean).length;
+  const activeItemsCount = Object.keys(defaultSettings).filter((key) => settings[key]).length;
 
   const SECTIONS = [
     {
       key: "pendaftaran",
       title: "Pendaftaran & Seleksi Magang",
       tag: "Pendaftaran",
-      desc: "Pemberitahuan berkas pendaftar baru, perbaikan dokumen, dan status kuota bidang",
+      desc: "Pemberitahuan berkas pendaftar baru, verifikasi berkas, dan administrasi tertunda",
       items: [
         {
           key: "notifPendaftaranBaru",
           label: "Pendaftaran Peserta Magang Baru",
           badge: "Pendaftar Baru",
-          sub: "Pemberitahuan seketika saat ada berkas pendaftaran mahasiswa/siswa magang baru yang masuk ke sistem.",
+          sub: "Pemberitahuan seketika saat ada berkas pendaftaran calon peserta magang baru yang masuk ke sistem.",
           icon: UserPlus,
         },
         {
-          key: "notifVerifikasiDokumen",
-          label: "Pembaruan & Unggahan Ulang Berkas",
-          badge: "Verifikasi Berkas",
-          sub: "Notifikasi saat calon peserta mengunggah perbaikan dokumen persyaratan magang yang diminta admin.",
+          key: "notifTindakanAdministrasi",
+          label: "Tindakan Administrasi & Berkas Tertunda",
+          badge: "Antrean Admin",
+          sub: "Pengingat penerbitan surat penerimaan yang belum dibuat, aktivasi akun pendaftar diterima, atau penugasan mentor pembimbing.",
           icon: FileCheck2,
         },
-        {
-          key: "notifKuotaBidangPenuh",
-          label: "Peringatan Batas Kuota Bidang Penuh",
-          badge: "Kapasitas Dinas",
-          sub: "Peringatan otomatis saat kuota penerimaan peserta pada salah satu bidang dinas telah mencapai batas maksimal.",
-          icon: Building2,
-        },
       ],
     },
     {
-      key: "presensi",
-      title: "Presensi & Kehadiran Peserta",
-      tag: "Kehadiran",
-      desc: "Rekapitulasi kehadiran harian seluruh peserta magang, izin sakit, dan alfa",
-      items: [
-        {
-          key: "notifPresensiHarian",
-          label: "Rekapitulasi Presensi Harian Dinas",
-          badge: "07:30 - 16:00 WIB",
-          sub: "Laporan harian kehadiran peserta WFO / WFH pada seluruh bidang penugasan Dinas Kominfo.",
-          icon: CalendarCheck2,
-        },
-        {
-          key: "notifPengajuanIzinPeserta",
-          label: "Pengajuan Izin & Surat Keterangan Sakit",
-          badge: "Verifikasi Izin",
-          sub: "Pemberitahuan seketika saat peserta magang mengajukan permohonan izin atau mengunggah surat dokter.",
-          icon: Clock,
-        },
-        {
-          key: "notifKeterlambatanPeserta",
-          label: "Peringatan Keterlambatan & Alfa",
-          badge: "Realtime Alert",
-          sub: "Pemberitahuan otomatis peserta yang terlambat presensi check-in atau tidak hadir tanpa keterangan dinas.",
-          icon: AlertTriangle,
-        },
-      ],
-    },
-    {
-      key: "laporan",
-      title: "Laporan Akhir & Penerbitan Sertifikat",
+      key: "kelulusan",
+      title: "Penilaian & Penerbitan Sertifikat",
       tag: "Sertifikasi",
-      desc: "Monitoring penyelesaian laporan akhir, input nilai mentor, dan e-sertifikat",
+      desc: "Monitoring penyelesaian nilai akhir oleh pembimbing lapangan dan penerbitan e-sertifikat",
       items: [
-        {
-          key: "notifPengumpulanLaporan",
-          label: "Pengumpulan Laporan Akhir Peserta",
-          badge: "Laporan Magang",
-          sub: "Pemberitahuan saat peserta magang telah menyelesaikan dan mengunggah berkas laporan akhir magang.",
-          icon: FileText,
-        },
         {
           key: "notifPenilaianMentor",
           label: "Penyelesaian Penilaian oleh Mentor",
           badge: "Nilai 4 Pilar",
-          sub: "Notifikasi saat pembimbing lapangan telah merampungkan pengisian seluruh evaluasi nilai akhir peserta.",
+          sub: "Pemberitahuan ketika mentor pembimbing telah merampungkan pengisian seluruh evaluasi nilai akhir kompetensi peserta.",
           icon: Award,
         },
         {
           key: "notifSertifikatSiapTerbit",
           label: "Penerbitan E-Sertifikat Kelulusan",
           badge: "E-Sertifikat",
-          sub: "Pengingat penerbitan dan penandatanganan e-sertifikat resmi untuk peserta yang telah lulus masa magang.",
-          icon: Award,
+          sub: "Pengingat penerbitan dan penandatanganan e-sertifikat resmi untuk peserta yang telah lulus masa praktek kerja dinas.",
+          icon: FileSignature,
+        },
+      ],
+    },
+    {
+      key: "bantuan",
+      title: "Layanan Chat & Bantuan Sistem",
+      tag: "Layanan Chat",
+      desc: "Pemberitahuan pertanyaan pengunjung landing page dan eskalasi permohonan bantuan livechat",
+      items: [
+        {
+          key: "notifChatBantuan",
+          label: "Pertanyaan & Permintaan Bantuan Live Chat",
+          badge: "Bantuan Masuk",
+          sub: "Pemberitahuan saat bot chat membutuhkan balasan langsung dari administrator atau saat peserta meminta bantuan admin.",
+          icon: MessageSquare,
         },
       ],
     },
@@ -250,20 +239,13 @@ export const TabNotifikasiAdmin = ({ dk, profile }) => {
       key: "keamanan",
       title: "Keamanan Sistem & Akun Administrator",
       tag: "Keamanan",
-      desc: "Peringatan aktivitas login, pergantian kredensial, dan keamanan sistem manajemen",
+      desc: "Pemberitahuan pergantian kata sandi login dan proteksi kredensial administrator",
       items: [
         {
-          key: "notifLoginKeamanan",
-          label: "Peringatan Sesi Login Baru",
-          badge: "Proteksi Akun",
-          sub: "Notifikasi keamanan seketika saat akun administrator diakses dari perangkat, IP, atau browser baru.",
-          icon: ShieldAlert,
-        },
-        {
           key: "notifPerubahanKredensial",
-          label: "Pembaruan Kata Sandi & Email",
+          label: "Pembaruan Kata Sandi Administrator",
           badge: "Kredensial Akun",
-          sub: "Konfirmasi keamanan seketika saat kata sandi login atau email administrator berhasil diperbarui.",
+          sub: "Konfirmasi keamanan seketika saat kata sandi login akun administrator berhasil diperbarui.",
           icon: KeyRound,
         },
       ],
@@ -273,7 +255,7 @@ export const TabNotifikasiAdmin = ({ dk, profile }) => {
   return (
     <div className="space-y-4 sm:space-y-6 animate-[fadeslide_0.3s_ease-out]">
       {/* ══════════════════════════════════════════════════════════════════════
-          SINGLE MAIN CARD ARCHITECTURE (SESUAI STANDAR AKUN PESERTA)
+          SINGLE MAIN CARD ARCHITECTURE (SESUAI STANDAR PORTAL MANAJEMEN)
       ══════════════════════════════════════════════════════════════════════ */}
       <div
         className={`rounded-xl sm:rounded-3xl border p-2.5 sm:p-6 shadow-xs space-y-3 sm:space-y-5 transition-colors duration-300 ${
@@ -382,7 +364,7 @@ export const TabNotifikasiAdmin = ({ dk, profile }) => {
                   </div>
                 </button>
 
-                {/* Content Accordion dengan Animasi Dropdown Halus */}
+                {/* Content Accordion */}
                 <div
                   className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
                     isOpen
@@ -414,7 +396,6 @@ export const TabNotifikasiAdmin = ({ dk, profile }) => {
                                   <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
                                     {item.label}
                                   </span>
-                                  {/* Badge Desktop */}
                                   <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
                                     {item.badge}
                                   </span>

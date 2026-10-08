@@ -13,6 +13,7 @@ import {
 } from "../../services/authService";
 import { confirmDialog, toastSuccess, toastError } from "../../utils/swal";
 import { getFileUrl } from "../../utils/fileUrl";
+import { updateAuthUser } from "../../utils/authStorage";
 import FotoProfilModal from "../../components/manajemen/shared/FotoProfilModal";
 import GantiEmailModal from "../../components/manajemen/shared/akun/GantiEmailModal";
 import TabProfilAdmin from "../../components/manajemen/admin/akun/tabs/TabProfilAdmin";
@@ -149,6 +150,9 @@ export const KelolaAkunPage = () => {
       });
       const updated = res.data?.data || res.data;
       setProfile((prev) => ({ ...prev, ...updated }));
+      updateAuthUser(updated);
+      window.dispatchEvent(new CustomEvent("sim_auth_user_updated"));
+      window.dispatchEvent(new Event("storage"));
       toastSuccess("Informasi akun administrator berhasil diperbarui!");
     } catch (err) {
       toastError(err.response?.data?.message || "Gagal memperbarui informasi akun.");
@@ -424,6 +428,7 @@ export const KelolaAkunPage = () => {
   useEffect(() => {
     if (!isDragging) return;
     const move = (e) => {
+      if (e.cancelable && e.type === "touchmove") e.preventDefault();
       const point = e.touches ? e.touches[0] : e;
       setCropPos({
         x: point.clientX - dragStart.current.x,
@@ -500,23 +505,34 @@ export const KelolaAkunPage = () => {
     const img = cropImgRef.current;
     if (!img) return;
     try {
-      const containerSize = 224;
-      const outputSize = 400;
-      const ratio = outputSize / containerSize;
-      const naturalW = img.naturalWidth;
-      const naturalH = img.naturalHeight;
+      const natW = img.naturalWidth;
+      const natH = img.naturalHeight;
 
-      if (!naturalW || !naturalH) {
+      if (!natW || !natH) {
         toastError("Gambar belum selesai dimuat, coba lagi sebentar.");
         return;
       }
 
-      const baseScale = Math.max(containerSize / naturalW, containerSize / naturalH);
-      const totalScale = baseScale * (cropZoom / 100);
-      const drawnW = naturalW * totalScale;
-      const drawnH = naturalH * totalScale;
-      const offsetX = (containerSize - drawnW) / 2 + cropPos.x;
-      const offsetY = (containerSize - drawnH) / 2 + cropPos.y;
+      // Ambil ukuran sebenarnya dari crop box di layar (160px di mobile, 224px di desktop)
+      const container = img.parentElement;
+      const boxSize = container?.offsetWidth || 224;
+
+      const outputSize = 512;
+      const outputScale = outputSize / boxSize;
+      const zoomRatio = cropZoom / 100;
+
+      // Menghitung dimensi gambar berbasis object-contain (Math.min) agar 100% presisi sesuai tampilan pratinjau asli
+      const scaleContain = Math.min(boxSize / natW, boxSize / natH);
+      const renderedW = natW * scaleContain;
+      const renderedH = natH * scaleContain;
+
+      // Ukuran gambar setelah di-zoom dan diproyeksikan ke output canvas
+      const drawW = renderedW * zoomRatio * outputScale;
+      const drawH = renderedH * zoomRatio * outputScale;
+
+      // Posisi X & Y di canvas dengan mempertimbangkan offset drag pengguna
+      const drawX = (outputSize - drawW) / 2 + cropPos.x * outputScale;
+      const drawY = (outputSize - drawH) / 2 + cropPos.y * outputScale;
 
       const canvas = document.createElement("canvas");
       canvas.width = outputSize;
@@ -525,7 +541,7 @@ export const KelolaAkunPage = () => {
 
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, outputSize, outputSize);
-      ctx.drawImage(img, offsetX * ratio, offsetY * ratio, drawnW * ratio, drawnH * ratio);
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
       canvas.toBlob(
         (blob) => {
@@ -544,6 +560,9 @@ export const KelolaAkunPage = () => {
             .then((res) => {
               const newPath = res.data?.data?.foto_profil;
               setProfile((prev) => (prev ? { ...prev, foto_profil: newPath } : prev));
+              updateAuthUser({ foto_profil: newPath });
+              window.dispatchEvent(new CustomEvent("sim_auth_user_updated"));
+              window.dispatchEvent(new Event("storage"));
               setShowFotoModal(false);
               toastSuccess("Foto profil administrator berhasil diperbarui!");
               setReloadKey((k) => k + 1);
@@ -578,6 +597,9 @@ export const KelolaAkunPage = () => {
       await hapusFotoAdmin();
       setFotoPreview(null);
       setProfile((prev) => (prev ? { ...prev, foto_profil: "" } : prev));
+      updateAuthUser({ foto_profil: "" });
+      window.dispatchEvent(new CustomEvent("sim_auth_user_updated"));
+      window.dispatchEvent(new Event("storage"));
       if (showFotoModal) setShowFotoModal(false);
       toastSuccess("Foto profil berhasil dihapus.");
       setReloadKey((k) => k + 1);
@@ -683,16 +705,9 @@ export const KelolaAkunPage = () => {
           return { ...prev, email: newEmail };
         });
 
-        try {
-          const storedUser = sessionStorage.getItem("user");
-          if (storedUser) {
-            const parsed = JSON.parse(storedUser);
-            parsed.email = newEmail;
-            sessionStorage.setItem("user", JSON.stringify(parsed));
-          }
-        } catch (storageErr) {
-          console.warn("Gagal memperbarui session storage:", storageErr);
-        }
+        updateAuthUser({ email: newEmail });
+        window.dispatchEvent(new CustomEvent("sim_auth_user_updated"));
+        window.dispatchEvent(new Event("storage"));
 
         setShowEmailModal(false);
         toastSuccess("Alamat email administrator berhasil diperbarui!");

@@ -106,6 +106,24 @@ func KirimNotifikasiAdmin(tipe, judul, pesan, refTabel string, refID *uint, urlT
 	})
 }
 
+// KirimEmailKeSemuaAdmin mengirim email ke semua akun admin yang berstatus aktif secara asinkron
+func KirimEmailKeSemuaAdmin(subject, body string) {
+	if notifDB == nil {
+		return
+	}
+	var adminEmails []string
+	notifDB.Model(&models.UserManajemen{}).
+		Where("role = 'admin' AND status_akun = 'aktif' AND email IS NOT NULL AND email != ''").
+		Pluck("email", &adminEmails)
+
+	for _, email := range adminEmails {
+		em := email
+		go func(target string) {
+			_ = SendEmail(target, subject, body)
+		}(em)
+	}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PENGINGAT HARIAN (tanpa email) — dijalankan sekali sehari pukul 07.00
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,17 +1,30 @@
+import { useState } from "react";
 import {
   Landmark,
-  XCircle,
-  AlertTriangle,
-  FileText,
+  Building2,
+  CheckCircle2,
   Hourglass,
+  AlertTriangle,
+  XCircle,
   PartyPopper,
   Lock,
   Pencil,
-  Sparkles,
   ArrowRight,
+  ArrowUpRight,
+  CalendarDays,
+  FileText,
+  ClipboardCheck,
+  ClipboardPenLine,
+  Copy,
+  Check,
+  Download,
+  MonitorCheck,
+  FileCheck,
 } from "lucide-react";
+import { getFileUrl } from "../../utils/fileUrl";
+import { formatTanggalIndonesia } from "../../utils/formatTime";
 
-const getGreeting = () => {
+const getSalam = () => {
   const hr = new Date().getHours();
   if (hr < 11) return "Selamat Pagi";
   if (hr < 15) return "Selamat Siang";
@@ -19,14 +32,47 @@ const getGreeting = () => {
   return "Selamat Malam";
 };
 
+const getInisial = (nama) => {
+  if (!nama) return "P";
+  const parts = String(nama).trim().split(/\s+/);
+  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+};
+
 const TabDashboard = ({
-  dk, surface, txt, sub, muted,
-  user, hasRegistered, status, loading,
-  isPending, isRevisi, isAccepted, isRejected,
+  dk,
+  user,
+  hasRegistered,
+  status,
+  loading,
+  isPending,
+  isRevisi,
+  isAccepted,
+  isRejected,
   handleTabChange,
 }) => {
+  const salam = getSalam();
+  const namaPeserta = user?.nama || "Calon Peserta";
+  const rawFoto = user?.foto_profil;
+  const fotoUrl = rawFoto ? getFileUrl(rawFoto) : null;
 
-  const forceRevisiForTesting = false; // set true untuk demo/testing, abaikan catatan admin dan paksa tampilkan 3 dokumen revisi contoh
+  const institusi = user?.institusi || status?.institusi || "";
+
+  const tanggalMulaiFmt = formatTanggalIndonesia(status?.tanggal_mulai, true);
+  const tanggalSelesaiFmt = formatTanggalIndonesia(status?.tanggal_selesai, true);
+  const adaJadwal = status?.tanggal_mulai && status?.tanggal_selesai;
+
+  const kodeKategori = status?.kategori_pendaftar === "mahasiswa" ? "M" : status?.kategori_pendaftar === "siswa" ? "S" : "";
+  const nomorRegistrasi = status
+    ? `PM-${status.created_at ? new Date(status.created_at).getFullYear() : new Date().getFullYear()}${kodeKategori ? `-${kodeKategori}` : ""}-${String(status.id || 0).padStart(4, "0")}`
+    : "-";
+
+  const [copiedReg, setCopiedReg] = useState(false);
+  const handleCopyNomor = () => {
+    if (!nomorRegistrasi || nomorRegistrasi === "-") return;
+    navigator.clipboard.writeText(nomorRegistrasi);
+    setCopiedReg(true);
+    setTimeout(() => setCopiedReg(false), 2000);
+  };
 
   const getStepProgressHeight = () => {
     if (isAccepted || isRejected || isRevisi) return "100%";
@@ -36,431 +82,911 @@ const TabDashboard = ({
   };
 
   return (
-    <div className="space-y-6 animate-[fadeslide_0.4s_ease-out]">
-      {/* Hero Welcome Banner (Full Width di Atas) */}
-      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#030712] via-[#0B1442] to-[#1E3A8A] p-7 text-white shadow-xl shadow-[#0B1442]/30 border border-white/5">
-        {/* Glow Ambient Lights */}
-        <div className="absolute right-12 bottom-[-20px] w-64 h-64 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none animate-pulse" />
-        <div className="absolute left-[20%] top-[-20px] w-48 h-48 rounded-full bg-indigo-500/20 blur-2xl pointer-events-none" />
-        <Landmark className="absolute right-8 top-1/2 -translate-y-1/2 w-28 h-28 opacity-[0.06] text-sky-400 pointer-events-none transform rotate-6" strokeWidth={1} />
+    <div className="space-y-6 animate-[fadeslide_0.35s_ease-out]">
+      {/* ── 1. HERO WELCOME BANNER (PERSIS GAYA DASHBOARD WEB MANAJEMEN) ── */}
+      <div
+        className={`relative w-full max-w-full overflow-hidden rounded-2xl sm:rounded-3xl border shadow-xl transition-all duration-300 p-5 sm:p-7 ${
+          dk
+            ? "bg-gradient-to-br from-[#060D2A] via-[#0B1A4C] to-[#122B70] border-white/10 text-white"
+            : "bg-gradient-to-br from-[#060D2A] via-[#0B1A4C] to-[#004F9F] border-blue-900/40 text-white"
+        }`}
+      >
+        {/* Ambient Glows & Radial Dot Matrix */}
+        <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#00A5EC]/20 blur-3xl animate-pulse" />
+        <div className="pointer-events-none absolute -left-10 -bottom-16 h-48 w-48 rounded-full bg-[#FF2D78]/15 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:16px_16px] animate-[pulse_5s_ease-in-out_infinite]" />
 
-        <div className="relative z-10">
-          <div className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-[#00A5EC] mb-2.5 bg-white/5 border border-white/10 rounded-full px-3 py-1 backdrop-blur-md">
-            <Sparkles className="w-3 h-3 text-[#00A5EC] animate-pulse" />
-            <span>{getGreeting()}</span>
-          </div>
-          <h2 className="text-3xl font-black tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,165,236,0.2)]">{user?.nama || "Peserta"}</h2>
-          <p className="text-xs text-white/70 mt-2 font-sans max-w-xl leading-relaxed">
-            Pantau dan kelola permohonan magang Anda di Dinas Komunikasi, Informatika dan Statistik Kabupaten Ponorogo secara praktis dalam satu pintu.
-          </p>
+        {/* Watermark Icon - Icon Rumah (Dashboard) seperti di Sidebar */}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1}
+          stroke="currentColor"
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-4 sm:-right-2 top-1/2 h-36 w-36 sm:h-52 sm:w-52 -translate-y-1/2 rotate-12 text-sky-400 opacity-[0.05]"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+          />
+        </svg>
 
-          {hasRegistered && (
-            <div className={`mt-5 inline-flex items-center gap-2.5 rounded-full px-4 py-1.5 text-[10px] font-extrabold text-white border shadow-inner backdrop-blur-md ${isAccepted
-                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                : isRejected
-                  ? "bg-red-500/10 border-red-500/20 text-red-400"
-                  : isRevisi
-                    ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                    : "bg-[#00A5EC]/10 border-[#00A5EC]/20 text-[#00A5EC]"
-              }`}>
-              <span className="relative flex h-2.5 w-2.5">
-                {isPending && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>}
-                {isRevisi && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>}
-                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isPending ? "bg-blue-400" : isRevisi ? "bg-amber-400" : isAccepted ? "bg-emerald-400" : "bg-red-400"}`}></span>
-              </span>
-              <span>Status Pendaftaran: <span className="font-black ml-1">{status?.status_pendaftaran || "Diproses"}</span></span>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 sm:gap-6">
+          {/* Kolom Kiri: Avatar + Identitas + Badges */}
+          <div className="flex items-center gap-4 sm:gap-5 min-w-0 max-w-3xl">
+            <div className="relative shrink-0">
+              {fotoUrl ? (
+                <img
+                  src={fotoUrl}
+                  alt={namaPeserta}
+                  className="h-14 w-14 sm:h-20 sm:w-20 rounded-2xl object-cover ring-2 sm:ring-3 ring-white/25 shadow-xl"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : (
+                <div className="flex h-14 w-14 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-lg sm:text-2xl font-black text-white ring-2 sm:ring-3 ring-white/25 shadow-xl">
+                  {getInisial(namaPeserta)}
+                </div>
+              )}
             </div>
-          )}
+
+            <div className="min-w-0 flex-1">
+              {/* Tulisan Salam (Gaya Dashboard Peserta) */}
+              <p className="text-sm sm:text-base md:text-lg font-black text-white/90 tracking-tight leading-tight">
+                {salam}
+              </p>
+
+              {/* Nama Peserta */}
+              <h1 className="mt-0.5 text-lg sm:text-2xl md:text-[28px] font-black tracking-tight leading-tight truncate text-white">
+                {namaPeserta}
+              </h1>
+
+              {/* Asal Institusi (Tulisan biasa dengan icon di kiri) */}
+              {institusi && (
+                <div className="mt-1 flex items-center gap-1.5 text-xs sm:text-sm text-white/90 font-medium truncate">
+                  <Building2 className="w-3.5 h-3.5 text-white shrink-0" />
+                  <span className="truncate">{institusi}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Kolom Kanan: Card Aksi Prioritas (Gaya Card Prioritas Mentor/Peserta) */}
+          <div className="shrink-0 self-start lg:self-center">
+            {isAccepted ? (
+              <a
+                href={import.meta.env.VITE_PORTAL_URL || "http://localhost:5173/login"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex cursor-pointer items-center gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/20 py-2.5 pl-3.5 pr-3 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-500/30 hover:shadow-xl active:scale-95"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/20 text-emerald-200 border border-emerald-400/30 shadow-sm transition-transform duration-300 group-hover:scale-110">
+                  <PartyPopper className="h-4.5 w-4.5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[9px] font-black uppercase tracking-widest text-emerald-200">
+                    Lolos Seleksi Magang
+                  </span>
+                  <span className="mt-0.5 block truncate text-[12.5px] font-bold text-white">
+                    Masuk Portal Manajemen
+                  </span>
+                </span>
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-emerald-200 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-white" />
+              </a>
+            ) : isRevisi ? (
+              <button
+                type="button"
+                onClick={() => handleTabChange("revisi")}
+                className="group flex cursor-pointer items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/20 py-2.5 pl-3.5 pr-3 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-amber-500/30 hover:shadow-xl active:scale-95"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/20 text-amber-200 border border-amber-400/30 shadow-sm transition-transform duration-300 group-hover:scale-110">
+                  <AlertTriangle className="h-4.5 w-4.5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[9px] font-black uppercase tracking-widest text-amber-200">
+                    Perhatian Khusus
+                  </span>
+                  <span className="mt-0.5 block truncate text-[12.5px] font-bold text-white">
+                    Perbaiki Dokumen Sekarang
+                  </span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-amber-200 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-white" />
+              </button>
+            ) : isPending ? (
+              <div className="flex items-center gap-3 rounded-2xl border border-sky-400/30 bg-sky-500/15 py-2.5 px-3.5 text-left backdrop-blur-md">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-400/20 text-sky-200 border border-sky-400/30 shadow-sm">
+                  <Hourglass className="h-4.5 w-4.5 animate-spin" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[9px] font-black uppercase tracking-widest text-sky-200">
+                    Tahap Pemeriksaan
+                  </span>
+                  <span className="mt-0.5 block truncate text-[12px] font-bold text-white">
+                    Estimasi 2-3 Hari Kerja
+                  </span>
+                </span>
+              </div>
+            ) : isRejected ? (
+              <div className="flex items-center gap-3 rounded-2xl border border-rose-400/30 bg-rose-500/15 py-2.5 px-3.5 text-left backdrop-blur-md">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-400/20 text-rose-200 border border-rose-400/30 shadow-sm">
+                  <XCircle className="h-4.5 w-4.5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[9px] font-black uppercase tracking-widest text-rose-200">
+                    Hasil Seleksi
+                  </span>
+                  <span className="mt-0.5 block truncate text-[12px] font-bold text-white">
+                    Permohonan Ditolak
+                  </span>
+                </span>
+              </div>
+            ) : !hasRegistered ? (
+              <button
+                type="button"
+                onClick={() => handleTabChange("form")}
+                className="group flex cursor-pointer items-center gap-3 rounded-2xl border border-white/20 bg-white/10 py-2.5 pl-3.5 pr-3 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/20 hover:shadow-xl active:scale-95"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-400/20 text-sky-200 border border-sky-400/30 shadow-sm transition-transform duration-300 group-hover:scale-110">
+                  <FileText className="h-4.5 w-4.5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[9px] font-black uppercase tracking-widest text-sky-200">
+                    Langkah Awal
+                  </span>
+                  <span className="mt-0.5 block truncate text-[12.5px] font-bold text-white">
+                    Mulai Isi Formulir
+                  </span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-white/70 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-white" />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {/* Grid Content 2 Columns (Di Bawah Hero Banner) */}
+
+
+      {/* ── 3. DUA KOLOM UTAMA (KIRI: PENGUMUMAN & AKSI; KANAN: ALUR PROSES) ── */}
       <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-        {/* Kolom Utama (Kiri) */}
-        <div className="flex-1 space-y-6">
-
-          {/* Main Alert / CTA Cards based on Status */}
-          {!loading && (
-            <div className="space-y-4">
-              <div>
-                {/* Card: Start Registration */}
-                {!hasRegistered && (
-                  <div className={`relative overflow-hidden rounded-2xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5 transition-all duration-300 ${dk
+        {/* Kolom Kiri: Card Status Komprehensif & Aksi Cepat */}
+        <div className="flex-1 w-full flex flex-col justify-between space-y-6">
+          {/* Status Announcement Detailed Card */}
+          {loading && !status && !user ? (
+            <div
+              className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border p-6 sm:p-7 flex items-center gap-4 ${
+                dk ? "bg-white/5 border-white/10" : "bg-white border-slate-200"
+              }`}
+            >
+              <div className="h-14 w-14 rounded-2xl bg-slate-200 dark:bg-white/10 shrink-0" />
+              <div className="space-y-2.5 flex-1">
+                <div className="h-4 w-48 rounded-full bg-slate-200 dark:bg-white/10" />
+                <div className="h-3 w-3/4 max-w-md rounded-full bg-slate-200 dark:bg-white/10" />
+              </div>
+            </div>
+          ) : (
+            <div>
+              {/* JIKA BELUM MENDAFTAR */}
+              {!hasRegistered && (
+                <div
+                  className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5 transition-all duration-300 ${
+                    dk
                       ? "border-[#00A5EC]/20 bg-[#00A5EC]/5 hover:bg-[#00A5EC]/10"
                       : "border-[#00A5EC]/30 bg-gradient-to-r from-[#00A5EC]/5 to-[#004F9F]/5 hover:shadow-lg hover:shadow-blue-500/5"
-                    }`}>
-                    <div className="absolute right-0 top-0 w-32 h-32 rounded-full bg-[#00A5EC]/10 blur-2xl pointer-events-none" />
-                    <div className="flex items-start gap-4 relative z-10">
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#00A5EC] to-[#004F9F] text-white shadow-md shadow-blue-500/20">
-                        <FileText className="w-6 h-6" strokeWidth={2} />
-                      </span>
-                      <div>
-                        <h3 className={`text-sm font-black tracking-tight ${txt}`}>Mulai Pengajuan Magang Anda</h3>
-                        <p className={`text-xs mt-1 leading-relaxed font-sans max-w-lg ${sub}`}>
-                          Belum ada permohonan aktif. Isi formulir biodata lengkap dan unggah berkas surat pengantar resmi dari instansi Anda.
-                        </p>
-                      </div>
-                    </div>
-                    <button onClick={() => handleTabChange("form")} className="relative z-10 shrink-0 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] hover:from-[#1E3A8A] hover:to-[#0B1442] px-6 py-3 text-xs font-extrabold text-white shadow-lg shadow-blue-950/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 cursor-pointer group">
-                      Lengkapi Berkas Sekarang
-                      <ArrowRight className="w-4 h-4 ml-1.5 transition-transform duration-300 group-hover:translate-x-1" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Card: Pending / In Verification */}
-                {isPending && (
-                  <div className={`relative overflow-hidden rounded-2xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5 transition-all duration-300 ${dk
-                      ? "border-[#00A5EC]/20 bg-[#00A5EC]/5 hover:bg-[#00A5EC]/10"
-                      : "border-[#00A5EC]/30 bg-gradient-to-r from-[#00A5EC]/5 to-[#004F9F]/5 hover:shadow-lg hover:shadow-blue-500/5"
-                    }`}>
-                    <div className="absolute right-0 top-0 w-32 h-32 rounded-full bg-[#00A5EC]/10 blur-2xl pointer-events-none" />
-                    <div className="flex items-start gap-4 relative z-10">
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#00A5EC] to-[#004F9F] text-white shadow-md shadow-blue-500/20">
-                        <Hourglass className="w-5.5 h-5.5 animate-[spin_2.5s_linear_infinite]" strokeWidth={2} />
-                      </span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className={`text-sm font-black tracking-tight ${txt}`}>Berkas Sedang Diverifikasi</h3>
-                          <span className="relative flex h-2 w-2 shrink-0">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-                          </span>
-                        </div>
-                        <p className={`text-xs mt-1 leading-relaxed font-sans max-w-lg ${sub}`}>
-                          Dokumen Anda sedang diperiksa secara teliti oleh tim administrator Diskominfo. Mohon tunggu proses ini selama 2-3 hari kerja.
-                        </p>
-                      </div>
-                    </div>
-                    <span className="relative z-10 shrink-0 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-blue-950/20 border border-white/10">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00A5EC] opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00A5EC]" />
-                      </span>
-                      Tahap: Menunggu
+                  }`}
+                >
+                  <div className="absolute right-0 top-0 w-32 h-32 rounded-full bg-[#00A5EC]/10 blur-2xl pointer-events-none" />
+                  <div className="flex items-start gap-4 relative z-10">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md shadow-blue-900/20">
+                      <FileText className="w-6 h-6" strokeWidth={2} />
                     </span>
+                    <div>
+                      <h3 className={`text-base font-black tracking-tight ${dk ? "text-slate-100" : "text-[#0B1442]"}`}>
+                        Mulai Pengajuan Magang Anda
+                      </h3>
+                      <p className={`text-xs mt-1 leading-relaxed font-sans max-w-lg ${dk ? "text-slate-400" : "text-slate-500"}`}>
+                        Belum ada permohonan magang aktif. Segera lengkapi formulir pendaftaran diri Anda, pilih bidang magang yang diminati, serta unggah berkas surat pengantar resmi.
+                      </p>
+                    </div>
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange("form")}
+                    className="relative z-10 shrink-0 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-6 py-3 text-xs font-extrabold text-white shadow-lg shadow-blue-950/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 cursor-pointer group"
+                  >
+                    Lengkapi Berkas Sekarang
+                    <ArrowRight className="w-4 h-4 ml-1.5 transition-transform duration-300 group-hover:translate-x-1" />
+                  </button>
+                </div>
+              )}
 
-                {/* Card: Needs Revision */}
-                {isRevisi && (
-                  <div className={`relative overflow-hidden rounded-2xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5 transition-all duration-300 ${dk
+              {/* JIKA BERKAS SEDANG DIVERIFIKASI */}
+              {isPending && (
+                <div
+                  className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5 transition-all duration-300 ${
+                    dk
+                      ? "border-[#00A5EC]/20 bg-[#00A5EC]/5 hover:bg-[#00A5EC]/10"
+                      : "border-[#00A5EC]/30 bg-gradient-to-r from-[#00A5EC]/5 to-[#004F9F]/5 hover:shadow-lg hover:shadow-blue-500/5"
+                  }`}
+                >
+                  <div className="absolute right-0 top-0 w-32 h-32 rounded-full bg-[#00A5EC]/10 blur-2xl pointer-events-none" />
+                  <div className="flex items-start gap-4 relative z-10">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md shadow-blue-900/20">
+                      <Hourglass className="w-6 h-6" strokeWidth={2} />
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className={`text-base font-black tracking-tight ${dk ? "text-slate-100" : "text-[#0B1442]"}`}>
+                          Berkas Sedang Diverifikasi
+                        </h3>
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span className="inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                        </span>
+                      </div>
+                      <p className={`text-xs mt-1 leading-relaxed font-sans max-w-lg ${dk ? "text-slate-400" : "text-slate-500"}`}>
+                        Dokumen dan berkas permohonan magang Anda sedang ditinjau dan diperiksa secara teliti oleh tim administrator Diskominfo Ponorogo. Proses ini umumnya memakan waktu 2-3 hari kerja.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="relative z-10 shrink-0 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-blue-950/20 border border-white/10">
+                    <span className="relative flex h-2 w-2">
+                      <span className="inline-flex rounded-full h-2 w-2 bg-[#00A5EC]" />
+                    </span>
+                    Tahap: Menunggu
+                  </span>
+                </div>
+              )}
+
+              {/* JIKA PERLU REVISI */}
+              {isRevisi && (
+                <div
+                  className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5 transition-all duration-300 ${
+                    dk
                       ? "border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10"
                       : "border-amber-300 bg-gradient-to-r from-amber-500/5 to-orange-500/5 hover:shadow-lg hover:shadow-amber-500/5"
-                    }`}>
-                    <div className="absolute right-0 top-0 w-32 h-32 rounded-full bg-amber-400/10 blur-2xl pointer-events-none" />
-                    <div className="flex items-start gap-4 relative z-10 w-full md:w-auto">
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20 animate-pulse">
-                        <AlertTriangle className="w-5.5 h-5.5" strokeWidth={2} />
-                      </span>
-                      <div className="space-y-2.5 w-full">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className={`text-sm font-black tracking-tight ${txt}`}>Permintaan Revisi Dokumen</h3>
-                            <span className="relative flex h-2 w-2 shrink-0">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-                            </span>
-                          </div>
-                          <p className={`text-xs mt-1 leading-relaxed font-sans max-w-lg ${sub}`}>Berkas Anda memerlukan perbaikan segera agar dapat diverifikasi ulang.</p>
+                  }`}
+                >
+                  <div className="absolute right-0 top-0 w-32 h-32 rounded-full bg-amber-400/10 blur-2xl pointer-events-none" />
+                  <div className="flex items-start gap-4 relative z-10 w-full md:w-auto">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20">
+                      <AlertTriangle className="w-6 h-6" strokeWidth={2} />
+                    </span>
+                    <div className="space-y-2.5 w-full">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-base font-black tracking-tight ${dk ? "text-slate-100" : "text-[#0B1442]"}`}>
+                            Permintaan Revisi Dokumen
+                          </h3>
+                          <span className="relative flex h-2 w-2 shrink-0">
+                            <span className="inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                          </span>
                         </div>
-                        {status.catatan_admin && (
-                          <div className={`relative text-xs rounded-xl p-3.5 font-sans italic border-l-4 ${dk
+                        <p className={`text-xs mt-1 leading-relaxed font-sans max-w-lg ${dk ? "text-slate-400" : "text-slate-500"}`}>
+                          Terdapat dokumen yang memerlukan perbaikan segera agar proses seleksi administrasi Anda dapat dilanjutkan.
+                        </p>
+                      </div>
+                      {status?.catatan_admin && (
+                        <div
+                          className={`relative text-xs rounded-xl p-3.5 font-sans italic border-l-4 ${
+                            dk
                               ? "bg-amber-400/5 border-amber-500 text-amber-300/90"
                               : "text-amber-900 bg-amber-50/80 border-amber-500 shadow-sm"
-                            }`}>
-                            <p className="font-bold not-italic text-[10px] uppercase tracking-wider text-amber-600 mb-1">Catatan Admin:</p>
-                            "{status.catatan_admin}"
-                          </div>
-                        )}
+                          }`}
+                        >
+                          <p className="font-bold not-italic text-[10px] uppercase tracking-wider text-amber-600 mb-1">
+                            Catatan Administrator:
+                          </p>
+                          "{status.catatan_admin}"
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange("revisi")}
+                    className="relative z-10 shrink-0 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-orange-600 hover:to-amber-600 px-6 py-3 text-xs font-extrabold text-white shadow-lg shadow-amber-600/10 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 cursor-pointer group"
+                  >
+                    Perbaiki Berkas Sekarang
+                    <ArrowRight className="w-4 h-4 ml-1.5 transition-transform duration-300 group-hover:translate-x-1" />
+                  </button>
+                </div>
+              )}
+
+              {/* JIKA DITERIMA */}
+              {isAccepted && (
+                <div
+                  className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border p-5 sm:p-6 transition-all duration-300 space-y-4 ${
+                    dk
+                      ? "bg-[#161b22] border-white/10"
+                      : "bg-white border-slate-200/80 shadow-sm"
+                  }`}
+                >
+                  {/* Header: Icon + Judul + Subjudul + Badge */}
+                  <div className="flex items-start gap-3.5 sm:gap-4 relative z-10 w-full">
+                    <span className="flex h-12 w-12 sm:h-13 sm:w-13 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25">
+                      <PartyPopper className="w-6 h-6 sm:w-6.5 sm:h-6.5" strokeWidth={2} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-base sm:text-lg font-black tracking-tight text-emerald-600 dark:text-emerald-400">
+                          Selamat! Anda Diterima Magang
+                        </h3>
+                        <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 shrink-0">
+                          Lolos Seleksi
+                        </span>
+                      </div>
+                      <p className={`text-xs mt-1 leading-relaxed font-sans ${dk ? "text-slate-400" : "text-slate-500"}`}>
+                        Permohonan magang Anda di Dinas Komunikasi, Informatika dan Statistik Kabupaten Ponorogo telah disetujui secara resmi.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Body Konten: Start dari pojok kiri (Full width card) */}
+                  {/* 1. Detail 3 Kolom: Nomor Registrasi, Penempatan Bidang, Periode Pelaksanaan */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[1.15fr_1.25fr_1.5fr] gap-3 sm:gap-3.5 w-full">
+                    {/* Kolom 1: Nomor Registrasi */}
+                    <div className={`p-3.5 sm:p-4 rounded-xl border flex items-start gap-3 transition-colors ${dk ? "bg-white/5 border-white/5" : "bg-slate-50/70 border-slate-200/70 shadow-sm"}`}>
+                      <div className={`p-2 rounded-lg shrink-0 ${dk ? "bg-white/5 text-emerald-400" : "bg-emerald-50 text-emerald-600 border border-emerald-100"}`}>
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-[9px] font-black uppercase tracking-wider ${dk ? "text-slate-500" : "text-slate-400"}`}>
+                          Nomor Registrasi
+                        </p>
+                        <div className="flex items-center justify-between gap-1 mt-0.5">
+                          <p className={`font-extrabold text-xs truncate ${dk ? "text-slate-200" : "text-[#0B1442]"}`}>
+                            {nomorRegistrasi}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleCopyNomor}
+                            title={copiedReg ? "Nomor Registrasi Tersalin!" : "Salin Nomor Registrasi"}
+                            className="group/copy inline-flex items-center justify-center p-1 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-115 active:scale-90 transition-all duration-200 cursor-pointer shrink-0"
+                          >
+                            {copiedReg ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-500 animate-bounce" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5 transition-transform duration-200 group-hover/copy:-rotate-12 group-hover/copy:scale-110" />
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <button onClick={() => handleTabChange("revisi")} className="relative z-10 shrink-0 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-orange-600 hover:to-amber-600 px-6 py-3 text-xs font-extrabold text-white shadow-lg shadow-amber-600/10 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 cursor-pointer group">
-                      Perbaiki Sekarang
-                      <ArrowRight className="w-4 h-4 ml-1.5 transition-transform duration-300 group-hover:translate-x-1" />
-                    </button>
+
+                    {/* Kolom 2: Penempatan Bidang */}
+                    <div className={`p-3.5 sm:p-4 rounded-xl border flex items-start gap-3 transition-colors ${dk ? "bg-white/5 border-white/5" : "bg-slate-50/70 border-slate-200/70 shadow-sm"}`}>
+                      <div className={`p-2 rounded-lg shrink-0 ${dk ? "bg-white/5 text-emerald-400" : "bg-emerald-50 text-emerald-600 border border-emerald-100"}`}>
+                        <Landmark className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-[9px] font-black uppercase tracking-wider ${dk ? "text-slate-500" : "text-slate-400"}`}>
+                          Penempatan Bidang
+                        </p>
+                        <p className={`font-bold text-xs mt-0.5 truncate ${dk ? "text-slate-200" : "text-[#0B1442]"}`}>
+                          {status?.posisi_bidang || "Bidang Aplikasi & Informatika"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Kolom 3: Periode Pelaksanaan */}
+                    <div className={`p-3.5 sm:p-4 rounded-xl border flex items-start gap-3 transition-colors ${dk ? "bg-white/5 border-white/5" : "bg-slate-50/70 border-slate-200/70 shadow-sm"}`}>
+                      <div className={`p-2 rounded-lg shrink-0 ${dk ? "bg-white/5 text-emerald-400" : "bg-emerald-50 text-emerald-600 border border-emerald-100"}`}>
+                        <CalendarDays className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-[9px] font-black uppercase tracking-wider ${dk ? "text-slate-500" : "text-slate-400"}`}>
+                          Periode Pelaksanaan
+                        </p>
+                        <p className={`font-bold text-xs mt-0.5 truncate whitespace-nowrap ${dk ? "text-slate-200" : "text-[#0B1442]"}`}>
+                          {adaJadwal ? (
+                            <>
+                              {tanggalMulaiFmt} <span className="text-emerald-500 text-[10px] font-medium mx-1">s/d</span> {tanggalSelesaiFmt}
+                            </>
+                          ) : (
+                            "Sesuai Jadwal Surat Penerimaan"
+                          )}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                {/* Card: Accepted */}
-                {isAccepted && (
-                  <div className={`relative overflow-hidden rounded-2xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5 transition-all duration-300 ${dk
-                      ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10"
-                      : "border-emerald-300 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 hover:shadow-lg hover:shadow-emerald-500/5"
-                    }`}>
-                    <div className="absolute right-0 top-0 w-32 h-32 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none animate-pulse" />
-                    <div className="flex items-start gap-4 relative z-10 w-full md:w-auto">
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/20 animate-pulse">
-                        <PartyPopper className="w-5.5 h-5.5" strokeWidth={2} />
-                      </span>
-                      <div className="space-y-3.5 w-full">
-                        <div>
-                          <h3 className="text-sm font-black tracking-tight text-emerald-600">Selamat! Anda Diterima Magang</h3>
-                          <p className={`text-xs mt-1 leading-relaxed font-sans ${sub}`}>Permohonan magang Anda telah disetujui. Berikut rincian penempatan Anda:</p>
-                        </div>
+                  {/* 2. Catatan Reviewer (jika ada) */}
+                  {status?.catatan_admin && (
+                    <div
+                      className={`p-3 sm:p-3.5 rounded-xl border-l-4 text-xs font-sans transition-all ${
+                        dk
+                          ? "bg-emerald-500/[0.05] border-emerald-500 text-emerald-200"
+                          : "bg-emerald-50/70 border-emerald-500 text-emerald-950 shadow-sm"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <ClipboardPenLine className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <p className="font-extrabold text-[10px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                          Catatan Reviewer / Administrator:
+                        </p>
+                      </div>
+                      <p className="italic leading-relaxed pl-5 text-[11px] sm:text-xs">
+                        "{status.catatan_admin}"
+                      </p>
+                    </div>
+                  )}
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-xl">
-                          <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${surface}`}>
-                            <div className={`p-2 rounded-lg shrink-0 ${dk ? "bg-white/5 text-emerald-400" : "bg-emerald-50 text-emerald-600"}`}>
-                              <Landmark className="w-4 h-4" />
+                  {/* 3. Sejajar (2 Kolom): Banner Surat Penerimaan & Banner Akses Portal */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5 w-full">
+                    {/* Banner Kiri: Surat Penerimaan Resmi (Gaya Biru Kominfo seperti Card Ajukan Pendaftaran) */}
+                    {status?.surat_penerimaan?.file_surat ? (
+                      <div
+                        className={`group/surat p-3.5 rounded-xl sm:rounded-2xl border flex flex-col justify-between gap-3 w-full transition-all duration-300 ${
+                          dk
+                            ? "bg-white/[0.02] border-white/10 hover:border-sky-500/40 shadow-sm"
+                            : "bg-white border-slate-200/80 hover:border-[#004F9F]/40 hover:shadow-md shadow-xs"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+                          <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#004F9F] dark:bg-blue-500/10 dark:text-sky-400 border border-blue-100 dark:border-blue-500/20 shadow-xs group-hover/surat:scale-105 transition-transform duration-300">
+                            <FileCheck className="w-4 h-4 sm:w-5 sm:h-5 text-[#004F9F] dark:text-sky-400" strokeWidth={2} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className={`text-xs sm:text-[13px] font-black tracking-tight transition-colors ${dk ? "text-slate-100 group-hover/surat:text-sky-400" : "text-[#0B1442] group-hover/surat:text-[#004F9F]"}`}>
+                                Surat Penerimaan Magang
+                              </h4>
+                              <span className="inline-flex items-center rounded-full bg-blue-500/10 text-[#004F9F] dark:text-sky-400 border border-blue-200/60 dark:border-blue-500/20 px-1.5 py-0.2 text-[8.5px] font-black uppercase tracking-wider">
+                                Dokumen Resmi
+                              </span>
                             </div>
-                            <div>
-                              <p className={`text-[9px] font-black uppercase tracking-wider ${muted}`}>Penempatan Bidang</p>
-                              <p className={`font-bold text-xs mt-0.5 ${txt}`}>{status.posisi_bidang || "Belum Ditentukan"}</p>
-                            </div>
-                          </div>
-
-                          <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${surface}`}>
-                            <div className={`p-2 rounded-lg shrink-0 ${dk ? "bg-white/5 text-emerald-400" : "bg-emerald-50 text-emerald-600"}`}>
-                              <FileText className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <p className={`text-[9px] font-black uppercase tracking-wider ${muted}`}>Periode Pelaksanaan</p>
-                              <p className={`font-bold text-xs mt-0.5 ${txt}`}>
-                                {status.tanggal_mulai || "-"} <span className="text-emerald-500 text-[10px] font-normal mx-0.5">s/d</span> {status.tanggal_selesai || "-"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-xl ${
-                          dk ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" : "bg-emerald-50 border-emerald-200 text-emerald-800"
-                        }`}>
-                          <div className="flex items-center gap-2.5">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-500 font-bold text-xs">
-                              ✓
-                            </span>
-                            <p className="text-[11px] leading-relaxed">
-                              Akun portal magang Anda telah aktif. Masuk menggunakan <strong>email &amp; kata sandi</strong> akun ini.
+                            <p className={`text-[10.5px] sm:text-[11px] mt-0.5 font-medium truncate ${dk ? "text-slate-400" : "text-slate-500"}`}>
+                              No: <span className="font-bold text-[#004F9F] dark:text-sky-300">{status.surat_penerimaan.nomor_surat}</span>
                             </p>
                           </div>
-                          <a
-                            href="http://localhost:5173/login"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
-                          >
-                            Masuk Portal <ArrowRight className="w-3.5 h-3.5" />
-                          </a>
                         </div>
-                      </div>
-                    </div>
-                    <span className="relative z-10 shrink-0 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-950/20 border border-white/10">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-                      </span>
-                      Lolos Seleksi
-                    </span>
-                  </div>
-                )}
 
-                {/* Card: Rejected */}
-                {isRejected && (
-                  <div className={`relative overflow-hidden rounded-2xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5 transition-all duration-300 ${dk
-                      ? "border-red-500/20 bg-red-500/5 hover:bg-red-500/10"
-                      : "border-red-300 bg-gradient-to-r from-red-500/5 to-rose-500/5 hover:shadow-lg hover:shadow-red-500/5"
-                    }`}>
-                    <div className="absolute right-0 top-0 w-32 h-32 rounded-full bg-red-400/10 blur-2xl pointer-events-none" />
-                    <div className="flex items-start gap-4 relative z-10 w-full md:w-auto">
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-500 text-white shadow-md shadow-red-500/20">
-                        <XCircle className="w-5.5 h-5.5" strokeWidth={2} />
-                      </span>
-                      <div className="space-y-2.5 relative z-10 w-full">
-                        <div>
-                          <h3 className="text-sm font-black tracking-tight text-red-500">Permohonan Magang Ditolak</h3>
-                          <p className={`text-xs mt-1 leading-relaxed font-sans ${sub}`}>Mohon maaf, permohonan magang Anda belum dapat diterima pada saat ini.</p>
-                        </div>
-                        {status.catatan_admin && (
-                          <div className={`relative text-xs rounded-xl p-3.5 font-sans italic border-l-4 ${dk
-                              ? "bg-red-400/5 border-red-500 text-red-300/90"
-                              : "text-red-900 bg-red-50/80 border-red-500 shadow-sm"
-                            }`}>
-                            <p className="font-bold not-italic text-[10px] uppercase tracking-wider text-red-600 mb-1">Catatan Admin:</p>
-                            "{status.catatan_admin}"
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-white/5">
+                          <span className={`text-[10px] truncate ${dk ? "text-slate-500" : "text-slate-400"}`}>
+                            {status.surat_penerimaan.tanggal_terbit ? `Terbit: ${formatTanggalIndonesia(status.surat_penerimaan.tanggal_terbit)}` : "Dokumen Resmi"}
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <a
+                              href={getFileUrl(status.surat_penerimaan.file_surat)}
+                              download={`Surat_Penerimaan_${user?.nama || "Magang"}.pdf`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group/btn inline-flex items-center gap-1.5 rounded-lg bg-[#004F9F] hover:bg-[#003d7c] dark:bg-[#004F9F] dark:hover:bg-[#00A5EC] px-3.5 py-1.5 text-[11px] font-bold text-white shadow-xs hover:shadow hover:-translate-y-0.5 transition-all duration-300 active:scale-95 cursor-pointer"
+                            >
+                              <Download className="w-3.5 h-3.5 transition-transform duration-300 group-hover/btn:-translate-y-0.5" />
+                              <span>Unduh PDF</span>
+                            </a>
                           </div>
-                        )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className={`p-3.5 rounded-xl sm:rounded-2xl border flex flex-col justify-between gap-3 text-xs w-full transition-all ${
+                          dk ? "bg-white/[0.02] border-white/5 text-slate-400" : "bg-white border-slate-200/80 text-slate-600 shadow-xs"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+                          <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#004F9F] dark:bg-blue-500/10 dark:text-sky-400 border border-blue-100 dark:border-blue-500/20 shadow-xs">
+                            <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-[#004F9F] dark:text-sky-400" strokeWidth={2} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className={`text-xs sm:text-[13px] font-black tracking-tight ${dk ? "text-slate-100" : "text-[#0B1442]"}`}>
+                                Surat Penerimaan Magang
+                              </h4>
+                              <span className="inline-flex items-center rounded-full bg-amber-500/15 px-1.5 py-0.2 text-[8.5px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                                Proses Penerbitan
+                              </span>
+                            </div>
+                            <p className="text-[10.5px] sm:text-[11px] mt-0.5 text-slate-500 dark:text-slate-400 leading-tight">
+                              Dalam proses penerbitan tata usaha / admin Diskominfo.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5">
+                          <span className="text-[10px] text-slate-400">Status Dokumen</span>
+                          <span className="inline-flex items-center text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                            Menunggu Penerbitan
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Banner Kanan: Akses Portal Siswa / Mahasiswa (Ikon MonitorCheck) */}
+                    <div
+                      className={`group/portal-card p-3.5 rounded-xl sm:rounded-2xl border flex flex-col justify-between gap-3 w-full transition-all duration-300 ${
+                        dk ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" : "bg-emerald-50/70 border-emerald-200/80 text-emerald-950 shadow-sm"
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+                        <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 shadow-xs group-hover/portal-card:scale-105 transition-transform duration-300">
+                          <MonitorCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs sm:text-[13px] font-black tracking-tight text-emerald-800 dark:text-emerald-300">
+                              Akses Portal Magang Aktif
+                            </h4>
+                            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[8.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                              Akun Aktif
+                            </span>
+                          </div>
+                          <p className="text-[10.5px] sm:text-[11px] mt-0.5 text-emerald-700/90 dark:text-emerald-300/80 leading-relaxed font-sans">
+                            Masuk menggunakan <strong>email &amp; password</strong> akun ini untuk mengakses portal harian.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-emerald-200/60 dark:border-emerald-500/20">
+                        <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium truncate">
+                          Siswa &amp; Mahasiswa
+                        </span>
+                        <a
+                          href={import.meta.env.VITE_PORTAL_URL || "http://localhost:5173/login"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group/portal inline-flex items-center justify-center gap-1.5 shrink-0 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-3 py-1 text-[11px] font-bold text-white shadow-xs hover:shadow hover:-translate-y-1 transition-all duration-300 active:scale-95 cursor-pointer"
+                        >
+                          <span>Masuk Portal</span>
+                          <ArrowRight className="w-3 h-3 transition-transform duration-300 group-hover/portal:translate-x-1" />
+                        </a>
                       </div>
                     </div>
-                    <span className="relative z-10 shrink-0 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-red-600 to-rose-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-red-950/20 border border-white/10">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-                      </span>
-                      Status: Ditolak
-                    </span>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+
+              {/* JIKA DITOLAK */}
+              {isRejected && (
+                <div
+                  className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5 transition-all duration-300 ${
+                    dk
+                      ? "border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10"
+                      : "border-rose-300 bg-gradient-to-r from-rose-500/5 to-red-500/5 hover:shadow-lg hover:shadow-rose-500/5"
+                  }`}
+                >
+                  <div className="absolute right-0 top-0 w-32 h-32 rounded-full bg-rose-400/10 blur-2xl pointer-events-none" />
+                  <div className="flex items-start gap-4 relative z-10 w-full md:w-auto">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-md shadow-rose-500/20">
+                      <XCircle className="w-6 h-6" strokeWidth={2} />
+                    </span>
+                    <div className="space-y-2.5 relative z-10 w-full">
+                      <div>
+                        <h3 className="text-base font-black tracking-tight text-rose-500">
+                          Permohonan Magang Ditolak
+                        </h3>
+                        <p className={`text-xs mt-1 leading-relaxed font-sans ${dk ? "text-slate-400" : "text-slate-500"}`}>
+                          Mohon maaf, permohonan magang Anda belum dapat diterima pada periode kali ini dikarenakan kuota atau pertimbangan teknis.
+                        </p>
+                      </div>
+                      {status?.catatan_admin && (
+                        <div
+                          className={`relative text-xs rounded-xl p-3.5 font-sans italic border-l-4 ${
+                            dk
+                              ? "bg-rose-400/5 border-rose-500 text-rose-300/90"
+                              : "text-rose-900 bg-rose-50/80 border-rose-500 shadow-sm"
+                          }`}
+                        >
+                          <p className="font-bold not-italic text-[10px] uppercase tracking-wider text-rose-600 mb-1">
+                            Alasan / Catatan Administrator:
+                          </p>
+                          "{status.catatan_admin}"
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <span className="relative z-10 shrink-0 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-600 to-red-700 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-red-950/20 border border-white/10">
+                    Status: Ditolak
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Quick Action Navigation Grid */}
-          <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
+          {/* Quick Action Interactive Cards (Berwarna Putih dengan Icon Berwarna Sesuai Kondisi) */}
+          <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2">
+            {/* Card 1: Ajukan Pendaftaran */}
             {hasRegistered && !isRevisi ? (
-              <div className={`relative overflow-hidden flex flex-col justify-between rounded-2xl border p-5 select-none group/lock ${dk ? "border-white/5 bg-[#161b22]/40" : "border-slate-200 bg-slate-50/60"
-                }`}>
+              <div
+                className={`relative overflow-hidden flex flex-col justify-between rounded-2xl sm:rounded-3xl border p-5 sm:p-6 select-none transition-all ${
+                  dk ? "border-white/5 bg-[#161b22]/40" : "border-slate-200/80 bg-slate-50/70"
+                }`}
+              >
                 <div>
-                  <span className={`flex h-10 w-10 items-center justify-center rounded-xl mb-5 transition-transform duration-300 group-hover/lock:scale-95 ${dk ? "bg-white/5 text-slate-500" : "bg-slate-100 text-slate-400"
-                    }`}>
+                  <span
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl mb-4 ${
+                      dk ? "bg-white/5 text-slate-500" : "bg-slate-200/70 text-slate-400"
+                    }`}
+                  >
                     <Lock className="w-5 h-5" strokeWidth={2} />
                   </span>
-                  <h4 className={`text-sm font-bold ${txt} opacity-60`}>Ajukan Pendaftaran</h4>
-                  <p className={`mt-2 text-xs leading-relaxed font-sans ${muted}`}>Formulir pendaftaran dinonaktifkan karena berkas Anda sudah dikirim.</p>
+                  <h4 className={`text-sm sm:text-base font-bold ${dk ? "text-slate-400" : "text-slate-500"}`}>
+                    Ajukan Pendaftaran
+                  </h4>
+                  <p className={`mt-2 text-xs leading-relaxed font-sans ${dk ? "text-slate-500" : "text-slate-400"}`}>
+                    Formulir dinonaktifkan karena berkas pendaftaran Anda telah berhasil terkirim.
+                  </p>
                 </div>
-                <div className="mt-6 flex items-center justify-between">
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${muted}`}>Terkunci</span>
-                  <span className={`text-[9px] font-medium px-2 py-0.5 rounded-full ${dk ? "bg-white/5 text-slate-500" : "bg-slate-100 text-slate-400"}`}>Sudah Mengajukan</span>
+                <div className="mt-5 flex items-center justify-between pt-3 border-t border-dashed border-slate-200 dark:border-white/5">
+                  <span className={`text-[9.5px] font-black uppercase tracking-wider ${dk ? "text-slate-500" : "text-slate-400"}`}>
+                    Terkunci
+                  </span>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${dk ? "bg-white/5 text-slate-400" : "bg-slate-200 text-slate-600"}`}>
+                    Sudah Terkirim
+                  </span>
                 </div>
               </div>
             ) : (
-              <button onClick={() => handleTabChange("form")} className="group relative overflow-hidden flex flex-col justify-between rounded-2xl bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] p-5 text-white shadow-xl shadow-[#0B1442]/20 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 text-left cursor-pointer">
-                <div className="absolute right-0 top-0 w-24 h-24 rounded-full bg-blue-500/10 blur-xl pointer-events-none" />
+              <button
+                type="button"
+                onClick={() => handleTabChange("form")}
+                className="group relative overflow-hidden flex flex-col justify-between rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-[#004F9F]/40 dark:bg-[#161b22] dark:border-white/10 dark:hover:border-blue-500/40 transition-all duration-300 text-left cursor-pointer"
+              >
                 <div>
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 mb-5 group-hover:scale-105 duration-300 shadow-md">
-                    <FileText className="w-5 h-5" strokeWidth={2} />
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#004F9F] dark:bg-blue-500/10 dark:text-sky-400 border border-blue-100 dark:border-blue-500/20 mb-4 group-hover:scale-105 duration-300 shadow-sm">
+                    <FileText className="w-5 h-5 text-[#004F9F] dark:text-sky-400" strokeWidth={2} />
                   </span>
-                  <h4 className="text-sm font-black tracking-tight">Ajukan Pendaftaran</h4>
-                  <p className="mt-2 text-xs text-white/70 leading-relaxed font-sans">Mulai pengisian formulir biodata diri dan unggah berkas pengantar.</p>
+                  <h4 className="text-sm sm:text-base font-black tracking-tight text-[#0B1442] dark:text-slate-100 group-hover:text-[#004F9F] dark:group-hover:text-sky-400 transition-colors">
+                    Ajukan Pendaftaran
+                  </h4>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans">
+                    Isi data diri lengkap, pilih bidang penempatan, dan unggah berkas surat pengantar.
+                  </p>
                 </div>
-                <p className="mt-6 flex items-center gap-1 text-xs font-bold text-[#00A5EC] transition-all">
-                  Mulai Form
-                  <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" />
-                </p>
+                <div className="mt-5 flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#004F9F] dark:text-sky-400">
+                    Mulai Form
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-[#004F9F] dark:text-sky-400 transition-transform duration-300 group-hover:translate-x-1" />
+                </div>
               </button>
             )}
 
-            {hasRegistered ? (
-              <button onClick={() => handleTabChange("status")} className="group relative overflow-hidden flex flex-col justify-between rounded-2xl bg-gradient-to-br from-[#0B1442] via-[#101F5C] to-[#1E3A8A] p-5 text-white shadow-xl shadow-[#0B1442]/20 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 text-left cursor-pointer">
-                <div className="absolute right-0 top-0 w-24 h-24 rounded-full bg-blue-500/10 blur-xl pointer-events-none" />
+            {/* Card 2: Revisi Dokumen */}
+            {isRevisi ? (
+              <button
+                type="button"
+                onClick={() => handleTabChange("revisi")}
+                className="group relative overflow-hidden flex flex-col justify-between rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-amber-300 dark:bg-[#161b22] dark:border-white/10 dark:hover:border-amber-500/40 transition-all duration-300 text-left cursor-pointer"
+              >
                 <div>
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 mb-5 group-hover:scale-105 duration-300 shadow-md">
-                    <FileText className="w-5 h-5" strokeWidth={2} />
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 mb-4 group-hover:scale-105 duration-300 shadow-sm">
+                    <Pencil className="w-5 h-5 text-amber-600 dark:text-amber-400" strokeWidth={2} />
                   </span>
-                  <h4 className="text-sm font-black tracking-tight">Pantau Status</h4>
-                  <p className="mt-2 text-xs text-white/70 leading-relaxed font-sans">Lacak progres verifikasi dokumen dan pengumuman akhir.</p>
+                  <h4 className="text-sm sm:text-base font-black tracking-tight text-[#0B1442] dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                    Revisi Dokumen
+                  </h4>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans">
+                    Unggah kembali dokumen perbaikan sesuai catatan resmi dari tim administrator.
+                  </p>
                 </div>
-                <p className="mt-6 flex items-center gap-1 text-xs font-bold text-[#00A5EC] transition-all">
-                  Lihat Detail
-                  <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" />
-                </p>
+                <div className="mt-5 flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                    Perbaiki Dokumen
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-amber-600 dark:text-amber-400 transition-transform duration-300 group-hover:translate-x-1" />
+                </div>
               </button>
             ) : (
-              <div className={`relative overflow-hidden flex flex-col justify-between rounded-2xl border p-5 select-none group/lock ${dk ? "border-white/5 bg-[#161b22]/40" : "border-slate-200 bg-slate-50/60"
-                }`}>
+              <div
+                className={`relative overflow-hidden flex flex-col justify-between rounded-2xl sm:rounded-3xl border p-5 sm:p-6 select-none transition-all ${
+                  dk ? "border-white/5 bg-[#161b22]/40" : "border-slate-200/80 bg-slate-50/70"
+                }`}
+              >
                 <div>
-                  <span className={`flex h-10 w-10 items-center justify-center rounded-xl mb-5 transition-transform duration-300 group-hover/lock:scale-95 ${dk ? "bg-white/5 text-slate-500" : "bg-slate-100 text-slate-400"
-                    }`}>
+                  <span
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl mb-4 ${
+                      dk ? "bg-white/5 text-slate-500" : "bg-slate-200/70 text-slate-400"
+                    }`}
+                  >
                     <Lock className="w-5 h-5" strokeWidth={2} />
                   </span>
-                  <h4 className={`text-sm font-bold ${txt} opacity-60`}>Pantau Status</h4>
-                  <p className={`mt-2 text-xs leading-relaxed font-sans ${muted}`}>Lacak progres verifikasi dokumen dan pengumuman akhir.</p>
+                  <h4 className={`text-sm sm:text-base font-bold ${dk ? "text-slate-400" : "text-slate-500"}`}>
+                    Revisi Dokumen
+                  </h4>
+                  <p className={`mt-2 text-xs leading-relaxed font-sans ${dk ? "text-slate-500" : "text-slate-400"}`}>
+                    Menu revisi hanya aktif jika berkas Anda memerlukan perbaikan dari admin.
+                  </p>
                 </div>
-                <div className="mt-6 flex items-center justify-between">
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${muted}`}>Belum Tersedia</span>
-                  <span className={`text-[9px] font-medium px-2 py-0.5 rounded-full ${dk ? "bg-white/5 text-slate-500" : "bg-slate-100 text-slate-400"}`}>Menunggu Pendaftaran</span>
+                <div className="mt-5 flex items-center justify-between pt-3 border-t border-dashed border-slate-200 dark:border-white/5">
+                  <span className={`text-[9.5px] font-black uppercase tracking-wider ${dk ? "text-slate-500" : "text-slate-400"}`}>
+                    Tidak Perlu
+                  </span>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${dk ? "bg-white/5 text-slate-400" : "bg-slate-200 text-slate-600"}`}>
+                    Kondisi Normal
+                  </span>
                 </div>
               </div>
-            )}
-
-            {!forceRevisiForTesting && !isRevisi ? (
-              <div className={`relative overflow-hidden flex flex-col justify-between rounded-2xl border p-5 select-none group/lock ${dk ? "border-white/5 bg-[#161b22]/40" : "border-slate-200 bg-slate-50/60"
-                }`}>
-                <div>
-                  <span className={`flex h-10 w-10 items-center justify-center rounded-xl mb-5 transition-transform duration-300 group-hover/lock:scale-95 ${dk ? "bg-white/5 text-slate-500" : "bg-slate-100 text-slate-400"
-                    }`}>
-                    <Lock className="w-5 h-5" strokeWidth={2} />
-                  </span>
-                  <h4 className={`text-sm font-bold ${txt} opacity-60`}>Revisi Dokumen</h4>
-                  <p className={`mt-2 text-xs leading-relaxed font-sans ${muted}`}>Menu hanya aktif apabila berkas yang dikirim memerlukan perbaikan.</p>
-                </div>
-                <div className="mt-6 flex items-center justify-between">
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${muted}`}>Terkunci</span>
-                  <span className={`text-[9px] font-medium px-2 py-0.5 rounded-full ${dk ? "bg-white/5 text-slate-500" : "bg-slate-100 text-slate-400"}`}>Tidak Perlu Revisi</span>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => handleTabChange("revisi")} className="group relative overflow-hidden flex flex-col justify-between rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 p-5 text-white shadow-xl shadow-amber-600/20 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 text-left cursor-pointer">
-                <div className="absolute right-0 top-0 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none" />
-                <div>
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 mb-5 group-hover:scale-105 duration-300 shadow-md">
-                    <Pencil className="w-5 h-5 text-white" strokeWidth={2} />
-                  </span>
-                  <h4 className="text-sm font-black tracking-tight">Revisi Dokumen</h4>
-                  <p className="mt-2 text-xs text-white/80 leading-relaxed font-sans">Segera unggah berkas perbaikan sesuai dengan catatan penolakan dari admin.</p>
-                </div>
-                <p className="mt-6 flex items-center gap-1 text-xs font-bold text-white transition-all">
-                  Perbaiki Berkas
-                  <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" />
-                </p>
-              </button>
             )}
           </div>
         </div>
 
-        {/* Kolom Stepper Progress Vertikal (Kanan) */}
-        <div className={`lg:w-80 shrink-0 rounded-2xl border p-6 shadow-sm ${surface} transition-colors duration-300 flex flex-col lg:sticky lg:top-6`}>
-          <h3 className={`text-xs font-black uppercase tracking-wider mb-6 ${txt}`}>Alur Proses Pendaftaran</h3>
-          <div className="flex-1 flex flex-col justify-between relative pl-2 py-1 gap-6 lg:gap-0">
-            {/* Timeline Bar (Centering fixed at left 30px with translate-x-1/2) */}
-            <div className={`absolute top-5 bottom-5 left-[30px] -translate-x-1/2 w-[3px] rounded-full hidden lg:block ${dk ? "bg-white/10" : "bg-slate-100"}`}>
-              <div
-                className="w-full bg-gradient-to-b from-emerald-500 via-blue-500 to-[#00A5EC] rounded-full transition-all duration-700"
-                style={{ height: getStepProgressHeight() }}
-              />
+        {/* Kolom Kanan: Stepper Timeline Alur Pendaftaran (Tinggi Sejajar dengan Garis Bawah Card Kiri) */}
+        <div className="w-full lg:w-80 shrink-0 flex flex-col">
+          {/* Stepper Timeline Alur Pendaftaran */}
+          <div
+            className={`flex-1 flex flex-col justify-between rounded-2xl sm:rounded-3xl border p-5 sm:p-6 shadow-sm transition-all duration-300 ${
+              dk ? "bg-[#161b22] border-white/10" : "bg-white border-slate-200/80"
+            }`}
+          >
+            {/* Header: Persis seperti card Perlu Tindakan Anda di Dashboard Peserta Web Manajemen */}
+            <div className="flex items-center gap-2.5 sm:gap-3 pb-4 border-b border-slate-100 dark:border-white/5">
+              <span className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1442] to-[#00A5EC] text-white shadow-md">
+                <ClipboardCheck className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={2} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3
+                  className={`text-xs sm:text-sm font-black tracking-tight line-clamp-2 leading-tight ${
+                    dk ? "text-slate-100" : "text-[#0B1442]"
+                  }`}
+                >
+                  Alur Proses Seleksi
+                </h3>
+                <p
+                  className={`mt-0.5 text-[9px] sm:text-[11px] font-medium line-clamp-2 leading-tight ${
+                    dk ? "text-slate-500" : "text-slate-400"
+                  }`}
+                >
+                  Tahapan Seleksi Magang
+                </p>
+              </div>
             </div>
 
-            {[
-              { label: "Registrasi Akun", sub: "Akun aktif", done: true, active: false },
-              { label: "Kirim Berkas", sub: hasRegistered ? "Terkirim" : "Belum", done: hasRegistered, active: !hasRegistered },
-              { label: "Verifikasi", sub: isPending ? "Sedang diproses" : (isAccepted || isRejected || isRevisi) ? "Selesai" : "Menunggu", done: isAccepted || isRejected || isRevisi, active: hasRegistered && isPending },
-              { label: "Pengumuman", sub: isAccepted ? "Diterima" : isRejected ? "Ditolak" : isRevisi ? "Revisi" : "Menunggu", done: isAccepted, bad: isRejected, warn: isRevisi, active: hasRegistered && !isPending && (isAccepted || isRejected || isRevisi) },
-            ].map((s, i) => (
-              <div key={i} className="flex items-center gap-4 z-10 group/step text-left">
-                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center">
-                  {s.active && (
-                    <span className="absolute inset-0 rounded-full bg-[#00A5EC]/30 animate-ping" />
-                  )}
-                  <div className={`relative flex h-11 w-11 items-center justify-center rounded-full text-xs font-black shadow-lg transition-all duration-300 transform group-hover/step:scale-110 ${s.done
-                      ? "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-emerald-500/25"
-                      : s.bad
-                        ? "bg-gradient-to-br from-red-400 to-red-600 text-white shadow-red-500/25"
-                        : s.warn
-                          ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-amber-500/25"
-                          : s.active
-                            ? "bg-gradient-to-br from-[#004F9F] to-[#0B1442] text-white shadow-lg shadow-[#004F9F]/40 ring-4 ring-[#00A5EC]/20"
-                            : dk
-                              ? "bg-white/5 border border-white/10 text-slate-500"
-                              : "bg-white border border-slate-200 text-slate-400"
-                    }`}>
-                    {s.done ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-4 h-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                    ) : s.bad ? (
-                      <XCircle className="w-5.5 h-5.5" />
-                    ) : s.warn ? (
-                      <AlertTriangle className="w-5 h-5" />
-                    ) : (
-                      <span className="font-bold text-[13px]">{i + 1}</span>
+            {/* Stepper Content (Terdistribusi Rapi Vertikal Presisi di Tengah) */}
+            <div className="relative py-3 flex-1 flex flex-col justify-between space-y-4 my-2">
+              {/* Connected Vertical Progress Line */}
+              <div
+                className={`absolute top-5 bottom-5 left-5 -translate-x-1/2 w-0.5 rounded-full ${
+                  dk ? "bg-white/10" : "bg-slate-200"
+                }`}
+              >
+                <div
+                  className="w-full bg-emerald-500 rounded-full transition-all duration-700 shadow-sm"
+                  style={{ height: getStepProgressHeight() }}
+                />
+              </div>
+
+              {[
+                {
+                  step: 1,
+                  label: "Registrasi Akun",
+                  sub: "Akun login aktif & terverifikasi",
+                  badge: "Selesai",
+                  done: true,
+                  active: false,
+                },
+                {
+                  step: 2,
+                  label: "Kirim Formulir Berkas",
+                  sub: hasRegistered ? "Dokumen lengkap terkirim" : "Belum mengisi formulir",
+                  badge: hasRegistered ? "Lengkap" : "Pending",
+                  done: hasRegistered,
+                  active: !hasRegistered,
+                },
+                {
+                  step: 3,
+                  label: "Verifikasi Administrasi",
+                  sub: isPending ? "Sedang ditinjau admin" : (isAccepted || isRejected || isRevisi) ? "Selesai diperiksa" : "Menunggu berkas",
+                  badge: (isAccepted || isRejected || isRevisi) ? "Selesai" : isPending ? "Ditinjau" : "Menunggu",
+                  done: isAccepted || isRejected || isRevisi,
+                  active: hasRegistered && isPending,
+                },
+                {
+                  step: 4,
+                  label: "Pengumuman Hasil",
+                  sub: isAccepted ? "Selamat! Lolos seleksi" : isRejected ? "Belum dapat diterima" : isRevisi ? "Perlu perbaikan berkas" : "Menunggu verifikasi",
+                  badge: isAccepted ? "Lolos" : isRejected ? "Ditolak" : isRevisi ? "Revisi" : "Menunggu",
+                  done: isAccepted,
+                  warn: isRevisi,
+                  bad: isRejected,
+                  active: false,
+                },
+              ].map((s) => (
+                <div
+                  key={s.step}
+                  className="flex items-start gap-3.5 z-10 relative group/step"
+                >
+                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+                    {s.active && (
+                      <span className="absolute inset-0 rounded-full bg-[#00A5EC]/30 animate-ping" />
                     )}
+                    <div
+                      className={`relative flex h-10 w-10 items-center justify-center rounded-full text-xs font-black shadow-md transition-all duration-300 transform group-hover/step:scale-105 ${
+                        s.done
+                          ? "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-emerald-500/25 ring-4 ring-emerald-500/10"
+                          : s.bad
+                          ? "bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-red-500/25 ring-4 ring-rose-500/10"
+                          : s.warn
+                          ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-amber-500/25 ring-4 ring-amber-500/10"
+                          : s.active
+                          ? "bg-gradient-to-br from-[#004F9F] to-[#0B1442] text-white shadow-lg shadow-[#004F9F]/30 ring-4 ring-[#00A5EC]/20"
+                          : dk
+                          ? "bg-[#161b22] border-2 border-white/15 text-slate-500"
+                          : "bg-white border-2 border-slate-200 text-slate-400"
+                      }`}
+                    >
+                      {s.done ? (
+                        <CheckCircle2 className="w-5 h-5 text-white" strokeWidth={2.4} />
+                      ) : s.bad ? (
+                        <XCircle className="w-5 h-5 text-white" strokeWidth={2.4} />
+                      ) : s.warn ? (
+                        <AlertTriangle className="w-5 h-5 text-white" strokeWidth={2.4} />
+                      ) : (
+                        <span className="font-extrabold text-xs">{s.step}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <p
+                        className={`text-xs sm:text-[13px] font-black tracking-tight transition-colors ${
+                          s.active
+                            ? "text-[#00A5EC]"
+                            : dk
+                            ? "text-slate-100 group-hover/step:text-[#00A5EC]"
+                            : "text-[#0B1442] group-hover/step:text-[#004F9F]"
+                        }`}
+                      >
+                        {s.label}
+                      </p>
+                      <span
+                        className={`text-[8.5px] font-extrabold uppercase px-2 py-0.5 rounded-full shrink-0 ${
+                          s.done
+                            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                            : s.bad
+                            ? "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"
+                            : s.warn
+                            ? "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
+                            : s.active
+                            ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-sky-400"
+                            : "bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500"
+                        }`}
+                      >
+                        {s.badge}
+                      </span>
+                    </div>
+                    <p className={`mt-0.5 text-[11px] leading-snug font-sans ${dk ? "text-slate-400" : "text-slate-500"}`}>
+                      {s.sub}
+                    </p>
                   </div>
                 </div>
-                <div className="space-y-0.5">
-                  <p className={`text-[11px] font-extrabold tracking-tight transition-colors duration-200 group-hover/step:text-[#00A5EC] ${txt}`}>{s.label}</p>
-                  <p className={`text-[10px] font-sans ${muted}`}>{s.sub}</p>
-                </div>
+              ))}
+            </div>
+
+            {/* Mini Status Footer */}
+            <div className={`pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs`}>
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${
+                  isAccepted ? "bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900" :
+                  isRejected ? "bg-rose-500 ring-2 ring-rose-200 dark:ring-rose-900" :
+                  isRevisi ? "bg-amber-500 ring-2 ring-amber-200 dark:ring-amber-900" :
+                  isPending ? "bg-blue-500 ring-2 ring-blue-200 dark:ring-blue-900" :
+                  hasRegistered ? "bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-900" : "bg-slate-300"
+                }`} />
+                <span className={`text-[11px] font-bold ${dk ? "text-slate-300" : "text-slate-600"}`}>
+                  Tahap Akhir:
+                </span>
               </div>
-            ))}
+              <span className={`text-[11px] font-black uppercase tracking-wider ${
+                isAccepted ? "text-emerald-600 dark:text-emerald-400" :
+                isRejected ? "text-rose-600 dark:text-rose-400" :
+                isRevisi ? "text-amber-600 dark:text-amber-400" :
+                isPending ? "text-sky-600 dark:text-sky-400" :
+                hasRegistered ? "text-blue-600 dark:text-sky-400" :
+                "text-slate-500"
+              }`}>
+                {isAccepted ? "Lolos Seleksi (100%)" :
+                 isRejected ? "Tidak Lolos" :
+                 isRevisi ? "Menunggu Revisi" :
+                 isPending ? "Tahap Verifikasi" :
+                 hasRegistered ? "Berkas Terkirim" : "Belum Mendaftar"}
+              </span>
+            </div>
           </div>
         </div>
-
-        <style>{`
-        @keyframes fadeslide {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
       </div>
     </div>
   );

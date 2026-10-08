@@ -1,4 +1,5 @@
 import { useEffect, useState, Fragment } from "react";
+import { useSearchParams } from "react-router-dom";
 import AdminLayout from "../../layouts/AdminLayout";
 import Pagination from "../../components/manajemen/admin/pendaftaran/Pagination";
 import ExportDropdown from "../../components/manajemen/admin/pendaftaran/ExportDropdown";
@@ -112,8 +113,12 @@ const KelolaSertifikatPage = () => {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [search, setSearch] = useState("");
-  const [tableSearch, setTableSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const initialQ = searchParams.get("cari") || searchParams.get("search") || "";
+  const initialSt = searchParams.get("status");
+
+  const [search, setSearch] = useState(initialQ);
+  const [tableSearch, setTableSearch] = useState(initialQ);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [sortBy, setSortBy] = useState("nama_az");
   const [columnSort, setColumnSort] = useState({ key: null, direction: null });
@@ -121,8 +126,8 @@ const KelolaSertifikatPage = () => {
   const [perPage, setPerPage] = useState(10);
   const [expandedRows, setExpandedRows] = useState({});
 
-  const [statusList, setStatusList] = useState([]);
-  const [appliedStatusList, setAppliedStatusList] = useState([]);
+  const [statusList, setStatusList] = useState(initialSt ? [initialSt] : []);
+  const [appliedStatusList, setAppliedStatusList] = useState(initialSt ? [initialSt] : []);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [activeRow, setActiveRow] = useState(null);
@@ -200,7 +205,12 @@ const KelolaSertifikatPage = () => {
     }
   };
 
+  const isNilaiFinal = (r) => {
+    return Boolean(r.siap_terbit || r.penilaian?.status_penilaian === "final");
+  };
+
   const isMasihMagang = (r) => {
+    if (isNilaiFinal(r)) return false;
     if (!r.tanggal_selesai) return false;
     const end = new Date(r.tanggal_selesai);
     if (isNaN(end)) return false;
@@ -211,7 +221,8 @@ const KelolaSertifikatPage = () => {
   };
 
   const statusOf = (r) => {
-    if (r.sertifikat) return "terbit";
+    if (r.sertifikat && r.sertifikat.status === "terbit" && r.sertifikat.nomor_sertifikat && r.sertifikat.nomor_sertifikat !== "-") return "terbit";
+    if (isNilaiFinal(r)) return "perlu";
     if (isMasihMagang(r)) return "magang";
     return "perlu";
   };
@@ -702,7 +713,7 @@ const KelolaSertifikatPage = () => {
                                         <Hourglass className="w-2.5 h-2.5" /> {hitungDurasi(r)}
                                       </span>
                                     )}
-                                    {st === "magang" && sisa != null && sisa >= 0 ? (
+                                    {sisa != null && sisa >= 0 ? (
                                       <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border ${
                                         isDark
                                           ? "bg-sky-950/40 text-sky-400 border-sky-800/40"
@@ -758,6 +769,14 @@ const KelolaSertifikatPage = () => {
                                       : "bg-sky-50 border-sky-100 text-sky-600"
                                   }`}>
                                     <Clock className="w-3 h-3" /> Sedang Magang
+                                  </span>
+                                ) : isNilaiFinal(r) ? (
+                                  <span className={`inline-flex items-center gap-1 sm:gap-1.5 rounded-full border px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9.5px] sm:text-[10.5px] font-bold whitespace-nowrap ${
+                                    isDark
+                                      ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                                      : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                  }`} title="Evaluasi magang telah selesai dinilai oleh mentor">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Siap Diterbitkan
                                   </span>
                                 ) : (
                                   <span className={`inline-flex items-center gap-1 sm:gap-1.5 rounded-full border px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9.5px] sm:text-[10.5px] font-bold whitespace-nowrap ${
@@ -841,7 +860,7 @@ const KelolaSertifikatPage = () => {
                                               <Hourglass className="w-2.5 h-2.5" /> {hitungDurasi(r)}
                                             </span>
                                           )}
-                                          {st === "magang" && sisa != null && sisa >= 0 ? (
+                                          {sisa != null && sisa >= 0 ? (
                                             <span className={`inline-flex items-center gap-0.5 rounded px-1 py-0.2 text-[9px] font-bold border ${
                                               isDark
                                                 ? "bg-sky-950/40 text-sky-400 border-sky-800/40"

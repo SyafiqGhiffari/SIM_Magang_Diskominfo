@@ -100,22 +100,41 @@ const FormTugasProyekDialog = ({
     return [];
   });
 
-  // Hitung jumlah jenjang mahasiswa dan siswa
-  const totalMahasiswa = useMemo(() => {
-    return pesertaBimbingan.filter(
-      (p) => (p.kategori_pendaftar || "").toLowerCase() === "mahasiswa"
-    ).length;
+  // Hanya ambil peserta yang masih AKTIF magang
+  const activePesertaBimbingan = useMemo(() => {
+    return (pesertaBimbingan || []).filter((p) => {
+      if (p.status_magang && p.status_magang === "selesai") return false;
+      if (p.status_akun && p.status_akun !== "aktif") return false;
+      if (p.tanggal_selesai) {
+        try {
+          const tgl = new Date(p.tanggal_selesai);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (tgl < today) return false;
+        } catch {
+          // ignore
+        }
+      }
+      return true;
+    });
   }, [pesertaBimbingan]);
 
+  // Hitung jumlah jenjang mahasiswa dan siswa aktif
+  const totalMahasiswa = useMemo(() => {
+    return activePesertaBimbingan.filter(
+      (p) => (p.kategori_pendaftar || "").toLowerCase() === "mahasiswa"
+    ).length;
+  }, [activePesertaBimbingan]);
+
   const totalSiswa = useMemo(() => {
-    return pesertaBimbingan.filter(
+    return activePesertaBimbingan.filter(
       (p) => (p.kategori_pendaftar || "").toLowerCase() === "siswa"
     ).length;
-  }, [pesertaBimbingan]);
+  }, [activePesertaBimbingan]);
 
   // Filter daftar peserta untuk panel checklist
   const filteredPesertaModal = useMemo(() => {
-    return pesertaBimbingan.filter((p) => {
+    return activePesertaBimbingan.filter((p) => {
       const jenjang = (p.kategori_pendaftar || "").toLowerCase();
       if (modalFilterJenjang === "mahasiswa" && jenjang !== "mahasiswa") return false;
       if (modalFilterJenjang === "siswa" && jenjang !== "siswa") return false;
@@ -129,7 +148,7 @@ const FormTugasProyekDialog = ({
       }
       return true;
     });
-  }, [pesertaBimbingan, modalFilterJenjang, searchPeserta]);
+  }, [activePesertaBimbingan, modalFilterJenjang, searchPeserta]);
 
   const togglePeserta = (id) => {
     setFormPesertaTerpilih((prev) =>

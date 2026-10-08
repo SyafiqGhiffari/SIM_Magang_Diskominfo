@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { buatPengajuanIzin } from "../../../../services/pesertaService";
 import { formatTanggalHari } from "../../../../constants/presensiStatus";
-import { toastError, toastSuccess } from "../../../../utils/swal";
+import { toastError, toastSuccess, confirmDialog } from "../../../../utils/swal";
 
 const JENIS_OPTIONS = [
   {
@@ -139,6 +139,15 @@ const FormPengajuanIzinModal = ({ onClose, onSaved, isDark, dk }) => {
       if (jenis === "sakit" && !file) return toastError("Pengajuan izin sakit wajib melampirkan surat dokter.");
       return;
     }
+
+    const isConfirmed = await confirmDialog({
+      title: "Kirim Permohonan Izin?",
+      text: `Pengajuan izin ${jenis === "sakit" ? "Sakit" : "Izin Resmi"} periode ${mulai} s.d. ${selesai} akan dikirimkan ke mentor pembimbing.`,
+      confirmText: "Ya, Kirim Pengajuan",
+      cancelText: "Periksa Kembali",
+      icon: "question",
+    });
+    if (!isConfirmed) return;
 
     setSaving(true);
     try {

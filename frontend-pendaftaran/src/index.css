@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
 
@@ -154,4 +156,7 @@ input::-webkit-credentials-auto-fill-button {
   98% { transform: rotate(0deg); }
 }
 
-.swal2-container { z-index: 2147483647 !important; }
+.swal2-container,
+div:where(.swal2-container) {
+  z-index: 2147483647 !important;
+}

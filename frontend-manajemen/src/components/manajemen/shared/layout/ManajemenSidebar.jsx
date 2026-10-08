@@ -215,7 +215,8 @@ const ManajemenSidebar = ({ navItems, activeKey, handleLogout, roleLabel, profil
       .toUpperCase();
   })();
 
-  const fotoUrl = profile?.foto_profil ? getFileUrl(profile.foto_profil) : null;
+  const fotoPath = profile?.foto_profil || profile?.pendaftaran?.file_pas_foto || profile?.pendaftaran?.foto_profil;
+  const fotoUrl = fotoPath ? getFileUrl(fotoPath) : null;
 
   return (
     <>

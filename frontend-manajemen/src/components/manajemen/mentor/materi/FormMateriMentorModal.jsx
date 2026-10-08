@@ -262,20 +262,39 @@ const FormMateriMentorDialog = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [submitting, onClose, modalKategoriBaruOpen]);
 
-  // Perhitungan kuota peserta bimbingan
+  // Hanya ambil peserta yang masih AKTIF magang
+  const activePesertaBimbingan = useMemo(() => {
+    return (pesertaBimbingan || []).filter((p) => {
+      if (p.status_magang && p.status_magang === "selesai") return false;
+      if (p.status_akun && p.status_akun !== "aktif") return false;
+      if (p.tanggal_selesai) {
+        try {
+          const tgl = new Date(p.tanggal_selesai);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (tgl < today) return false;
+        } catch {
+          // ignore
+        }
+      }
+      return true;
+    });
+  }, [pesertaBimbingan]);
+
+  // Perhitungan kuota peserta bimbingan aktif
   const totalMahasiswa = useMemo(
     () =>
-      pesertaBimbingan.filter(
+      activePesertaBimbingan.filter(
         (p) => (p.kategori_pendaftar || "").toLowerCase() === "mahasiswa"
       ).length,
-    [pesertaBimbingan]
+    [activePesertaBimbingan]
   );
   const totalSiswa = useMemo(
     () =>
-      pesertaBimbingan.filter(
+      activePesertaBimbingan.filter(
         (p) => (p.kategori_pendaftar || "").toLowerCase() === "siswa"
       ).length,
-    [pesertaBimbingan]
+    [activePesertaBimbingan]
   );
 
   // Checklist handler
@@ -286,11 +305,11 @@ const FormMateriMentorDialog = ({
   };
 
   const filteredPesertaModal = useMemo(() => {
-    if (modalFilterJenjang === "semua") return pesertaBimbingan;
-    return pesertaBimbingan.filter(
+    if (modalFilterJenjang === "semua") return activePesertaBimbingan;
+    return activePesertaBimbingan.filter(
       (p) => (p.kategori_pendaftar || "").toLowerCase() === modalFilterJenjang
     );
-  }, [pesertaBimbingan, modalFilterJenjang]);
+  }, [activePesertaBimbingan, modalFilterJenjang]);
 
   // Opsi dropdown kategori untuk CustomSelectDropdown (Nama murni tanpa embel-embel & Icon Tags)
   const kategoriOptions = useMemo(() => {

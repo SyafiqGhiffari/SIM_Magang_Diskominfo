@@ -218,8 +218,8 @@ export const RekapNilaiFilterModal = ({
               <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               Indeks Mutu / Nilai
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
-              {["A", "A-", "B+", "B", "B-", "C", "D", "E"].map((idxMutu) => (
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2">
+              {["A", "B", "C", "D", "E"].map((idxMutu) => (
                 <CheckboxItem
                   key={idxMutu}
                   label={idxMutu}

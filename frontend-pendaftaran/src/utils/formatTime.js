@@ -15,3 +15,20 @@ export const getRelativeTime = (date) => {
   if (diffDay < 7) return `${diffDay} hari yang lalu`;
   return past.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 };
+
+export const formatTanggalIndonesia = (dateStr, fullMonth = false) => {
+  if (!dateStr) return "-";
+  try {
+    const clean = String(dateStr).includes("T") ? String(dateStr).split("T")[0] : String(dateStr);
+    const parts = clean.split("-");
+    if (parts.length !== 3) return dateStr;
+    const [y, m, d] = parts;
+    const bulanPendek = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+    const bulanPanjang = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const bulan = fullMonth ? bulanPanjang : bulanPendek;
+    const bln = bulan[parseInt(m, 10) - 1] || m;
+    return `${parseInt(d, 10)} ${bln} ${y}`;
+  } catch {
+    return dateStr;
+  }
+};

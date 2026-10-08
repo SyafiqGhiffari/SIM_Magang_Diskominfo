@@ -40,7 +40,6 @@ export const createAkunPeserta = (pendaftaranId) => api.post(`/manajemen/admin/p
 export const getAllAkunPeserta = () => api.get("/manajemen/admin/akun-peserta");
 export const getDetailAkunPeserta = (id) => api.get(`/manajemen/admin/akun-peserta/${id}`);
 export const assignMentorPeserta = (id, data) => api.put(`/manajemen/admin/akun-peserta/${id}/mentor`, data);
-export const resetPasswordPeserta = (id) => api.post(`/manajemen/admin/akun-peserta/${id}/reset-password`);
 
 //pengaturan jam kerja & hari libur (untuk presensi peserta)
 export const getAllJamKerja = () => api.get("/manajemen/admin/jam-kerja");

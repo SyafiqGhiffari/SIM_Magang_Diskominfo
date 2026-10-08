@@ -73,6 +73,7 @@ export const KerjakanKuisModal = ({
 
   const isSudahPernahSubmit = !!pengumpulan;
   const isSudahDinilai = pengumpulan?.status === "dinilai";
+  const isMenunggu = pengumpulan?.status === "menunggu";
   const isPerluRemidi =
     pengumpulan?.status_remidi === "perlu_remidi" ||
     (isSudahDinilai && (pengumpulan?.nilai || 0) < kkm);
@@ -1257,20 +1258,50 @@ export const KerjakanKuisModal = ({
               </div>
             </div>
 
-            {/* Catatan Feedback Mentor jika ada */}
-            {pengumpulan?.catatan_mentor && (
-              <div className="p-3 sm:p-3.5 rounded-xl border border-amber-200/90 dark:border-amber-800/50 bg-gradient-to-r from-amber-50/70 via-orange-50/20 to-white dark:from-amber-950/25 dark:via-slate-900/40 dark:to-transparent border-l-4 border-l-amber-500 shadow-2xs space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
+            {/* Catatan Feedback Mentor jika ada (Hanya jika tidak sedang menunggu koreksi) */}
+            {pengumpulan?.catatan_mentor && !isMenunggu && (
+              <div
+                className={`p-3 sm:p-3.5 rounded-xl border border-l-4 shadow-2xs space-y-1.5 ${
+                  isTuntas
+                    ? "border-emerald-200/90 dark:border-emerald-800/50 bg-gradient-to-r from-emerald-50/70 via-teal-50/20 to-white dark:from-emerald-950/25 dark:via-slate-900/40 dark:to-transparent border-l-emerald-500"
+                    : isPerluRemidi
+                    ? "border-amber-200/90 dark:border-amber-800/50 bg-gradient-to-r from-amber-50/70 via-orange-50/20 to-white dark:from-amber-950/25 dark:via-slate-900/40 dark:to-transparent border-l-amber-500"
+                    : "border-sky-200/90 dark:border-sky-800/50 bg-gradient-to-r from-sky-50/70 via-blue-50/20 to-white dark:from-sky-950/25 dark:via-slate-900/40 dark:to-transparent border-l-sky-500"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-1.5">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-400 shrink-0">
-                      <MessageSquareText className="w-3 h-3" />
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-lg shrink-0 ${
+                        isTuntas
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                          : isPerluRemidi
+                          ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                          : "bg-sky-500/15 text-sky-700 dark:text-sky-400"
+                      }`}
+                    >
+                      {isTuntas ? (
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                      ) : isPerluRemidi ? (
+                        <RotateCcw className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                      ) : (
+                        <MessageSquareText className="w-3 h-3 text-sky-600 dark:text-sky-400" />
+                      )}
                     </span>
                     <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
                       Catatan &amp; Masukan dari Mentor:
                     </span>
                   </div>
-                  <span className="px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/40">
-                    Evaluasi Kuis
+                  <span
+                    className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider border ${
+                      isTuntas
+                        ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/40"
+                        : isPerluRemidi
+                        ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/40"
+                        : "bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border-sky-200/80 dark:border-sky-800/40"
+                    }`}
+                  >
+                    {isTuntas ? "Lulus / Tuntas" : isPerluRemidi ? "Evaluasi Remidi" : "Catatan Kuis"}
                   </span>
                 </div>
                 <p className="text-[11px] sm:text-[11.5px] text-slate-700 dark:text-slate-300 italic pl-6 leading-relaxed">

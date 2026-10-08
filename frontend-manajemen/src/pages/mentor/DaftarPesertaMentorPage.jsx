@@ -92,9 +92,38 @@ const DaftarPesertaMentorPage = () => {
     setSelectedPeserta(null);
   };
 
+  // Normalisasi status peserta: tandai selesai jika masa magang telah lewat atau akun nonaktif
+  const normalizedPesertaList = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return (pesertaList || []).map((p) => {
+      let effectiveStatus = p.status_magang || "aktif";
+      if (effectiveStatus !== "selesai") {
+        if (p.status_akun && p.status_akun !== "aktif") {
+          effectiveStatus = "selesai";
+        } else if (p.tanggal_selesai) {
+          try {
+            const tEnd = new Date(p.tanggal_selesai);
+            tEnd.setHours(0, 0, 0, 0);
+            if (today > tEnd) {
+              effectiveStatus = "selesai";
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+      return {
+        ...p,
+        status_magang: effectiveStatus,
+      };
+    });
+  }, [pesertaList]);
+
   // Filtered & Searched List
   const filteredList = useMemo(() => {
-    return pesertaList.filter((item) => {
+    return normalizedPesertaList.filter((item) => {
       // 1. Filter Status
       if (filterStatus !== "semua") {
         if (filterStatus === "aktif" && item.status_magang !== "aktif") return false;
@@ -128,23 +157,23 @@ const DaftarPesertaMentorPage = () => {
 
       return true;
     });
-  }, [pesertaList, filterStatus, filterKategori, search]);
+  }, [normalizedPesertaList, filterStatus, filterKategori, search]);
 
   // Statistics KPI Calculations
   const stats = useMemo(() => {
-    const total = pesertaList.length;
-    const aktif = pesertaList.filter((p) => p.status_magang === "aktif").length;
-    const selesai = pesertaList.filter((p) => p.status_magang === "selesai").length;
+    const total = normalizedPesertaList.length;
+    const aktif = normalizedPesertaList.filter((p) => p.status_magang === "aktif").length;
+    const selesai = normalizedPesertaList.filter((p) => p.status_magang === "selesai").length;
 
     // Rata-rata persentase kehadiran
-    const totalPersentase = pesertaList.reduce(
+    const totalPersentase = normalizedPesertaList.reduce(
       (acc, curr) => acc + (parseFloat(curr.persentase_kehadiran) || 0),
       0
     );
     const avgKehadiran = total > 0 ? Math.round(totalPersentase / total) : 0;
 
     return { total, aktif, selesai, avgKehadiran };
-  }, [pesertaList]);
+  }, [normalizedPesertaList]);
 
   // Check if any filter active
   const isFiltered = search.trim() !== "" || filterStatus !== "semua" || filterKategori !== "semua";

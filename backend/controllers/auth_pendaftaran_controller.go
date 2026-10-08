@@ -1,3 +1,10 @@
+// ==============================================================================
+// CONTROLLER: Auth Pendaftaran Controller
+// DESKRIPSI: Mengelola seluruh autentikasi pada portal pendaftaran magang publik
+//            (calon peserta), pendaftaran akun baru, sesi login, profil, dan keamanan.
+// ROLE TERKAIT: [ROLE: PENDAFTAR / CALON PESERTA MAGANG] & [ROLE: PUBLIK]
+// ==============================================================================
+
 package controllers
 
 import (
@@ -41,6 +48,9 @@ func isPasswordValid(password string) bool {
 	return hasLetter && hasNumber
 }
 
+// [ROLE: PUBLIK / CALON PENDAFTAR]
+// RegisterPendaftaran membuat akun baru calon peserta untuk mengajukan permohonan magang.
+// Endpoint: POST /api/pendaftaran/register
 func RegisterPendaftaran(c *gin.Context) {
 	var input RegisterPendaftaranInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -76,6 +86,9 @@ func RegisterPendaftaran(c *gin.Context) {
 	})
 }
 
+// [ROLE: PUBLIK / CALON PENDAFTAR]
+// LoginPendaftaran memvalidasi kredensial calon peserta, menerbitkan JWT, dan mencatat riwayat login perangkat.
+// Endpoint: POST /api/pendaftaran/login
 func LoginPendaftaran(c *gin.Context) {
 	var input LoginPendaftaranInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -143,7 +156,9 @@ func LoginPendaftaran(c *gin.Context) {
 	})
 }
 
-// GetRiwayatLoginPendaftaran mengambil daftar riwayat login untuk akun peserta
+// [ROLE: PENDAFTAR]
+// GetRiwayatLoginPendaftaran mengambil 5 riwayat aktivitas login terakhir akun pendaftar untuk keamanan akun.
+// Endpoint: GET /api/pendaftaran/riwayat-login
 func GetRiwayatLoginPendaftaran(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -206,6 +221,9 @@ func parseUserAgent(ua string) (browser string, device string, isMobile bool) {
 	return browser, device, isMobile
 }
 
+// [ROLE: PENDAFTAR]
+// LogoutPendaftaran menghapus sesi aktif dan mencabut token otentikasi pendaftar.
+// Endpoint: POST /api/pendaftaran/logout
 func LogoutPendaftaran(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -227,7 +245,9 @@ func LogoutPendaftaran(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Logout berhasil", nil)
 }
 
-// PingPendaftaran memperbarui waktu aktivitas sesi (keep-alive)
+// [ROLE: PENDAFTAR]
+// PingPendaftaran memperbarui waktu aktivitas sesi (keep-alive / heartbeat) untuk status online pendaftar.
+// Endpoint: POST /api/pendaftaran/ping
 func PingPendaftaran(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -244,6 +264,9 @@ func PingPendaftaran(c *gin.Context) {
 	})
 }
 
+// [ROLE: PENDAFTAR]
+// GetProfilPendaftaran mengambil profil lengkap calon peserta yang sedang login (identitas, kontak, foto).
+// Endpoint: GET /api/pendaftaran/me
 func GetProfilPendaftaran(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -255,19 +278,33 @@ func GetProfilPendaftaran(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusNotFound, "Data user tidak ditemukan")
 		return
 	}
+	var pendaftaran models.PendaftaranMagang
+	_ = config.DB.Where("user_pendaftaran_id = ?", user.ID).First(&pendaftaran)
+
 	utils.SuccessResponse(c, http.StatusOK, "Profil berhasil diambil", gin.H{
 		"id": user.ID, "nama": user.Nama, "email": user.Email,
 		"no_hp": user.NoHP, "institusi": user.Institusi, "foto_profil": user.FotoProfil,
 		"status_akun": user.StatusAkun, "created_at": user.CreatedAt,
+		"tempat_lahir":   pendaftaran.TempatLahir,
+		"tanggal_lahir":  pendaftaran.TanggalLahir,
+		"jenis_kelamin":  pendaftaran.JenisKelamin,
+		"alamat_lengkap": pendaftaran.AlamatLengkap,
 	})
 }
 
 type UpdateProfilInput struct {
-	Nama      string `json:"nama" binding:"required"`
-	NoHP      string `json:"no_hp"`
-	Institusi string `json:"institusi"`
+	Nama          string `json:"nama" binding:"required"`
+	NoHP          string `json:"no_hp"`
+	Institusi     string `json:"institusi"`
+	TempatLahir   string `json:"tempat_lahir"`
+	TanggalLahir  string `json:"tanggal_lahir"`
+	JenisKelamin  string `json:"jenis_kelamin"`
+	AlamatLengkap string `json:"alamat_lengkap"`
 }
 
+// [ROLE: PENDAFTAR]
+// UpdateProfilPendaftaran memperbarui data informasi profil diri calon peserta (nama, no HP, institusi, biodata).
+// Endpoint: PUT /api/pendaftaran/update-profil
 func UpdateProfilPendaftaran(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -291,13 +328,58 @@ func UpdateProfilPendaftaran(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui profil")
 		return
 	}
+
+	// Update juga data di PendaftaranMagang bila sudah pernah mengisi formulir pendaftaran
+	var pendaftaran models.PendaftaranMagang
+	if err := config.DB.Where("user_pendaftaran_id = ?", user.ID).First(&pendaftaran).Error; err == nil {
+		updates := map[string]interface{}{
+			"nama_lengkap": input.Nama,
+			"nomor_hp":     input.NoHP,
+		}
+		if input.Institusi != "" {
+			if pendaftaran.KategoriPendaftar == "mahasiswa" {
+				updates["asal_kampus"] = input.Institusi
+			} else {
+				updates["asal_sekolah"] = input.Institusi
+			}
+		}
+		if input.TempatLahir != "" {
+			updates["tempat_lahir"] = input.TempatLahir
+		}
+		if input.TanggalLahir != "" {
+			updates["tanggal_lahir"] = input.TanggalLahir
+		}
+		if input.JenisKelamin != "" {
+			updates["jenis_kelamin"] = input.JenisKelamin
+		}
+		if input.AlamatLengkap != "" {
+			updates["alamat_lengkap"] = input.AlamatLengkap
+		}
+		config.DB.Model(&pendaftaran).Updates(updates)
+
+		// Sinkronkan juga ke akun peserta jika sudah diterima
+		if pendaftaran.AkunPesertaID != nil {
+			config.DB.Model(&models.UserManajemen{}).Where("id = ?", *pendaftaran.AkunPesertaID).Updates(map[string]interface{}{
+				"nama":  input.Nama,
+				"no_hp": input.NoHP,
+			})
+		}
+	}
+
 	utils.SuccessResponse(c, http.StatusOK, "Profil berhasil diperbarui", gin.H{
 		"id": user.ID, "nama": user.Nama, "email": user.Email,
 		"no_hp": user.NoHP, "institusi": user.Institusi,
 		"foto_profil": user.FotoProfil, "status_akun": user.StatusAkun,
+		"tempat_lahir":   input.TempatLahir,
+		"tanggal_lahir":  input.TanggalLahir,
+		"jenis_kelamin":  input.JenisKelamin,
+		"alamat_lengkap": input.AlamatLengkap,
 	})
 }
 
+// [ROLE: PENDAFTAR]
+// UploadFotoProfilPendaftaran mengunggah berkas foto profil calon peserta (format: JPG/PNG, maks 3MB).
+// Endpoint: POST /api/pendaftaran/upload-foto
 func UploadFotoProfilPendaftaran(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -351,6 +433,9 @@ func UploadFotoProfilPendaftaran(c *gin.Context) {
 	})
 }
 
+// [ROLE: PENDAFTAR]
+// HapusFotoProfilPendaftaran menghapus file foto profil dari server dan mengosongkan path foto di database.
+// Endpoint: DELETE /api/pendaftaran/hapus-foto
 func HapusFotoProfilPendaftaran(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -389,6 +474,9 @@ type RequestGantiEmailInput struct {
 	EmailBaru string `json:"email_baru" binding:"required,email"`
 }
 
+// [ROLE: PENDAFTAR]
+// RequestGantiEmail mengirimkan kode OTP verifikasi 6 digit ke alamat email baru yang diajukan.
+// Endpoint: POST /api/pendaftaran/request-ganti-email
 func RequestGantiEmail(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -452,6 +540,9 @@ type VerifikasiOTPEmailInput struct {
 	Otp string `json:"otp" binding:"required"`
 }
 
+// [ROLE: PENDAFTAR]
+// VerifikasiGantiEmail memvalidasi kode OTP 6 digit dan menerapkan alamat email baru pada akun serta data pendaftaran.
+// Endpoint: POST /api/pendaftaran/verifikasi-ganti-email
 func VerifikasiGantiEmail(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -512,6 +603,15 @@ func VerifikasiGantiEmail(c *gin.Context) {
 		return
 	}
 
+	// Sinkronkan ke pendaftaran dan akun UserManajemen jika pendaftar sudah memiliki akun peserta aktif
+	var pendaftaran models.PendaftaranMagang
+	if err := config.DB.Where("user_pendaftaran_id = ?", user.ID).Order("id desc").First(&pendaftaran).Error; err == nil {
+		config.DB.Model(&pendaftaran).Update("email", user.Email)
+		if pendaftaran.AkunPesertaID != nil {
+			config.DB.Model(&models.UserManajemen{}).Where("id = ?", *pendaftaran.AkunPesertaID).Update("email", user.Email)
+		}
+	}
+
 	// ── SIAPKAN DATA UNTUK NOTIFIKASI ──
 	alamatIP := c.ClientIP()
 	waktuSekarang := time.Now().Format("02 Jan 2006, 15:04")
@@ -536,6 +636,9 @@ type GantiPasswordInput struct {
 	ConfirmPassword string `json:"confirmPassword" binding:"required"`
 }
 
+// [ROLE: PENDAFTAR]
+// GantiPasswordPendaftaran memperbarui kata sandi akun pendaftar (wajib memasukkan password lama dan minimal 8 karakter).
+// Endpoint: PUT /api/pendaftaran/ganti-password
 func GantiPasswordPendaftaran(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {

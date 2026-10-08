@@ -129,16 +129,43 @@ export const FormTugasKuisModal = ({
     return () => clearTimeout(timer);
   }, [isOpen, isEditing, selectedTugas, kuisDraft]);
 
-  // Hitung jumlah bimbingan mahasiswa & siswa
-  const totalMahasiswa = pesertaBimbingan.filter(
-    (p) => (p.kategori_pendaftar || "").toLowerCase() === "mahasiswa"
-  ).length;
-  const totalSiswa = pesertaBimbingan.filter(
-    (p) => (p.kategori_pendaftar || "").toLowerCase() === "siswa"
-  ).length;
+  // Hanya ambil peserta yang masih AKTIF magang
+  const activePesertaBimbingan = useMemo(() => {
+    return (pesertaBimbingan || []).filter((p) => {
+      if (p.status_magang && p.status_magang === "selesai") return false;
+      if (p.status_akun && p.status_akun !== "aktif") return false;
+      if (p.tanggal_selesai) {
+        try {
+          const tgl = new Date(p.tanggal_selesai);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (tgl < today) return false;
+        } catch {
+          // ignore
+        }
+      }
+      return true;
+    });
+  }, [pesertaBimbingan]);
+
+  // Hitung jumlah bimbingan mahasiswa & siswa aktif
+  const totalMahasiswa = useMemo(
+    () =>
+      activePesertaBimbingan.filter(
+        (p) => (p.kategori_pendaftar || "").toLowerCase() === "mahasiswa"
+      ).length,
+    [activePesertaBimbingan]
+  );
+  const totalSiswa = useMemo(
+    () =>
+      activePesertaBimbingan.filter(
+        (p) => (p.kategori_pendaftar || "").toLowerCase() === "siswa"
+      ).length,
+    [activePesertaBimbingan]
+  );
 
   const filteredPesertaModal = useMemo(() => {
-    return pesertaBimbingan.filter((p) => {
+    return activePesertaBimbingan.filter((p) => {
       const matchJenjang =
         modalFilterJenjang === "semua" ||
         (p.kategori_pendaftar || "").toLowerCase() === modalFilterJenjang;
@@ -150,7 +177,7 @@ export const FormTugasKuisModal = ({
         (p.posisi_bidang || "").toLowerCase().includes(q);
       return matchJenjang && matchSearch;
     });
-  }, [pesertaBimbingan, modalFilterJenjang, searchPeserta]);
+  }, [activePesertaBimbingan, modalFilterJenjang, searchPeserta]);
 
   const togglePeserta = (id) => {
     setFormPesertaTerpilih((prev) =>

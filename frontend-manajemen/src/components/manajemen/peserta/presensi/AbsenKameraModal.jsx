@@ -63,6 +63,17 @@ const formatBidangNama = (bidang) => {
     .join(" ");
 };
 
+/* Format durasi menit keterlambatan menjadi 'X jam Y menit' */
+const formatDurasiTerlambat = (menit) => {
+  const m = Number(menit) || 0;
+  if (m <= 0) return "0 menit";
+  const jam = Math.floor(m / 60);
+  const sisa = m % 60;
+  if (jam > 0 && sisa > 0) return `${jam} jam ${sisa} menit`;
+  if (jam > 0) return `${jam} jam`;
+  return `${sisa} menit`;
+};
+
 /* Format alamat Indonesia yang rapi */
 const formatAlamatIndonesia = (data) => {
   if (!data || !data.address) {
@@ -787,7 +798,34 @@ const AbsenKameraModal = ({
       }
 
       const res = isMasuk ? await presensiMasuk(form) : await presensiPulang(form);
-      toastSuccess(res.data?.message || `Presensi ${isMasuk ? "masuk" : "pulang"} berhasil dicatat.`);
+      let pesanSukses = res.data?.message;
+
+      if (isMasuk) {
+        const presensiData = res.data?.data;
+        const menitTerlambat = presensiData?.menit_terlambat;
+        const isTerlambat = presensiData?.status === "terlambat" || (typeof menitTerlambat === "number" && menitTerlambat > 0);
+
+        if (isTerlambat && menitTerlambat > 0) {
+          pesanSukses = `Presensi masuk tercatat terlambat ${formatDurasiTerlambat(menitTerlambat)}.`;
+        } else if (!isTerlambat && (!pesanSukses || pesanSukses.toLowerCase().includes("terlambat"))) {
+          pesanSukses = "Presensi masuk berhasil dicatat tepat waktu. Selamat beraktivitas!";
+        } else if (!pesanSukses) {
+          pesanSukses = "Presensi masuk berhasil dicatat tepat waktu. Selamat beraktivitas!";
+        }
+      } else {
+        // Presensi pulang selalu diverifikasi bersama ringkasan logbook harian
+        pesanSukses = "Presensi pulang dan logbook kegiatan harian berhasil dicatat.";
+      }
+
+      // Normalisasi jika masih ada teks server yang menyertakan format angka menit langsung
+      if (pesanSukses && typeof pesanSukses === "string") {
+        pesanSukses = pesanSukses.replace(/terlambat\s+(\d+)\s+menit/gi, (_, p1) => {
+          return `terlambat ${formatDurasiTerlambat(parseInt(p1, 10))}`;
+        });
+      }
+
+      toastSuccess(pesanSukses);
+      window.dispatchEvent(new CustomEvent("sim_notifikasi_updated"));
       matikanKamera();
       if (onSelesai) onSelesai(res.data);
       if (onSuccess) onSuccess(res.data);

@@ -142,15 +142,26 @@ const PesertaLayout = ({ children, searchValue = "", onSearchChange }) => {
         const data = res.data.data;
         setProfile(data);
 
-        // Sinkronkan status magang terbaru dari server ke penyimpanan lokal
+        // Sinkronkan seluruh data profil peserta (termasuk foto_profil & status magang) ke penyimpanan lokal
         const selesai = data?.role === "peserta" && data?.status_magang === "selesai";
-        updateAuthUser({ status_magang: data?.status_magang || "aktif" });
+        updateAuthUser(data);
         setReadOnly(selesai);
       } catch {
         navigate("/login");
       }
     };
     fetchProfile();
+
+    const handleProfileSync = () => {
+      const u = getUser();
+      if (u) setProfile((prev) => ({ ...prev, ...u }));
+    };
+    window.addEventListener("sim_auth_user_updated", handleProfileSync);
+    window.addEventListener("storage", handleProfileSync);
+    return () => {
+      window.removeEventListener("sim_auth_user_updated", handleProfileSync);
+      window.removeEventListener("storage", handleProfileSync);
+    };
   }, [navigate]);
 
   const handleLogout = async () => {

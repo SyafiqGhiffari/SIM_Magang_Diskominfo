@@ -1,3 +1,10 @@
+// ==============================================================================
+// CONTROLLER: Auth Manajemen Controller
+// DESKRIPSI: Menangani seluruh autentikasi portal manajemen (Admin, Mentor, Peserta),
+//            sesi login, manajemen profil akun, penggantian password, dan OTP ganti email.
+// ROLE TERKAIT: [ROLE: SEMUA USER MANAJEMEN] (Admin, Mentor, Peserta) & [ROLE: ADMIN]
+// ==============================================================================
+
 package controllers
 
 import (
@@ -19,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
+
 type RegisterManajemenInput struct {
 	Nama               string `json:"nama" binding:"required"`
 	Email              string `json:"email" binding:"required,email"`
@@ -36,6 +44,9 @@ type LoginManajemenInput struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// [ROLE: ADMIN / SISTEM]
+// RegisterManajemen mendaftarkan akun manajemen baru (admin, mentor, atau staf).
+// Endpoint: POST /api/manajemen/register
 func RegisterManajemen(c *gin.Context) {
 	var input RegisterManajemenInput
 
@@ -93,6 +104,10 @@ func RegisterManajemen(c *gin.Context) {
 	})
 }
 
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// LoginManajemen memverifikasi kredensial email dan password akun manajemen,
+// mencatat riwayat login, serta menghasilkan access token dan refresh token JWT.
+// Endpoint: POST /api/manajemen/login
 func LoginManajemen(c *gin.Context) {
 	var input LoginManajemenInput
 
@@ -220,13 +235,16 @@ func LoginManajemen(c *gin.Context) {
 			"nama":          user.Nama,
 			"email":         user.Email,
 			"role":          user.Role,
+			"foto_profil":   user.FotoProfil,
 			"status_akun":   user.StatusAkun,
 			"status_magang": user.StatusMagang,
 		},
 	})
 }
 
-// GetRiwayatLoginManajemen mengambil daftar riwayat login untuk akun manajemen / peserta
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// GetRiwayatLoginManajemen mengambil daftar riwayat aktivitas login untuk akun manajemen / peserta.
+// Endpoint: GET /api/manajemen/riwayat-login
 func GetRiwayatLoginManajemen(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -289,7 +307,9 @@ func GetRiwayatLoginManajemen(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Riwayat login berhasil diambil", histories)
 }
 
-// LogoutManajemen mengubah status admin menjadi offline dan menghapus session ID
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// LogoutManajemen mengakhiri sesi aktif, mengubah status user menjadi offline, dan mengosongkan session ID.
+// Endpoint: POST /api/manajemen/logout
 func LogoutManajemen(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -308,7 +328,9 @@ func LogoutManajemen(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Logout manajemen berhasil", nil)
 }
 
-// PingManajemen memperbarui waktu aktivitas sesi (keep-alive) saat pengguna tetap aktif
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// PingManajemen memperbarui waktu aktivitas sesi (keep-alive denyut aktifitas pengguna).
+// Endpoint: POST /api/manajemen/ping
 func PingManajemen(c *gin.Context) {
 	userIDFloat, exists := c.Get("user_id")
 	if !exists {
@@ -334,7 +356,9 @@ type GantiPasswordManajemenInput struct {
 	ConfirmPassword string `json:"confirmPassword" binding:"required"`
 }
 
-// GantiPasswordManajemen — user manajemen (admin/mentor/peserta) mengganti password sendiri
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// GantiPasswordManajemen memungkinkan user manajemen mengganti password akunnya sendiri.
+// Endpoint: PUT /api/manajemen/ganti-password
 func GantiPasswordManajemen(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -388,6 +412,27 @@ func GantiPasswordManajemen(c *gin.Context) {
 		}
 	}
 
+	// Kirim notifikasi in-app & email keamanan perubahan kata sandi
+	clientIP := c.ClientIP()
+	go func(u models.UserManajemen, ip string) {
+		waktu := time.Now().Format("02 Jan 2006, 15:04")
+		urlAkun := "/" + u.Role + "/akun"
+		services.KirimNotifikasi(services.NotifikasiInput{
+			TargetRole:   u.Role,
+			TargetUserID: &u.ID,
+			Tipe:         "keamanan_password",
+			Prioritas:    "tinggi",
+			Judul:        "Kata Sandi Akun Diperbarui",
+			Pesan:        fmt.Sprintf("Kata sandi akun Anda telah berhasil diperbarui pada %s WIB (IP: %s).", waktu, ip),
+			UrlTujuan:    urlAkun,
+		})
+
+		if u.Email != "" {
+			body := emailtemplates.NotifikasiPasswordDiubahTemplate(u.Nama, ip, waktu)
+			_ = services.SendEmail(u.Email, "Pemberitahuan Keamanan: Kata Sandi Akun Diperbarui", body)
+		}
+	}(user, clientIP)
+
 	utils.SuccessResponse(c, http.StatusOK, "Password berhasil diperbarui", gin.H{
 		"password_changed_at": now,
 	})
@@ -397,7 +442,10 @@ func GantiPasswordManajemen(c *gin.Context) {
 // ADMIN: Kelola akun manajemen (buat, lihat, ubah status, hapus)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// GetAllUserManajemen — admin melihat semua akun manajemen (admin/mentor/peserta)
+// [ROLE: ADMIN]
+// GetAllUserManajemen mengambil seluruh daftar akun staf manajemen (admin, mentor, peserta)
+// lengkap dengan relasi divisi/bidang dan jumlah bimbingan aktif.
+// Endpoint: GET /api/manajemen/admin/users
 func GetAllUserManajemen(c *gin.Context) {
 	var users []models.UserManajemen
 	if err := config.DB.Order("created_at desc").Find(&users).Error; err != nil {
@@ -462,7 +510,9 @@ type UpdateStatusUserManajemenInput struct {
 	StatusAkun string `json:"status_akun" binding:"required"`
 }
 
-// UpdateStatusUserManajemen — admin mengaktifkan/menonaktifkan akun manajemen lain
+// [ROLE: ADMIN]
+// UpdateStatusUserManajemen mengaktifkan atau menonaktifkan status akun manajemen lain.
+// Endpoint: PUT /api/manajemen/admin/users/:id/status
 func UpdateStatusUserManajemen(c *gin.Context) {
 	id := c.Param("id")
 	requesterID := uint(c.GetFloat64("user_id"))
@@ -499,7 +549,9 @@ func UpdateStatusUserManajemen(c *gin.Context) {
 	})
 }
 
-// DeleteUserManajemen — admin menghapus akun manajemen lain
+// [ROLE: ADMIN]
+// DeleteUserManajemen menghapus akun staf manajemen dengan validasi relasi bimbingan/tugas.
+// Endpoint: DELETE /api/manajemen/admin/users/:id
 func DeleteUserManajemen(c *gin.Context) {
 	id := c.Param("id")
 	requesterID := uint(c.GetFloat64("user_id"))
@@ -562,7 +614,9 @@ type UpdateUserManajemenInput struct {
 	StatusAkun         string `json:"status_akun"`
 }
 
-// UpdateUserManajemen — admin mengedit data akun (mentor/admin/peserta)
+// [ROLE: ADMIN]
+// UpdateUserManajemen memperbarui data identitas staf (mentor/admin/peserta).
+// Endpoint: PUT /api/manajemen/admin/users/:id
 func UpdateUserManajemen(c *gin.Context) {
 	id := c.Param("id")
 
@@ -621,7 +675,9 @@ func UpdateUserManajemen(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Akun berhasil diperbarui", user)
 }
 
-// UploadFotoUserManajemen — admin mengunggah/mengganti foto profil untuk akun (mis. mentor)
+// [ROLE: ADMIN]
+// UploadFotoUserManajemen mengunggah atau mengganti foto profil untuk akun staf/mentor.
+// Endpoint: POST /api/manajemen/admin/users/:id/foto
 func UploadFotoUserManajemen(c *gin.Context) {
 	id := c.Param("id")
 
@@ -678,7 +734,9 @@ func UploadFotoUserManajemen(c *gin.Context) {
 	})
 }
 
-// CekUserBisaDihapus — dipanggil frontend sebelum dialog konfirmasi hapus mentor
+// [ROLE: ADMIN]
+// CekUserBisaDihapus memverifikasi apakah akun staf/mentor aman untuk dihapus (tidak memiliki peserta bimbingan aktif).
+// Endpoint: GET /api/manajemen/admin/users/:id/cek-hapus
 func CekUserBisaDihapus(c *gin.Context) {
 	id := c.Param("id")
 
@@ -717,7 +775,9 @@ func CekUserBisaDihapus(c *gin.Context) {
 // AKUN SENDIRI (manajemen): profil lengkap & kelola foto profil sendiri
 // ────────────────────────────────────────────────────────────────
 
-// GetProfilManajemen — user manajemen yang sedang login melihat profil lengkapnya
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// GetProfilManajemen mengambil profil lengkap akun user yang sedang login saat ini.
+// Endpoint: GET /api/manajemen/me
 func GetProfilManajemen(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -765,7 +825,9 @@ func GetProfilManajemen(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Profil berhasil diambil", res)
 }
 
-// UploadFotoProfilManajemen — user manajemen mengganti foto profilnya sendiri
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// UploadFotoProfilManajemen mengunggah atau mengganti foto profil akun sendiri.
+// Endpoint: POST /api/manajemen/upload-foto
 func UploadFotoProfilManajemen(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -820,13 +882,22 @@ func UploadFotoProfilManajemen(c *gin.Context) {
 		return
 	}
 
+	// Sinkronkan pas foto peserta jika role adalah peserta
+	if user.Role == "peserta" {
+		config.DB.Model(&models.PendaftaranMagang{}).
+			Where("akun_peserta_id = ?", user.ID).
+			Update("file_pas_foto", cleanPath)
+	}
+
 	utils.SuccessResponse(c, http.StatusOK, "Foto profil berhasil diperbarui", gin.H{
 		"foto_profil": cleanPath,
 		"foto_url":    "/" + cleanPath,
 	})
 }
 
-// HapusFotoProfilManajemen — user manajemen menghapus foto profilnya sendiri
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// HapusFotoProfilManajemen menghapus berkas foto profil akun sendiri.
+// Endpoint: DELETE /api/manajemen/hapus-foto
 func HapusFotoProfilManajemen(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -849,10 +920,19 @@ func HapusFotoProfilManajemen(c *gin.Context) {
 		return
 	}
 
+	// Sinkronkan pas foto peserta jika role adalah peserta
+	if user.Role == "peserta" {
+		config.DB.Model(&models.PendaftaranMagang{}).
+			Where("akun_peserta_id = ?", user.ID).
+			Update("file_pas_foto", "")
+	}
+
 	utils.SuccessResponse(c, http.StatusOK, "Foto profil berhasil dihapus", gin.H{"foto_profil": ""})
 }
 
-// UpdateProfilManajemen — user manajemen memperbarui informasi akunnya sendiri
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// UpdateProfilManajemen memperbarui informasi biodata akun user manajemen yang sedang login.
+// Endpoint: PUT /api/manajemen/update-profil
 func UpdateProfilManajemen(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -915,24 +995,15 @@ func UpdateProfilManajemen(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Nama lengkap wajib diisi")
 		return
 	}
-	if input.Email == "" {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Email wajib diisi")
-		return
-	}
 
-	// Pastikan email belum dipakai akun lain
-	var count int64
-	config.DB.Model(&models.UserManajemen{}).
-		Where("email = ? AND id <> ?", input.Email, user.ID).
-		Count(&count)
-	if count > 0 {
-		utils.ErrorResponse(c, http.StatusConflict, "Email sudah digunakan oleh akun lain")
+	// Keamanan Akun: Alamat email tidak boleh diganti langsung di sini (wajib lewat verifikasi OTP)
+	if input.Email != "" && !strings.EqualFold(strings.TrimSpace(input.Email), strings.TrimSpace(user.Email)) {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Perubahan alamat email akun wajib melalui proses verifikasi kode OTP pada menu Keamanan Akun")
 		return
 	}
 
 	// Update field (NoHp & Jabatan boleh kosong = hapus)
 	user.Nama = input.Nama
-	user.Email = input.Email
 	user.NoHp = input.NoHp
 	user.Nip = input.Nip
 	user.Jabatan = input.Jabatan
@@ -942,12 +1013,11 @@ func UpdateProfilManajemen(c *gin.Context) {
 		return
 	}
 
-	// Jika role = peserta, sinkronkan juga data ke pendaftaran_magang
+	// Jika role = peserta, sinkronkan juga data ke pendaftaran_magang & user_pendaftarans
 	if user.Role == "peserta" {
 		var pendaftaran models.PendaftaranMagang
 		if err := config.DB.Where("akun_peserta_id = ?", user.ID).Order("id desc").First(&pendaftaran).Error; err == nil {
 			pendaftaran.NamaLengkap = input.Nama
-			pendaftaran.Email = input.Email
 			if input.NoHp != "" {
 				pendaftaran.NomorHP = input.NoHp
 			}
@@ -991,6 +1061,16 @@ func UpdateProfilManajemen(c *gin.Context) {
 				pendaftaran.Semester = input.Semester
 			}
 			_ = config.DB.Save(&pendaftaran)
+
+			// Sinkronkan juga identitas nama & no_hp ke akun portal pendaftar jika terhubung
+			if pendaftaran.UserPendaftaranID > 0 {
+				config.DB.Model(&models.UserPendaftaran{}).
+					Where("id = ?", pendaftaran.UserPendaftaranID).
+					Updates(map[string]interface{}{
+						"nama":  input.Nama,
+						"no_hp": input.NoHp,
+					})
+			}
 		}
 	}
 
@@ -1012,6 +1092,9 @@ type RequestGantiEmailManajemenInput struct {
 	EmailBaru string `json:"email_baru" binding:"required,email"`
 }
 
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// RequestGantiEmailManajemen mengirimkan kode OTP ke alamat email baru yang diajukan.
+// Endpoint: POST /api/manajemen/request-ganti-email
 func RequestGantiEmailManajemen(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 	if userID == 0 {
@@ -1101,6 +1184,9 @@ type VerifikasiOTPEmailManajemenInput struct {
 	Otp string `json:"otp" binding:"required"`
 }
 
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// VerifikasiGantiEmailManajemen memvalidasi kode OTP dan memperbarui email utama akun user.
+// Endpoint: POST /api/manajemen/verifikasi-ganti-email
 func VerifikasiGantiEmailManajemen(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 	if userID == 0 {
@@ -1193,6 +1279,20 @@ func VerifikasiGantiEmailManajemen(c *gin.Context) {
 			log.Println("Gagal mengirim notifikasi email lama:", err)
 		}
 	}(oldEmail, newEmail, namaUser, alamatIP, waktuSekarang)
+
+	// Kirim notifikasi in-app keamanan pergantian email
+	go func(uID uint, role, emailTujuan string) {
+		urlAkun := "/" + role + "/akun"
+		services.KirimNotifikasi(services.NotifikasiInput{
+			TargetRole:   role,
+			TargetUserID: &uID,
+			Tipe:         "keamanan_password",
+			Prioritas:    "tinggi",
+			Judul:        "Alamat Email Akun Diperbarui",
+			Pesan:        fmt.Sprintf("Alamat email akun Anda telah berhasil diperbarui menjadi %s.", emailTujuan),
+			UrlTujuan:    urlAkun,
+		})
+	}(user.ID, user.Role, newEmail)
 
 	utils.SuccessResponse(c, http.StatusOK, "Email pribadi berhasil diperbarui", gin.H{
 		"email": newEmail,

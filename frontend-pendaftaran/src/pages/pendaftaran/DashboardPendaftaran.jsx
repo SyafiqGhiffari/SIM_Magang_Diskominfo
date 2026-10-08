@@ -1,8 +1,8 @@
-﻿import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { logoutPendaftaran } from "../../services/authPendaftaranService";
 import { confirmDialog, toastSuccess, toastError, sessionExpiredDialog } from "../../utils/swal";
-import { Info, Search, AlertTriangle, PartyPopper, XCircle } from "lucide-react";
+import { Info, Search, AlertTriangle, PartyPopper, XCircle, FileCheck } from "lucide-react";
 import {
   getStatusPendaftaran,
   kirimPendaftaranMagang,
@@ -21,11 +21,11 @@ import SidebarPendaftaran from "../../components/pendaftaran/SidebarPendaftaran"
 import HeaderPendaftaran from "../../components/pendaftaran/HeaderPendaftaran";
 import TabDashboard from "../../components/pendaftaran/TabDashboard";
 import TabFormMagang from "../../components/pendaftaran/TabFormMagang";
-import TabStatusVerifikasi from "../../components/pendaftaran/TabStatusVerifikasi";
 import TabRevisiBerkas from "../../components/pendaftaran/TabRevisiBerkas";
 import TabKelolaAkun from "../../components/pendaftaran/TabKelolaAkun";
 import ChatWidget from "../../components/pendaftaran/ChatWidget";
 import { kirimDenyut } from "../../services/chatService";
+import { getFileUrl } from "../../utils/fileUrl";
 
 const REVISI_DOC_FIELD_MAP = [
   { key: "pas_foto", field: "file_pas_foto", pattern: /pas\s*foto/i, isImage: true, label: "Pas Foto" },
@@ -36,70 +36,80 @@ const REVISI_DOC_FIELD_MAP = [
   { key: "cv", field: "file_cv", pattern: /\bcv\b|curriculum vitae/i, isImage: false, label: "CV" },
 ];
 
-const TabLoadingSkeleton = ({ dk, surface }) => (
+// ==== Skeleton loading — dipakai langsung di dalam shell ini, tidak perlu file terpisah ====
+const SkeletonLoader = ({ isDark }) => (
   <div className="space-y-6 animate-[fadeslide_0.2s_ease-out]">
     {/* Header skeleton */}
-    <div className={`relative rounded-2xl overflow-hidden p-6 ${dk ? "bg-[#161b22] border border-white/10" : "bg-white border border-slate-200/80"}`}>
+    <div className={`rounded-2xl border p-6 ${isDark ? "bg-[#161b22] border-white/10" : "bg-white border-slate-200/80"}`}>
       <div className="space-y-3">
-        <div className={`h-3 w-24 rounded-full animate-pulse ${dk ? "bg-white/10" : "bg-slate-200"}`} />
-        <div className={`h-6 w-48 rounded-full animate-pulse ${dk ? "bg-white/15" : "bg-slate-300"}`} />
-        <div className={`h-3 w-full max-w-sm rounded-full animate-pulse ${dk ? "bg-white/5" : "bg-slate-100"}`} />
-        <div className={`h-3 w-2/3 rounded-full animate-pulse ${dk ? "bg-white/5" : "bg-slate-100"}`} />
+        <div className={`h-3 w-24 rounded-full animate-pulse ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+        <div className={`h-6 w-48 rounded-full animate-pulse ${isDark ? "bg-white/15" : "bg-slate-300"}`} />
+        <div className={`h-3 w-full max-w-sm rounded-full animate-pulse ${isDark ? "bg-white/5" : "bg-slate-100"}`} />
       </div>
-    </div>
-
-    {/* Card skeleton */}
-    <div className={`rounded-2xl border p-6 ${surface}`}>
-      <div className={`h-3 w-32 rounded-full mb-6 animate-pulse ${dk ? "bg-white/10" : "bg-slate-200"}`} />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="flex md:flex-col items-center gap-3">
-            <div className={`h-11 w-11 shrink-0 rounded-full animate-pulse ${dk ? "bg-white/10" : "bg-slate-200"}`} />
-            <div className="space-y-1.5">
-              <div className={`h-2.5 w-16 rounded-full animate-pulse ${dk ? "bg-white/10" : "bg-slate-200"}`} />
-              <div className={`h-2 w-12 rounded-full animate-pulse ${dk ? "bg-white/5" : "bg-slate-100"}`} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Status card skeleton */}
-    <div className={`rounded-2xl border p-6 flex items-start gap-4 ${surface}`}>
-      <div className={`h-12 w-12 shrink-0 rounded-2xl animate-pulse ${dk ? "bg-white/10" : "bg-slate-200"}`} />
-      <div className="flex-1 space-y-2.5">
-        <div className={`h-4 w-44 rounded-full animate-pulse ${dk ? "bg-white/10" : "bg-slate-200"}`} />
-        <div className={`h-3 w-full max-w-md rounded-full animate-pulse ${dk ? "bg-white/5" : "bg-slate-100"}`} />
-        <div className={`h-3 w-2/3 rounded-full animate-pulse ${dk ? "bg-white/5" : "bg-slate-100"}`} />
-      </div>
-      <div className={`shrink-0 h-8 w-28 rounded-full animate-pulse ${dk ? "bg-white/10" : "bg-slate-200"}`} />
     </div>
 
     {/* Grid card skeleton */}
-    <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
-      {[...Array(3)].map((_, i) => (
-        <div key={i} className={`rounded-2xl border p-5 space-y-4 ${surface}`}>
-          <div className={`h-10 w-10 rounded-xl animate-pulse ${dk ? "bg-white/10" : "bg-slate-200"}`} />
+    <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className={`rounded-2xl border p-5 space-y-4 ${isDark ? "bg-[#161b22] border-white/10" : "bg-white border-slate-200/80"}`}>
+          <div className={`h-10 w-10 rounded-xl animate-pulse ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
           <div className="space-y-2">
-            <div className={`h-3.5 w-28 rounded-full animate-pulse ${dk ? "bg-white/10" : "bg-slate-200"}`} />
-            <div className={`h-2.5 w-full rounded-full animate-pulse ${dk ? "bg-white/5" : "bg-slate-100"}`} />
-            <div className={`h-2.5 w-3/4 rounded-full animate-pulse ${dk ? "bg-white/5" : "bg-slate-100"}`} />
+            <div className={`h-3.5 w-24 rounded-full animate-pulse ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+            <div className={`h-2.5 w-full rounded-full animate-pulse ${isDark ? "bg-white/5" : "bg-slate-100"}`} />
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Table/content block skeleton */}
+    <div className={`rounded-2xl border p-6 space-y-4 ${isDark ? "bg-[#161b22] border-white/10" : "bg-white border-slate-200/80"}`}>
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="flex items-center gap-4">
+          <div className={`h-10 w-10 shrink-0 rounded-full animate-pulse ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+          <div className="flex-1 space-y-2">
+            <div className={`h-3 w-1/3 rounded-full animate-pulse ${isDark ? "bg-white/10" : "bg-slate-200"}`} />
+            <div className={`h-2.5 w-2/3 rounded-full animate-pulse ${isDark ? "bg-white/5" : "bg-slate-100"}`} />
           </div>
         </div>
       ))}
     </div>
 
     <div className="flex items-center justify-center gap-2.5 py-3">
-      <div className={`h-4 w-4 rounded-full border-2 border-t-transparent animate-spin ${dk ? "border-[#00A5EC]" : "border-[#004F9F]"}`} style={{ borderTopColor: "transparent" }} />
-      <span className={`text-xs font-semibold ${dk ? "text-slate-400" : "text-slate-500"}`}>Memuat halaman...</span>
+      <div className={`h-4 w-4 rounded-full border-2 border-t-transparent animate-spin ${isDark ? "border-[#00A5EC]" : "border-[#004F9F]"}`} />
+      <span className={`text-xs font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>Memuat halaman...</span>
     </div>
   </div>
 );
+// ==== Akhir bagian skeleton ====
 
 const DashboardPendaftaran = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "dashboard";
+  const VALID_TABS = useMemo(() => ["dashboard", "form", "revisi", "settings"], []);
+  const rawTab = searchParams.get("tab");
+  const activeTab = VALID_TABS.includes(rawTab) ? rawTab : "dashboard";
+
+  useEffect(() => {
+    if (rawTab && !VALID_TABS.includes(rawTab)) {
+      setSearchParams({ tab: "dashboard" }, { replace: true });
+    }
+  }, [rawTab, VALID_TABS, setSearchParams]);
+
+  const prevTabRef = useRef(activeTab);
+  const [tabLoading, setTabLoading] = useState(false);
+
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab) {
+      prevTabRef.current = activeTab;
+      setTabLoading(true);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!tabLoading) return;
+    const t = setTimeout(() => setTabLoading(false), 450);
+    return () => clearTimeout(t);
+  }, [tabLoading]);
 
   const [isDark, setIsDark] = useState(() => localStorage.getItem("dash_theme") === "dark");
   useEffect(() => {
@@ -202,14 +212,24 @@ const DashboardPendaftaran = () => {
     if (!user) return "";
     const statusStr = status ? `${status.status_pendaftaran}_${status.updated_at || status.created_at || ""}` : "none";
     const hasReg = !!status;
-    return `read_notif_${user.id}_${hasReg}_${statusStr}`;
+    const suratStr = status?.surat_penerimaan?.id ? `surat_${status.surat_penerimaan.id}` : "nosurat";
+    return `read_notif_${user.id}_${hasReg}_${statusStr}_${suratStr}`;
   }, [user, status]);
 
   const notifKey = getNotifKey();
   const hasReadNotif = useMemo(() => {
     if (!notifKey) return false;
+    if (readBump < 0) return false;
     return localStorage.getItem(notifKey) === "true";
   }, [notifKey, readBump]);
+
+  const handleMarkAllRead = useCallback(() => {
+    const key = getNotifKey();
+    if (key) {
+      localStorage.setItem(key, "true");
+      setReadBump((b) => b + 1);
+    }
+  }, [getNotifKey]);
 
   const setNotifOpen = useCallback((val) => {
     _setNotifOpen(prev => {
@@ -228,7 +248,6 @@ const DashboardPendaftaran = () => {
   useEffect(() => {
     const fn = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) _setNotifOpen(false);
-      if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarOpen(false);
     };
     document.addEventListener("mousedown", fn);
     return () => document.removeEventListener("mousedown", fn);
@@ -250,9 +269,31 @@ const DashboardPendaftaran = () => {
   const [fotoDeleteLoading, setFotoDeleteLoading] = useState(false);
   const [fotoModalLoading, setFotoModalLoading] = useState(false);
   const [fotoPreview, setFotoPreview] = useState(null);
-  // Chat
-  const [chatOpenTrigger] = useState(0);
+  // Chat & UI State
+  const [chatOpenTrigger, setChatOpenTrigger] = useState(0);
   const [, setChatUnread] = useState(0);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("pendaftar_sidebar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const handleToggleCollapse = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("pendaftar_sidebar_collapsed", String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const handleOpenChat = () => setChatOpenTrigger((t) => t + 1);
+
   const [showFotoModal, setShowFotoModal] = useState(false);
   const [cropSrc, setCropSrc] = useState(null);
   const [cropZoom, setCropZoom] = useState(100);
@@ -261,7 +302,6 @@ const DashboardPendaftaran = () => {
   const dragStart = useRef({ x: 0, y: 0 });
   const cropFileInputRef = useRef(null);
   const cropImgRef = useRef(null);
-  const [tabLoadingPendaftaran, setTabLoadingPendaftaran] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailStep, setEmailStep] = useState("input");
   const [emailBaru, setEmailBaru] = useState("");
@@ -281,19 +321,23 @@ const DashboardPendaftaran = () => {
   const [loadingRevisi, setLoadingRevisi] = useState(false);
 
   const handleTabChange = (tabName) => {
-    setTabLoadingPendaftaran(true);
+    if (tabName === activeTab) return;
+    setTabLoading(true);
+    prevTabRef.current = tabName;
     setSearchParams({ tab: tabName });
     setProfileSuccess(""); setPasswordSuccess(""); setPasswordError(""); setNoChangesMsg("");
     setNotifOpen(false); setAvatarOpen(false);
+    setMobileOpen(false);
     if (mainRef.current) {
       mainRef.current.scrollTo({ top: 0, behavior: "instant" });
     }
-    setTimeout(() => setTabLoadingPendaftaran(false), 450);
   };
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const res = await getStatusPendaftaran();
       setStatus(res.data);
       setStatusFetchedAt(new Date());
@@ -304,22 +348,37 @@ const DashboardPendaftaran = () => {
       if (msg.toLowerCase().includes("tidak ditemukan") || msg.toLowerCase().includes("belum ada")) setStatus(null);
       else console.error(msg || "Gagal memuat status.");
     } finally { setLoading(false); }
-  };
+  }, [navigate]);
+
   useEffect(() => {
     const timeoutId = setTimeout(() => { fetchStatus(); }, 0);
     return () => clearTimeout(timeoutId);
-  }, [navigate]);
+  }, [fetchStatus]);
+
+  useEffect(() => {
+    getProfilSaya()
+      .then((res) => {
+        if (res?.data) {
+          setUser((prev) => {
+            const fresh = { ...prev, ...res.data };
+            sessionStorage.setItem("user_pendaftaran", JSON.stringify(fresh));
+            return fresh;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // ==== PERUBAHAN: cek ulang sesi saat tab kembali aktif setelah idle lama ====
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        fetchStatus();
+        fetchStatus(true);
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
+  }, [fetchStatus]);
   // ==== AKHIR PERUBAHAN ====
 
   // ==== PERUBAHAN: auto-logout setelah idle (tidak ada interaksi) selama 1 jam ====
@@ -508,15 +567,18 @@ const DashboardPendaftaran = () => {
     }
   };
 
-  const handleVerifikasiOtpEmail = async (e) => {
-    e.preventDefault();
+  const handleVerifikasiOtpEmail = useCallback(async (e) => {
+    if (e?.preventDefault) e.preventDefault();
     setEmailError("");
     setEmailLoading(true);
     try {
       const res = await verifikasiGantiEmail({ otp: otpInput });
-      const updated = { ...user, email: res.data?.email || emailBaru };
-      sessionStorage.setItem("user_pendaftaran", JSON.stringify(updated));
-      setUser(updated);
+      const newEmail = res.data?.email || emailBaru;
+      setUser((prev) => {
+        const updated = { ...prev, email: newEmail };
+        sessionStorage.setItem("user_pendaftaran", JSON.stringify(updated));
+        return updated;
+      });
       setEmailSuccessMsg("Email berhasil diperbarui.");
       setEmailSuccessVisible(true);
       setShowEmailModal(false);
@@ -526,7 +588,7 @@ const DashboardPendaftaran = () => {
     } finally {
       setEmailLoading(false);
     }
-  };
+  }, [emailBaru, otpInput]);
 
   useEffect(() => {
     if (otpInput.length === 6 && emailStep === "otp" && !emailLoading) {
@@ -535,7 +597,7 @@ const DashboardPendaftaran = () => {
       }, 1000);
       return () => clearTimeout(timeoutId);
     }
-  }, [otpInput]);
+  }, [otpInput, emailStep, emailLoading, handleVerifikasiOtpEmail]);
 
   useEffect(() => {
     if (!profileSuccess) return;
@@ -587,9 +649,7 @@ const DashboardPendaftaran = () => {
 
   const handleOpenCropModal = async () => {
     const existingLocal = fotoPreview;
-    const existingServerPath = user?.foto_profil
-      ? (user.foto_profil.startsWith("http") ? user.foto_profil : `http://localhost:8000/${user.foto_profil}`)
-      : null;
+    const existingServerPath = user?.foto_profil ? getFileUrl(user.foto_profil) : null;
 
     if (existingLocal) {
       setCropSrc(existingLocal);
@@ -612,7 +672,7 @@ const DashboardPendaftaran = () => {
       } catch (err) {
         console.error("Gagal memuat foto untuk diedit:", err);
         setShowFotoModal(false);
-        alert("Gagal memuat foto profil saat ini. Silakan unggah foto baru.");
+        toastError("Gagal memuat foto profil saat ini. Silakan unggah foto baru.");
         cropFileInputRef.current?.click();
       } finally {
         setFotoModalLoading(false);
@@ -627,8 +687,14 @@ const DashboardPendaftaran = () => {
     const f = e.target.files[0];
     if (!f) return;
     const allowed = ["image/jpeg", "image/jpg", "image/png"];
-    if (!allowed.includes(f.type)) { alert("Format foto harus JPEG, JPG, atau PNG."); return; }
-    if (f.size > 3 * 1024 * 1024) { alert("Ukuran foto maksimal 3MB."); return; }
+    if (!allowed.includes(f.type)) {
+      toastError("Format foto harus JPEG, JPG, atau PNG.");
+      return;
+    }
+    if (f.size > 3 * 1024 * 1024) {
+      toastError("Ukuran foto maksimal 3MB.");
+      return;
+    }
     setCropSrc(URL.createObjectURL(f));
     setCropZoom(100);
     setCropPos({ x: 0, y: 0 });
@@ -648,7 +714,10 @@ const DashboardPendaftaran = () => {
 
   useEffect(() => {
     if (!isDragging) return;
-    const move = (e) => handleDragMove(e);
+    const move = (e) => {
+      if (e.cancelable && e.type === "touchmove") e.preventDefault();
+      handleDragMove(e);
+    };
     const up = () => setIsDragging(false);
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
@@ -666,35 +735,43 @@ const DashboardPendaftaran = () => {
     const img = cropImgRef.current;
     if (!img) return;
     try {
-      const containerSize = 224;
-      const outputSize = 400;
-      const ratio = outputSize / containerSize;
-      const naturalW = img.naturalWidth;
-      const naturalH = img.naturalHeight;
+      const natW = img.naturalWidth;
+      const natH = img.naturalHeight;
 
-      if (!naturalW || !naturalH) {
+      if (!natW || !natH) {
         toastError("Gambar belum selesai dimuat, coba lagi sebentar.");
         return;
       }
 
-      const baseScale = Math.max(containerSize / naturalW, containerSize / naturalH);
-      const totalScale = baseScale * (cropZoom / 100);
-      const drawnW = naturalW * totalScale;
-      const drawnH = naturalH * totalScale;
-      const offsetX = (containerSize - drawnW) / 2 + cropPos.x;
-      const offsetY = (containerSize - drawnH) / 2 + cropPos.y;
+      // Ambil ukuran sebenarnya dari crop box di layar (160px di mobile, 224px di desktop)
+      const container = img.parentElement;
+      const boxSize = container?.offsetWidth || 224;
+
+      const outputSize = 512;
+      const outputScale = outputSize / boxSize;
+      const zoomRatio = cropZoom / 100;
+
+      // Menghitung dimensi gambar berbasis object-contain (Math.min) agar 100% presisi sesuai tampilan pratinjau asli
+      const scaleContain = Math.min(boxSize / natW, boxSize / natH);
+      const renderedW = natW * scaleContain;
+      const renderedH = natH * scaleContain;
+
+      // Ukuran gambar setelah di-zoom dan diproyeksikan ke output canvas
+      const drawW = renderedW * zoomRatio * outputScale;
+      const drawH = renderedH * zoomRatio * outputScale;
+
+      // Posisi X & Y di canvas dengan mempertimbangkan offset drag pengguna
+      const drawX = (outputSize - drawW) / 2 + cropPos.x * outputScale;
+      const drawY = (outputSize - drawH) / 2 + cropPos.y * outputScale;
 
       const canvas = document.createElement("canvas");
       canvas.width = outputSize;
       canvas.height = outputSize;
       const ctx = canvas.getContext("2d");
 
-      // Disimpan sebagai persegi utuh, BUKAN dipotong lingkaran. Bentuk bulat
-      // adalah urusan tampilan (CSS rounded-full), sehingga foto yang sama bisa
-      // dipakai ulang dalam bentuk apa pun tanpa perlu diunggah ulang.
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, outputSize, outputSize);
-      ctx.drawImage(img, offsetX * ratio, offsetY * ratio, drawnW * ratio, drawnH * ratio);
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
       canvas.toBlob(
         (blob) => {
@@ -725,6 +802,7 @@ const DashboardPendaftaran = () => {
       const updated = { ...user, foto_profil: fotoUrl };
       sessionStorage.setItem("user_pendaftaran", JSON.stringify(updated));
       setUser(updated);
+      setFotoPreview(null);
       toastSuccess("Foto profil berhasil diperbarui");
     } catch (err) {
       console.error("Upload foto gagal:", err);
@@ -760,14 +838,20 @@ const DashboardPendaftaran = () => {
 
   useEffect(() => {
     if (activeTab === "settings") {
-      getProfilSaya().then(res => {
+      getProfilSaya().then((res) => {
         if (res?.data) {
-          const fresh = { ...user, ...res.data };
-          sessionStorage.setItem("user_pendaftaran", JSON.stringify(fresh));
-          setUser(fresh);
-          setProfileForm({ nama: res.data.nama || "", no_hp: res.data.no_hp || "", institusi: res.data.institusi || "" });
+          setUser((prev) => {
+            const fresh = { ...prev, ...res.data };
+            sessionStorage.setItem("user_pendaftaran", JSON.stringify(fresh));
+            return fresh;
+          });
+          setProfileForm({
+            nama: res.data.nama || "",
+            no_hp: res.data.no_hp || "",
+            institusi: res.data.institusi || "",
+          });
         }
-      }).catch(() => { });
+      }).catch(() => {});
     }
   }, [activeTab]);
 
@@ -798,7 +882,7 @@ const DashboardPendaftaran = () => {
       await kirimRevisiDokumen(fd);
       await fetchStatus();
       toastSuccess("Revisi berhasil dikirim");
-      handleTabChange("status");
+      handleTabChange("dashboard");
     } catch (err) {
       setErrorRevisi(err.response?.data?.message || "Gagal mengirim revisi.");
       toastError(err.response?.data?.message || "Gagal mengirim revisi");
@@ -830,75 +914,172 @@ const DashboardPendaftaran = () => {
   const notifications = [];
   if (!loading) {
     const timestamp = status?.updated_at || status?.created_at || statusFetchedAt || mountedAt;
-    if (!hasRegistered) notifications.push({ id: 1, type: "info", icon: <Info className="w-4 h-4" strokeWidth={2} />, dot: "bg-blue-500", title: "Belum Ada Pendaftaran", msg: "Segera lengkapi formulir permohonan.", timestamp: belumDaftarTimestamp });
-    else if (isPending) notifications.push({ id: 2, type: "pending", icon: <Search className="w-4 h-4" strokeWidth={2} />, dot: "bg-amber-500 animate-pulse", title: "Berkas Sedang Diverifikasi", msg: "Dokumen Anda sedang diperiksa admin.", timestamp });
-    else if (isRevisi) notifications.push({ id: 3, type: "warning", icon: <AlertTriangle className="w-4 h-4" strokeWidth={2} />, dot: "bg-orange-500 animate-bounce", title: "Dokumen Perlu Direvisi", msg: status?.catatan_admin || "Admin meminta perbaikan berkas.", timestamp });
-    else if (isAccepted) notifications.push({ id: 4, type: "success", icon: <PartyPopper className="w-4 h-4" strokeWidth={2} />, dot: "bg-emerald-500", title: "Selamat! Anda Diterima Magang", msg: `Penempatan: ${status?.posisi_bidang || "-"}`, timestamp });
-    else if (isRejected) notifications.push({ id: 5, type: "error", icon: <XCircle className="w-4 h-4" strokeWidth={2} />, dot: "bg-red-500", title: "Permohonan Ditolak", msg: status?.catatan_admin || "Permohonan tidak dapat diteruskan.", timestamp });
-  }
+    if (!hasRegistered) {
+      notifications.push({
+        id: "belum_daftar",
+        type: "info",
+        icon: <Info className="w-4 h-4" strokeWidth={2} />,
+        dot: "bg-blue-500",
+        title: "Belum Ada Pendaftaran",
+        msg: "Segera lengkapi formulir permohonan magang Anda.",
+        timestamp: belumDaftarTimestamp,
+        targetTab: "form",
+      });
+    } else if (isPending) {
+      notifications.push({
+        id: "pending_verifikasi",
+        type: "pending",
+        icon: <Search className="w-4 h-4" strokeWidth={2} />,
+        dot: "bg-amber-500 animate-pulse",
+        title: "Berkas Sedang Diverifikasi",
+        msg: "Dokumen pendaftaran Anda sedang dalam tahap pemeriksaan tim admin Diskominfo Ponorogo.",
+        timestamp,
+        targetTab: "dashboard",
+      });
+    } else if (isRevisi) {
+      notifications.push({
+        id: "perlu_revisi",
+        type: "warning",
+        icon: <AlertTriangle className="w-4 h-4" strokeWidth={2} />,
+        dot: "bg-orange-500 animate-bounce",
+        title: "Dokumen Perlu Direvisi",
+        msg: status?.catatan_admin ? `Catatan admin: "${status.catatan_admin}"` : "Admin meminta perbaikan berkas administrasi.",
+        timestamp,
+        targetTab: "revisi",
+      });
+    } else if (isAccepted) {
+      notifications.push({
+        id: "diterima_magang",
+        type: "success",
+        icon: <PartyPopper className="w-4 h-4" strokeWidth={2} />,
+        dot: "bg-emerald-500",
+        title: "Selamat! Anda Diterima Magang",
+        msg: `Permohonan magang Anda diterima pada penempatan: ${status?.posisi_bidang || "Diskominfo"}.`,
+        timestamp,
+        targetTab: "dashboard",
+      });
 
-  // Alur digabung jadi 3 tahap: Terkirim (1) → Verifikasi & Seleksi Berkas (2) → Pengumuman (3).
-  const getStep = (s) => {
-    if (!s) return 0;
-    const l = s.toLowerCase();
-    if (l === "menunggu" || l === "revisi") return 2;
-    if (l === "diterima" || l === "ditolak") return 3;
-    return 2;
-  };
+      if (status?.surat_penerimaan?.file_surat) {
+        notifications.push({
+          id: "surat_terbit",
+          type: "success",
+          icon: <FileCheck className="w-4 h-4" strokeWidth={2} />,
+          dot: "bg-sky-500",
+          title: "Surat Penerimaan Resmi Terbit",
+          msg: `Nomor surat: ${status.surat_penerimaan.nomor_surat || "-"}. Unduh dokumen PDF resmi melalui Dashboard.`,
+          timestamp: status.surat_penerimaan.tanggal_terbit || timestamp,
+          targetTab: "dashboard",
+        });
+      }
+    } else if (isRejected) {
+      notifications.push({
+        id: "ditolak_magang",
+        type: "error",
+        icon: <XCircle className="w-4 h-4" strokeWidth={2} />,
+        dot: "bg-red-500",
+        title: "Permohonan Belum Diterima",
+        msg: status?.catatan_admin ? `Catatan: "${status.catatan_admin}"` : "Permohonan magang belum dapat diterima pada periode ini.",
+        timestamp,
+        targetTab: "dashboard",
+      });
+    }
+  }
 
   const tabTitles = {
     dashboard: { title: "Dashboard", desc: "Ringkasan status pendaftaran magang Anda" },
     form: { title: "Formulir Magang", desc: "Ajukan permohonan magang baru" },
-    status: { title: "Status Verifikasi", desc: "Pantau progres verifikasi berkas" },
     revisi: { title: "Revisi Berkas", desc: "Perbaiki dokumen sesuai catatan admin" },
     settings: { title: "Kelola Akun", desc: "Atur profil dan keamanan akun Anda" },
   };
   const currentTab = tabTitles[activeTab] || tabTitles.dashboard;
-  const currentStep = status ? getStep(status.status_pendaftaran) : 0;
 
   return (
     <div className={`h-screen overflow-hidden flex transition-colors duration-300 ${bg}`}>
       <SidebarPendaftaran
-        dk={dk} sideBar={sideBar} divider={divider} muted={muted} txt={txt}
-        navActive={navActive} navInactive={navInactive} hov={hov}
-        activeTab={activeTab} handleTabChange={handleTabChange}
-        hasRegistered={hasRegistered} isRevisi={isRevisi}
-        dotColor={dotColor} dotLabel={dotLabel} dotTextColor={dotTextColor}
-        user={user} fotoPreview={fotoPreview}
-        avatarOpen={avatarOpen} setAvatarOpen={setAvatarOpen} setNotifOpen={setNotifOpen}
-        avatarRef={avatarRef} handleLogout={handleLogout}
+        isDark={isDark}
+        dk={dk}
+        sideBar={sideBar}
+        divider={divider}
+        muted={muted}
+        txt={txt}
+        navActive={navActive}
+        navInactive={navInactive}
+        hov={hov}
+        activeTab={activeTab}
+        handleTabChange={handleTabChange}
+        hasRegistered={hasRegistered}
+        isRevisi={isRevisi}
+        dotColor={dotColor}
+        dotLabel={dotLabel}
+        dotTextColor={dotTextColor}
+        user={user}
+        status={status}
+        fotoPreview={fotoPreview}
+        avatarOpen={avatarOpen}
+        setAvatarOpen={setAvatarOpen}
+        setNotifOpen={setNotifOpen}
+        avatarRef={avatarRef}
+        handleLogout={handleLogout}
+        isOpen={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapse={handleToggleCollapse}
       />
 
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
         <HeaderPendaftaran
-          hdr={hdr} dk={dk} divider={divider} muted={muted} txt={txt} sub={sub}
+          hdr={hdr}
+          dk={dk}
+          divider={divider}
+          muted={muted}
+          txt={txt}
+          sub={sub}
           currentTab={currentTab}
-          notifOpen={notifOpen} setNotifOpen={setNotifOpen} setAvatarOpen={setAvatarOpen}
-          notifRef={notifRef} notifications={notifications} hov={hov}
-          clock={clock} fmtTime={fmtTime} fmtDate={fmtDate}
-          isDark={isDark} setIsDark={setIsDark}
+          notifOpen={notifOpen}
+          setNotifOpen={setNotifOpen}
+          setAvatarOpen={setAvatarOpen}
+          notifRef={notifRef}
+          notifications={notifications}
+          hov={hov}
+          clock={clock}
+          fmtTime={fmtTime}
+          fmtDate={fmtDate}
+          isDark={isDark}
+          setIsDark={setIsDark}
           hasReadNotif={hasReadNotif}
+          onMarkAllRead={handleMarkAllRead}
+          onMenuClick={() => setMobileOpen(true)}
+          searchValue={searchValue}
+          onSearchChange={setSearchValue}
+          onNavigateTab={handleTabChange}
+          onOpenChat={handleOpenChat}
         />
 
         <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 md:p-8 relative">
-          {tabLoadingPendaftaran && (
-            <div className="absolute top-0 left-0 right-0 h-[3px] z-40 overflow-hidden bg-transparent">
-              <div className="h-full w-1/3 bg-gradient-to-r from-[#00A5EC] to-[#004F9F] animate-[tab-loading-pendaftaran_0.8s_ease-in-out_infinite]"></div>
-            </div>
-          )}
           <div className="absolute -left-20 top-20 h-72 w-72 rounded-full bg-[#00A5EC]/5 blur-3xl -z-10 pointer-events-none" />
           <div className="absolute -right-20 bottom-20 h-72 w-72 rounded-full bg-[#004F9F]/5 blur-3xl -z-10 pointer-events-none" />
 
-          {tabLoadingPendaftaran ? (
-            <TabLoadingSkeleton dk={dk} surface={surface} />
+          {tabLoading || (loading && !user && !status) ? (
+            <SkeletonLoader isDark={isDark} />
           ) : (
-            <div key={activeTab} className="animate-[fadeslide_0.35s_ease-out]">
+            <div key={activeTab} className="animate-[fadeslide_0.2s_ease-out]">
               {activeTab === "dashboard" && (
                 <TabDashboard
-                  dk={dk} surface={surface} txt={txt} sub={sub} muted={muted}
-                  user={user} hasRegistered={hasRegistered} status={status} loading={loading}
-                  isPending={isPending} isRevisi={isRevisi} isAccepted={isAccepted} isRejected={isRejected}
+                  dk={dk}
+                  surface={surface}
+                  txt={txt}
+                  sub={sub}
+                  muted={muted}
+                  user={user}
+                  hasRegistered={hasRegistered}
+                  status={status}
+                  loading={loading}
+                  isPending={isPending}
+                  isRevisi={isRevisi}
+                  isAccepted={isAccepted}
+                  isRejected={isRejected}
                   handleTabChange={handleTabChange}
+                  onOpenChat={handleOpenChat}
                 />
               )}
 
@@ -907,21 +1088,16 @@ const DashboardPendaftaran = () => {
                   dk={dk} surface={surface} txt={txt} sub={sub} inputCls={inputCls}
                   bidangOptions={bidangOptions}
                   bidangLoading={bidangLoading}
-                  hasRegistered={hasRegistered} isRevisi={isRevisi}
+                  hasRegistered={hasRegistered}
+                  isRevisi={isRevisi}
                   handleTabChange={handleTabChange}
                   kirimPendaftaranMagang={kirimPendaftaranMagang}
                   fetchStatus={fetchStatus}
+                  user={user}
+                  status={status}
                 />
               )}
 
-              {activeTab === "status" && (
-                <TabStatusVerifikasi
-                  dk={dk} surface={surface} txt={txt} sub={sub} muted={muted}
-                  status={status} hasRegistered={hasRegistered} currentStep={currentStep}
-                  isRejected={isRejected} isAccepted={isAccepted} isRevisi={isRevisi}
-                  handleTabChange={handleTabChange}
-                />
-              )}
 
               {activeTab === "revisi" && (
                 <TabRevisiBerkas
@@ -962,9 +1138,12 @@ const DashboardPendaftaran = () => {
                   passwordErrorVisible={passwordErrorVisible}
                   noChangesVisible={noChangesVisible}
                   emailSuccessVisible={emailSuccessVisible}
+                  profileErrorVisible={profileErrorVisible}
                   profileError={profileError}
                   setProfileError={setProfileError}
-                  profileErrorVisible={profileErrorVisible}
+                  status={status}
+                  setUser={setUser}
+                  fetchStatus={fetchStatus}
                 />
               )}
             </div>

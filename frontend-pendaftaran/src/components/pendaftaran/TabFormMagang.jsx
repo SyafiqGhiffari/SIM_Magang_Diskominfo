@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { confirmDialog, toastSuccess, toastError } from "../../utils/swal";
-import { Sparkles, FileText } from "lucide-react";
+import { Sparkles, FileText, Lock } from "lucide-react";
 import StepPilihKategori from "./form-magang/StepPilihKategori";
 import StepDataDiri from "./form-magang/StepDataDiri";
 import StepDataPendidikan from "./form-magang/StepDataPendidikan";
@@ -13,7 +13,7 @@ const CheckIcon = () => (
   </svg>
 );
 
-const StepIndicator = ({ dk, step, stepLabels }) => {
+const StepIndicator = ({ dk, step, stepLabels, onStepClick }) => {
   return (
     <div className="flex items-start w-full">
       {stepLabels.map((label, i) => {
@@ -23,20 +23,25 @@ const StepIndicator = ({ dk, step, stepLabels }) => {
 
         return (
           <div key={label} className={`flex items-center ${isLast ? "flex-none" : "flex-1"}`}>
-            <div className="flex flex-col items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => onStepClick && onStepClick(i)}
+              className="flex flex-col items-center gap-2.5 shrink-0 cursor-pointer group focus:outline-none transition-transform"
+              title={`Buka langkah ${i + 1}: ${label}`}
+            >
               <div className="relative flex h-11 w-11 items-center justify-center">
                 {isActive && (
                   <span className="absolute inset-0 rounded-full bg-[#00A5EC]/30 animate-ping" />
                 )}
                 <div
-                  className={`relative flex h-11 w-11 items-center justify-center rounded-full text-sm font-extrabold transition-all duration-300 ${
+                  className={`relative flex h-11 w-11 items-center justify-center rounded-full text-sm font-extrabold transition-all duration-300 group-hover:scale-105 ${
                     isDone
                       ? "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/30"
                       : isActive
                       ? "bg-gradient-to-br from-[#004F9F] to-[#0B1442] text-white shadow-lg shadow-[#004F9F]/40 scale-110 ring-4 ring-[#00A5EC]/20"
                       : dk
-                      ? "bg-white/5 border-2 border-white/10 text-slate-500"
-                      : "bg-white border-2 border-slate-200 text-slate-400"
+                      ? "bg-white/5 border-2 border-white/10 text-slate-500 group-hover:border-white/30"
+                      : "bg-white border-2 border-slate-200 text-slate-400 group-hover:border-slate-400"
                   }`}
                 >
                   {isDone ? <CheckIcon /> : i + 1}
@@ -47,15 +52,15 @@ const StepIndicator = ({ dk, step, stepLabels }) => {
                   isDone
                     ? "text-emerald-500"
                     : isActive
-                    ? "text-[#004F9F]"
+                    ? "text-[#004F9F] dark:text-sky-400"
                     : dk
-                    ? "text-slate-600"
-                    : "text-slate-400"
+                    ? "text-slate-600 group-hover:text-slate-400"
+                    : "text-slate-400 group-hover:text-slate-600"
                 }`}
               >
                 {label}
               </span> 
-            </div>
+            </button>
 
             {!isLast && (
               <div className={`flex-1 h-[3px] mx-1.5 mt-[-24px] rounded-full overflow-hidden ${dk ? "bg-white/10" : "bg-slate-200"}`}>
@@ -101,19 +106,37 @@ const StepLoadingSkeleton = ({ dk, surface }) => (
 
 const TabFormMagang = ({
   dk, surface, txt, sub, inputCls, bidangOptions, bidangLoading,
-  hasRegistered, isRevisi, handleTabChange,
+  hasRegistered, isRevisi: isRevisiProp, handleTabChange,
   kirimPendaftaranMagang, fetchStatus,
+  user, status,
 }) => {
+  const isRevisi = isRevisiProp !== undefined ? isRevisiProp : status?.status_pendaftaran?.toLowerCase().includes("revisi");
   const [step, setStep] = useState(0);
   const [stepLoading, setStepLoading] = useState(false);
-  const [kategori, setKategori] = useState("");
-  const [form, setForm] = useState({
-    nama_lengkap: "", email: "", nomor_hp: "", alamat_lengkap: "",
-    tempat_lahir: "", tanggal_lahir: "", jenis_kelamin: "",
-    npm_nim: "", asal_kampus: "", fakultas: "", program_studi: "", semester: "",
-    nisn: "", asal_sekolah: "", kelas: "", jurusan_sekolah: "",
-    posisi_bidang: "", tanggal_mulai: "", tanggal_selesai: "",
-  });
+  const [kategori, setKategori] = useState(
+    () => status?.kategori_pendaftar || ""
+  );
+  const [form, setForm] = useState(() => ({
+    nama_lengkap: status?.nama_lengkap || user?.nama || "",
+    email: status?.email || user?.email || "",
+    nomor_hp: status?.nomor_hp || status?.no_hp || user?.no_hp || "",
+    alamat_lengkap: status?.alamat_lengkap || "",
+    tempat_lahir: status?.tempat_lahir || "",
+    tanggal_lahir: status?.tanggal_lahir ? status.tanggal_lahir.split("T")[0] : "",
+    jenis_kelamin: status?.jenis_kelamin || "Laki-laki",
+    npm_nim: status?.npm_nim || "",
+    asal_kampus: status?.asal_kampus || user?.institusi || "",
+    fakultas: status?.fakultas || "",
+    program_studi: status?.program_studi || "",
+    semester: status?.semester || "",
+    nisn: status?.nisn || "",
+    asal_sekolah: status?.asal_sekolah || user?.institusi || "",
+    kelas: status?.kelas || "",
+    jurusan_sekolah: status?.jurusan_sekolah || "",
+    posisi_bidang: status?.posisi_bidang || "",
+    tanggal_mulai: status?.tanggal_mulai ? status.tanggal_mulai.split("T")[0] : "",
+    tanggal_selesai: status?.tanggal_selesai ? status.tanggal_selesai.split("T")[0] : "",
+  }));
   const [files, setFiles] = useState({
     cv: null, surat_pengantar: null, transkrip: null,
     portofolio: null, pas_foto: null, proposal_magang: null,
@@ -121,13 +144,45 @@ const TabFormMagang = ({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Sinkronisasi data saat user atau status dimuat
+  const syncKey = `${status?.id || ""}_${status?.kategori_pendaftar || ""}_${user?.id || ""}`;
+  const [prevSyncKey, setPrevSyncKey] = useState(syncKey);
+
+  if (syncKey !== prevSyncKey) {
+    setPrevSyncKey(syncKey);
+    if (status?.kategori_pendaftar && !kategori) {
+      setKategori(status.kategori_pendaftar);
+    }
+    setForm((prev) => ({
+      nama_lengkap: prev.nama_lengkap || status?.nama_lengkap || user?.nama || "",
+      email: prev.email || status?.email || user?.email || "",
+      nomor_hp: prev.nomor_hp || status?.nomor_hp || status?.no_hp || user?.no_hp || "",
+      alamat_lengkap: prev.alamat_lengkap || status?.alamat_lengkap || "",
+      tempat_lahir: prev.tempat_lahir || status?.tempat_lahir || "",
+      tanggal_lahir: prev.tanggal_lahir || (status?.tanggal_lahir ? status.tanggal_lahir.split("T")[0] : ""),
+      jenis_kelamin: prev.jenis_kelamin || status?.jenis_kelamin || "Laki-laki",
+      npm_nim: prev.npm_nim || status?.npm_nim || "",
+      asal_kampus: prev.asal_kampus || status?.asal_kampus || user?.institusi || "",
+      fakultas: prev.fakultas || status?.fakultas || "",
+      program_studi: prev.program_studi || status?.program_studi || "",
+      semester: prev.semester || status?.semester || "",
+      nisn: prev.nisn || status?.nisn || "",
+      asal_sekolah: prev.asal_sekolah || status?.asal_sekolah || user?.institusi || "",
+      kelas: prev.kelas || status?.kelas || "",
+      jurusan_sekolah: prev.jurusan_sekolah || status?.jurusan_sekolah || "",
+      posisi_bidang: prev.posisi_bidang || status?.posisi_bidang || "",
+      tanggal_mulai: prev.tanggal_mulai || (status?.tanggal_mulai ? status.tanggal_mulai.split("T")[0] : ""),
+      tanggal_selesai: prev.tanggal_selesai || (status?.tanggal_selesai ? status.tanggal_selesai.split("T")[0] : ""),
+    }));
+  }
+
   // Pindah step dengan jeda loading singkat, supaya transisi terasa halus.
   const goToStep = (targetStep) => {
     setStepLoading(true);
     setTimeout(() => {
       setStep(targetStep);
       setStepLoading(false);
-    }, 700);
+    }, 400);
   };
 
   const handleSetKategori = (newKategori) => {
@@ -169,7 +224,7 @@ const TabFormMagang = ({
       await kirimPendaftaranMagang(fd);
       await fetchStatus();
       toastSuccess("Pendaftaran berhasil dikirim");
-      handleTabChange("status");
+      handleTabChange("dashboard");
     } catch (err) {
       const errorMsg = err.response?.data?.message || "Gagal mengirim pendaftaran.";
       setError(errorMsg);
@@ -184,16 +239,23 @@ const TabFormMagang = ({
       <div className="space-y-6">
         <div>
           <h2 className={`text-2xl font-black tracking-tight ${txt}`}>Ajukan Permohonan Magang</h2>
+          <p className={`mt-1.5 text-xs ${sub}`}>Formulir pengajuan permohonan magang Diskominfo Kabupaten Ponorogo.</p>
         </div>
-        <div className={`rounded-2xl border p-10 text-center shadow-sm ${surface}`}>
-          <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl ${dk ? "bg-white/5" : "bg-slate-100"}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={`w-7 h-7 ${sub}`}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-            </svg>
+        <div className={`rounded-2xl border p-8 sm:p-12 text-center shadow-sm ${surface} flex flex-col items-center justify-center`}>
+          <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner ${dk ? "bg-white/5 border border-white/10" : "bg-slate-100 border border-slate-200"}`}>
+            <Lock className="w-8 h-8 text-slate-400" />
           </div>
-          <h3 className={`mt-4 text-sm font-bold ${txt}`}>Formulir Terkunci</h3>
-          <p className={`mt-2 text-xs ${sub}`}>Berkas sudah diajukan. Silakan pantau status verifikasi.</p>
-          <button onClick={() => handleTabChange("dashboard")} className="mt-6 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-6 py-2.5 text-xs font-bold text-white cursor-pointer hover:shadow-lg transition-shadow">Kembali ke Dashboard</button>
+          <h3 className={`mt-5 text-base sm:text-lg font-black tracking-tight ${txt}`}>Formulir Terkunci</h3>
+          <p className={`mt-2 text-xs sm:text-[13px] leading-relaxed max-w-md mx-auto ${sub}`}>
+            Berkas pendaftaran magang Anda sudah diajukan dan saat ini sedang dalam proses verifikasi. Silakan pantau perkembangan status verifikasi Anda melalui halaman Dashboard.
+          </p>
+          <button
+            type="button"
+            onClick={() => handleTabChange("dashboard")}
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-6 py-2.5 text-xs font-bold text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 cursor-pointer"
+          >
+            <span>Kembali ke Dashboard</span>
+          </button>
         </div>
       </div>
     );
@@ -202,7 +264,7 @@ const TabFormMagang = ({
   const stepLabels = ["Pendaftar", "Data Diri", "Data Pendidikan", "Data Magang", "Dokumen"];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div className={`rounded-2xl overflow-hidden border shadow-xl shadow-[#0B1442]/10 ${dk ? "border-white/5" : "border-slate-200/80"}`}>
         <div className="relative bg-gradient-to-r from-[#030712] via-[#0B1442] to-[#1E3A8A] p-7 text-white">
           {/* Glow Ambient Lights */}
@@ -228,7 +290,7 @@ const TabFormMagang = ({
         </div>
 
         <div className={`p-5 ${surface}`}>
-          <StepIndicator dk={dk} step={step} stepLabels={stepLabels} />
+          <StepIndicator dk={dk} step={step} stepLabels={stepLabels} onStepClick={goToStep} />
         </div>
       </div>
 
@@ -251,7 +313,7 @@ const TabFormMagang = ({
             <StepDataMagang dk={dk} surface={surface} txt={txt} sub={sub} inputCls={inputCls} bidangOptions={bidangOptions} bidangLoading={bidangLoading} kategori={kategori} form={form} setForm={setForm} onNext={() => goToStep(4)} onBack={() => goToStep(2)} />
           )}
           {step === 4 && (
-            <StepDokumen dk={dk} surface={surface} txt={txt} sub={sub} kategori={kategori} files={files} onFileChange={handleFileChange} onSubmit={handleSubmit} onBack={() => goToStep(3)} error={error} loading={loading} />
+            <StepDokumen dk={dk} surface={surface} txt={txt} sub={sub} kategori={kategori} files={files} onFileChange={handleFileChange} onSubmit={handleSubmit} onBack={() => goToStep(3)} error={error} loading={loading} hasRegistered={hasRegistered} onKembaliDashboard={() => handleTabChange("dashboard")} />
           )}
         </div>
       )}

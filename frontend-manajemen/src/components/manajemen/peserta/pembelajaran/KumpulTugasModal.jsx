@@ -26,7 +26,7 @@ import {
 import { useManajemenTheme } from "../../../../context/useManajemenTheme";
 import { kumpulTugasPeserta } from "../../../../services/pembelajaranService";
 import { getFileUrl } from "../../../../utils/fileUrl";
-import { toastSuccess, toastError } from "../../../../utils/swal";
+import { toastSuccess, toastError, confirmDialog } from "../../../../utils/swal";
 
 // Format tanggal dan jam tenggat waktu (Lengkap dengan jam WIB)
 const formatDeadlineText = (dateStr) => {
@@ -127,6 +127,7 @@ export const KumpulTugasModal = ({ tugas, onClose, onSaved, isDark: propIsDark }
   const pengumpulan = tugas?.pengumpulan;
   const isSudahDinilai = pengumpulan?.status === "dinilai";
   const isRevisi = pengumpulan?.status === "revisi" || tugas?.status_tugas === "revisi";
+  const isMenunggu = pengumpulan?.status === "menunggu";
 
   const [isEditing, setIsEditing] = useState(!pengumpulan);
   const [file, setFile] = useState(null);
@@ -187,6 +188,19 @@ export const KumpulTugasModal = ({ tugas, onClose, onSaved, isDark: propIsDark }
       toastError("Harap sertakan berkas tugas, tautan hasil karya, atau catatan penyelesaian.");
       return;
     }
+
+    const isUpdate = !!pengumpulan;
+    const isConfirmed = await confirmDialog({
+      title: isUpdate ? "Perbarui Pengumpulan Tugas?" : "Kumpulkan Tugas Magang?",
+      text: isUpdate
+        ? "Pastikan berkas, tautan karya, atau catatan revisi tugas sudah sesuai sebelum diperbarui ke mentor pembimbing."
+        : "Pastikan berkas dan tautan tugas sudah lengkap dan benar sebelum diserahkan ke mentor pembimbing.",
+      confirmText: isUpdate ? "Ya, Perbarui" : "Ya, Kumpulkan",
+      cancelText: "Periksa Kembali",
+      icon: "question",
+    });
+
+    if (!isConfirmed) return;
 
     try {
       setSubmitting(true);
@@ -422,26 +436,60 @@ export const KumpulTugasModal = ({ tugas, onClose, onSaved, isDark: propIsDark }
                 </div>
 
                 {/* Catatan Evaluasi Mentor jika ada */}
-                {pengumpulan.catatan_mentor && (
+                {pengumpulan.catatan_mentor && !isMenunggu && (
                   <div
-                    className={`p-3.5 sm:p-4 rounded-2xl border shadow-2xs space-y-1.5 ${
+                    className={`p-3.5 sm:p-4 rounded-2xl border border-l-4 shadow-2xs space-y-2 transition-all ${
                       isRevisi
-                        ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800/60"
-                        : "bg-white/95 dark:bg-slate-800/95 border-slate-200/90 dark:border-white/10"
+                        ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800/60 border-l-rose-500"
+                        : isSudahDinilai
+                        ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800/60 border-l-emerald-500"
+                        : "bg-blue-50/90 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800/60 border-l-blue-500"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-1.5 text-xs font-black text-slate-800 dark:text-slate-100">
-                        <MessageSquareText className="w-3.5 h-3.5 text-[#004F9F] dark:text-[#00A5EC]" />
-                        <span>Catatan Evaluasi dari Mentor:</span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black border ${
+                            isRevisi
+                              ? "bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 border-rose-300/80 dark:border-rose-700/60"
+                              : isSudahDinilai
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 border-emerald-300/80 dark:border-emerald-700/60"
+                              : "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 border-blue-300/80 dark:border-blue-700/60"
+                          }`}
+                        >
+                          {isRevisi ? (
+                            <>
+                              <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                              <span>Catatan Revisi Mentor</span>
+                            </>
+                          ) : isSudahDinilai ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                              <span>Catatan Evaluasi (Selesai/ACC)</span>
+                            </>
+                          ) : (
+                            <>
+                              <MessageSquareText className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                              <span>Catatan Mentor</span>
+                            </>
+                          )}
+                        </span>
                       </div>
                       {tugas.mentor?.nama && (
-                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded-md">
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-white/10">
                           Mentor: {tugas.mentor.nama}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-700 dark:text-slate-200 italic pl-3.5 leading-relaxed font-medium border-l-2 border-[#004F9F] dark:border-[#00A5EC]">
+                    <p
+                      className={`text-xs italic pl-3 leading-relaxed font-medium border-l-2 ${
+                        isRevisi
+                          ? "text-rose-900 dark:text-rose-200 border-rose-400 dark:border-rose-600"
+                          : isSudahDinilai
+                          ? "text-emerald-900 dark:text-emerald-200 border-emerald-400 dark:border-emerald-600"
+                          : "text-slate-700 dark:text-slate-200 border-[#004F9F] dark:border-[#00A5EC]"
+                      }`}
+                    >
                       &ldquo;{pengumpulan.catatan_mentor}&rdquo;
                     </p>
                   </div>

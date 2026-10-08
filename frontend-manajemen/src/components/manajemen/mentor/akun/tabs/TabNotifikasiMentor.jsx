@@ -1,13 +1,10 @@
 import { useState, useMemo } from "react";
 import {
   CalendarCheck2,
-  Clock,
-  AlertTriangle,
-  Briefcase,
+  UserCheck,
   FileCheck,
   FileText,
   Award,
-  ShieldAlert,
   KeyRound,
   RotateCcw,
   BellRing,
@@ -69,21 +66,18 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
   // ── Default State Preferensi Notifikasi Valid SIM Magang (Role: Mentor) ──
   const defaultSettings = useMemo(
     () => ({
-      // 1. Presensi & Kehadiran Anak Bimbingan
-      notifPresensiBimbingan: true,
+      // 1. Bimbingan & Verifikasi Izin
       notifPengajuanIzinBimbingan: true,
-      notifKeterlambatanBimbingan: true,
+      notifPenugasanPesertaBaru: true,
 
       // 2. Penugasan & Pembelajaran Magang
       notifTugasDikumpulkan: true,
-      notifReviewTugasMenunggu: true,
 
       // 3. Laporan Akhir & Penilaian Kompetensi
       notifLaporanAkhirMasuk: true,
       notifBatasPenilaianAkhir: true,
 
-      // 4. Keamanan & Akun Mentor
-      notifLoginKeamanan: true,
+      // 4. Keamanan Akun Mentor
       notifPerubahanKredensial: true,
     }),
     []
@@ -93,9 +87,14 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
 
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem(storageKey);
+      const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_mentor_notif_settings");
       if (saved) {
-        return { ...defaultSettings, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        const sanitized = {};
+        for (const key of Object.keys(defaultSettings)) {
+          sanitized[key] = parsed[key] !== undefined ? Boolean(parsed[key]) : defaultSettings[key];
+        }
+        return sanitized;
       }
     } catch {
       // ignore
@@ -103,11 +102,32 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
     return defaultSettings;
   });
 
+  // Sinkronkan state jika profile baru selesai dimuat atau storageKey berubah (pola resmi React tanpa useEffect cascading render)
+  const [prevStorageKey, setPrevStorageKey] = useState(storageKey);
+  if (prevStorageKey !== storageKey) {
+    setPrevStorageKey(storageKey);
+    let initial = defaultSettings;
+    try {
+      const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_mentor_notif_settings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const sanitized = {};
+        for (const key of Object.keys(defaultSettings)) {
+          sanitized[key] = parsed[key] !== undefined ? Boolean(parsed[key]) : defaultSettings[key];
+        }
+        initial = sanitized;
+      }
+    } catch {
+      // ignore
+    }
+    setSettings(initial);
+  }
+
   const [isResetting, setIsResetting] = useState(false);
 
-  // Collapsible Accordion states: buka section presensi secara default
+  // Collapsible Accordion states: buka section bimbingan secara default
   const [openSections, setOpenSections] = useState({
-    presensi: true,
+    bimbingan: true,
     tugas: false,
     penilaian: false,
     keamanan: false,
@@ -151,59 +171,45 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
     }, 600);
   };
 
-  // Hitung metrik aktif
+  // Hitung metrik aktif (hanya menghitung kunci valid yang ada di defaultSettings)
   const totalItems = Object.keys(defaultSettings).length;
-  const activeItemsCount = Object.values(settings).filter(Boolean).length;
+  const activeItemsCount = Object.keys(defaultSettings).filter((key) => settings[key]).length;
 
   const SECTIONS = [
     {
-      key: "presensi",
-      title: "Presensi & Kehadiran Anak Bimbingan",
-      tag: "Kehadiran",
-      desc: "Peringatan absensi masuk, kepulangan, izin sakit, dan ketidakhadiran bimbingan",
+      key: "bimbingan",
+      title: "Bimbingan & Verifikasi Izin",
+      tag: "Bimbingan",
+      desc: "Pemberitahuan verifikasi surat izin sakit dan penetapan anak bimbingan baru dari admin",
       items: [
-        {
-          key: "notifPresensiBimbingan",
-          label: "Presensi Masuk & Pulang Peserta",
-          badge: "07:30 - 16:00 WIB",
-          sub: "Pemberitahuan saat anak bimbingan melakukan check-in selfie atau check-out presensi harian di kantor dinas.",
-          icon: CalendarCheck2,
-        },
         {
           key: "notifPengajuanIzinBimbingan",
           label: "Pengajuan Izin & Surat Sakit Baru",
           badge: "Verifikasi Mentor",
-          sub: "Notifikasi saat ada pengajuan izin atau surat sakit baru dari anak bimbingan yang membutuhkan persetujuan.",
-          icon: Clock,
+          sub: "Pemberitahuan saat ada permohonan izin atau surat keterangan sakit dari anak bimbingan yang membutuhkan persetujuan Anda.",
+          icon: CalendarCheck2,
         },
         {
-          key: "notifKeterlambatanBimbingan",
-          label: "Peringatan Keterlambatan & Alfa",
-          badge: "Realtime Alert",
-          sub: "Pemberitahuan ketika peserta bimbingan terlambat absen atau belum hadir melewati batas jam kerja dinas.",
-          icon: AlertTriangle,
+          key: "notifPenugasanPesertaBaru",
+          label: "Penugasan Peserta Bimbingan Baru",
+          badge: "Plotting Mentor",
+          sub: "Pemberitahuan seketika saat administrator menugaskan peserta magang baru ke bawah bimbingan Anda.",
+          icon: UserCheck,
         },
       ],
     },
     {
       key: "tugas",
-      title: "Penugasan & Pembelajaran Magang",
+      title: "Penugasan & Praktikum Magang",
       tag: "Penugasan",
-      desc: "Pemberitahuan pengumpulan tugas proyek magang dan pengingat review berkas",
+      desc: "Pemberitahuan penyerahan dokumen atau tautan proyek tugas dari anak bimbingan",
       items: [
         {
           key: "notifTugasDikumpulkan",
-          label: "Penyerahan & Pengumpulan Tugas Baru",
+          label: "Penyerahan & Pengumpulan Tugas",
           badge: "Unggahan Tugas",
-          sub: "Pemberitahuan seketika saat peserta bimbingan selesai mengunggah berkas dokumen atau tautan proyek tugas.",
+          sub: "Pemberitahuan seketika saat peserta bimbingan mengunggah berkas penugasan atau tautan proyek yang siap diperiksa.",
           icon: FileCheck,
-        },
-        {
-          key: "notifReviewTugasMenunggu",
-          label: "Pengingat Tugas Menunggu Review",
-          badge: "Evaluasi Bimbingan",
-          sub: "Pengingat berkala untuk memeriksa, memberi skor, dan memberikan catatan feedback pada tugas yang belum dinilai.",
-          icon: Briefcase,
         },
       ],
     },
@@ -211,7 +217,7 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
       key: "penilaian",
       title: "Laporan Akhir & Penilaian Kompetensi",
       tag: "Penilaian",
-      desc: "Pemberitahuan naskah laporan magang dan pengisian rubrik evaluasi 4 pilar",
+      desc: "Pemberitahuan naskah laporan magang dan pengingat pengisian rubrik evaluasi 4 pilar",
       items: [
         {
           key: "notifLaporanAkhirMasuk",
@@ -224,29 +230,22 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
           key: "notifBatasPenilaianAkhir",
           label: "Batas Waktu Pengisian Nilai 4 Pilar",
           badge: "Rubrik Evaluasi",
-          sub: "Pengingat pengisian evaluasi nilai akhir kompetensi sebelum batas masa magang peserta berakhir.",
+          sub: "Pengingat otomatis pengisian evaluasi nilai akhir kompetensi sebelum batas masa magang peserta berakhir.",
           icon: Award,
         },
       ],
     },
     {
       key: "keamanan",
-      title: "Keamanan Akun & Kredensial Mentor",
+      title: "Keamanan Akun Mentor",
       tag: "Keamanan",
-      desc: "Peringatan sesi login baru, perubahan kata sandi, dan proteksi akun mentor",
+      desc: "Pemberitahuan pergantian kata sandi login dan proteksi akun pembimbing",
       items: [
         {
-          key: "notifLoginKeamanan",
-          label: "Peringatan Sesi Login Baru",
-          badge: "Proteksi Akun",
-          sub: "Notifikasi keamanan instan saat akun mentor diakses dari browser, lokasi, atau perangkat baru.",
-          icon: ShieldAlert,
-        },
-        {
           key: "notifPerubahanKredensial",
-          label: "Pembaruan Kata Sandi & Email",
+          label: "Pembaruan Kata Sandi Akun",
           badge: "Kredensial Akun",
-          sub: "Konfirmasi keamanan seketika saat kata sandi login atau alamat email akun mentor diperbarui.",
+          sub: "Konfirmasi keamanan seketika saat kata sandi login akun mentor berhasil diperbarui.",
           icon: KeyRound,
         },
       ],
@@ -254,9 +253,9 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
   ];
 
   return (
-    <div className="animate-[fadeslide_0.3s_ease-out]">
+    <div className="space-y-4 sm:space-y-6 animate-[fadeslide_0.3s_ease-out]">
       {/* ══════════════════════════════════════════════════════════════════════
-          SINGLE MAIN CARD ARCHITECTURE (SESUAI STANDAR AKUN PESERTA)
+          SINGLE MAIN CARD ARCHITECTURE (SESUAI STANDAR PORTAL MANAJEMEN)
       ══════════════════════════════════════════════════════════════════════ */}
       <div
         className={`rounded-xl sm:rounded-3xl border p-2.5 sm:p-6 shadow-xs space-y-3 sm:space-y-5 transition-colors duration-300 ${
@@ -277,7 +276,7 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
               </h4>
               <p className="text-[9px] sm:text-[11px] text-slate-400 leading-tight mt-0.5 truncate">
                 <span className="sm:hidden">Kelola preferensi notifikasi lonceng web Anda</span>
-                <span className="hidden sm:inline">Kelola kemunculan pemberitahuan aktivitas bimbingan magang pada ikon lonceng web manajemen</span>
+                <span className="hidden sm:inline">Kelola kemunculan pemberitahuan aktivitas bimbingan magang pada ikon lonceng web</span>
               </p>
             </div>
           </div>
@@ -331,7 +330,7 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
                     : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50"
                 }`}
               >
-                {/* Header Accordion */}
+                {/* Accordion Header */}
                 <button
                   type="button"
                   onClick={() => toggleSection(sec.key)}
@@ -365,7 +364,7 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
                   </div>
                 </button>
 
-                {/* Content Accordion dengan Animasi Dropdown Halus */}
+                {/* Content Accordion */}
                 <div
                   className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
                     isOpen
@@ -397,7 +396,6 @@ export const TabNotifikasiMentor = ({ dk, profile }) => {
                                   <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
                                     {item.label}
                                   </span>
-                                  {/* Badge Desktop */}
                                   <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
                                     {item.badge}
                                   </span>

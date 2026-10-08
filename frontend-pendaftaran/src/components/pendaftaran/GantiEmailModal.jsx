@@ -1,10 +1,20 @@
 import { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import {
+  Mail,
+  ShieldCheck,
+  X,
+  Send,
+  ArrowLeft,
+  AlertCircle,
+  KeyRound,
+  Info,
+  CheckCircle2,
+  RefreshCw,
+} from "lucide-react";
 
-const GantiEmailModal = ({
+export const GantiEmailModal = ({
   dk,
-  sub,
-  muted,
-  txt,
   userEmail,
   showEmailModal,
   setShowEmailModal,
@@ -22,15 +32,35 @@ const GantiEmailModal = ({
   handleResendOtp,
 }) => {
   const otpRefs = useRef([]);
-  const [isOpening, setIsOpening] = useState(showEmailModal);
-  const prevShowRef = useRef(showEmailModal);
+  const [isOpening, setIsOpening] = useState(false);
+  const [loadingStage, setLoadingStage] = useState(0);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const prevShowRef = useRef(false);
 
   useEffect(() => {
     if (showEmailModal && !prevShowRef.current) {
       setIsOpening(true);
-      const timer = setTimeout(() => setIsOpening(false), 1200);
+      setLoadingStage(0);
+      setProgressPercent(0);
+
+      const startProgressTimer = setTimeout(() => {
+        setProgressPercent(100);
+      }, 40);
+
+      const stageTimer = setTimeout(() => {
+        setLoadingStage(1);
+      }, 1000);
+
+      const timer = setTimeout(() => {
+        setIsOpening(false);
+      }, 2000);
+
       prevShowRef.current = showEmailModal;
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(startProgressTimer);
+        clearTimeout(stageTimer);
+        clearTimeout(timer);
+      };
     }
     prevShowRef.current = showEmailModal;
   }, [showEmailModal]);
@@ -69,327 +99,292 @@ const GantiEmailModal = ({
     if (lastIndex >= 0) otpRefs.current[lastIndex]?.focus();
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-6"
+      className="fixed inset-0 w-screen h-screen z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs sm:backdrop-blur-sm p-2 sm:p-4 overflow-y-auto"
       style={{ margin: 0 }}
       onClick={() => setShowEmailModal(false)}
     >
       <div
-        className={`relative max-w-2xl w-full rounded-3xl border shadow-2xl overflow-hidden transition-all duration-[2000ms] ${
-          isOpening ? "opacity-0 scale-95" : "opacity-100 scale-100 animate-[fadeIn_0.2s_ease-out]"
-        } ${dk ? "bg-[#161b22] border-white/10" : "bg-white border-slate-200"}`}
+        className={`relative ${
+          isOpening
+            ? "max-w-[310px] sm:max-w-md"
+            : "max-w-[350px] sm:max-w-xl md:max-w-2xl"
+        } w-full rounded-xl sm:rounded-3xl border shadow-2xl overflow-hidden transition-all duration-300 my-auto ${
+          dk
+            ? "bg-[#161b22] border-white/10 text-slate-100"
+            : "bg-white border-slate-200/90 text-slate-800"
+        } animate-[fadeIn_0.2s_ease-out]`}
         onClick={(e) => e.stopPropagation()}
       >
         {isOpening ? (
-          /* ===== LOADING STATE ===== */
-          <div className="flex flex-col items-center justify-center py-20 px-6">
-            <div className="relative h-14 w-14 mb-5">
+          /* ===== ANIMASI LOADING KETIKA MEMBUKA MODAL ===== */
+          <div className="p-4 sm:p-8 flex flex-col items-center justify-center text-center animate-[fadeIn_0.2s_ease-out]">
+            <div className="relative h-10 w-10 sm:h-16 sm:w-16 mb-2.5 sm:mb-4 flex items-center justify-center">
+              {/* Pulse glow ring */}
+              <div className="absolute inset-0 rounded-full bg-[#00A5EC]/20 blur-md animate-pulse" />
+              {/* Outer static border */}
               <div
-                className={`absolute inset-0 rounded-full border-4 ${dk ? "border-white/10" : "border-slate-100"}`}
+                className={`absolute inset-0 rounded-full border-2 sm:border-3 ${
+                  dk ? "border-white/10" : "border-slate-100"
+                }`}
               />
-              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#00A5EC] border-r-[#00A5EC] animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke={dk ? "#00A5EC" : "#004F9F"}
-                  className="w-6 h-6"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                  />
-                </svg>
+              {/* Spinning gradient border */}
+              <div className="absolute inset-0 rounded-full border-2 sm:border-3 border-transparent border-t-[#00A5EC] border-r-[#004F9F] animate-spin" />
+              {/* Center icon */}
+              <div className="relative flex items-center justify-center text-[#004F9F] dark:text-[#00A5EC]">
+                <Mail className="w-4.5 h-4.5 sm:w-7 sm:h-7 animate-pulse" />
               </div>
             </div>
-            <p className={`text-xs font-bold ${txt}`}>Menyiapkan formulir...</p>
-            <p className={`text-[11px] mt-1 ${muted}`}>Mohon tunggu sebentar</p>
+
+            <h4 className="text-[11px] sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 leading-tight transition-all duration-300">
+              {loadingStage === 0
+                ? "Menyiapkan Formulir..."
+                : "Memeriksa Status Akun..."}
+            </h4>
+            <p className="text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1 max-w-xs leading-relaxed transition-all duration-300">
+              {loadingStage === 0
+                ? "Memuat data email dan konfigurasi keamanan akun Anda"
+                : "Menghubungkan ke layanan verifikasi OTP email"}
+            </p>
+
+            {/* Smooth Progress Track */}
+            <div className="mt-3 sm:mt-4 w-32 sm:w-52 h-1 sm:h-1.5 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden relative">
+              <div
+                className="h-full bg-gradient-to-r from-[#004F9F] via-[#00A5EC] to-sky-400 rounded-full transition-all duration-[1850ms] ease-out"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
           </div>
         ) : (
           <>
             {/* Header dengan gradient + step indicator */}
-            <div className="relative px-6 py-5 bg-gradient-to-r from-[#0B1442] via-[#141F5C] to-[#1E3A8A] overflow-hidden">
-              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10 blur-xl" />
-              <div className="absolute -left-6 -bottom-10 h-20 w-20 rounded-full bg-[#00A5EC]/20 blur-xl" />
+            <div className="relative px-3 py-2 sm:px-5 sm:py-3.5 bg-gradient-to-r from-[#060D2A] via-[#0B1A4C] to-[#004F9F] overflow-hidden">
+              {/* Ambient Glows */}
+              <div className="absolute -right-8 -top-8 h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/10 blur-xl pointer-events-none" />
+              <div className="absolute -left-6 -bottom-10 h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-sky-400/20 blur-xl pointer-events-none" />
 
-              <div className="relative flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
+              {/* Watermark Icon - Di Sebelah Button Silang */}
+              {emailStep === "input" ? (
+                <Mail
+                  className="pointer-events-none absolute right-7 top-0.5 sm:right-13 sm:-top-2 w-12 h-12 sm:w-20 sm:h-24 text-white opacity-[0.08] sm:opacity-[0.10] rotate-12 transition-all duration-300"
+                  strokeWidth={1.2}
+                />
+              ) : (
+                <KeyRound
+                  className="pointer-events-none absolute right-7 top-0.5 sm:right-13 sm:-top-2 w-12 h-12 sm:w-20 sm:h-24 text-white opacity-[0.08] sm:opacity-[0.10] rotate-12 transition-all duration-300"
+                  strokeWidth={1.2}
+                />
+              )}
+
+              <div className="relative flex items-center justify-between mb-1.5 sm:mb-2.5 z-10">
+                <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                  <span className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-md sm:rounded-xl bg-white/15 text-white shadow-2xs shrink-0">
                     {emailStep === "input" ? (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="white"
-                        className="w-4.5 h-4.5"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                        />
-                      </svg>
+                      <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
                     ) : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="white"
-                        className="w-4.5 h-4.5"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
-                        />
-                      </svg>
+                      <KeyRound className="w-3 h-3 sm:w-4 sm:h-4" />
                     )}
                   </span>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-white leading-tight">
+                  <div className="min-w-0">
+                    <h3 className="text-[11px] sm:text-sm font-extrabold text-white leading-tight truncate">
                       {emailStep === "input"
-                        ? "Ganti Alamat Email"
+                        ? "Ganti Email Pribadi"
                         : "Verifikasi Kode OTP"}
                     </h3>
-                    <p className="text-[10px] text-white/60 mt-0.5">
+                    <p className="text-[8px] sm:text-[10px] text-white/70 mt-0.5 leading-tight truncate">
                       {emailStep === "input"
-                        ? "Langkah 1 dari 2"
-                        : "Langkah 2 dari 2"}
+                        ? "Langkah 1 dari 2: Masukkan Email Baru"
+                        : "Langkah 2 dari 2: Konfirmasi Kode OTP"}
                     </p>
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setShowEmailModal(false)}
-                  className="h-8 w-8 shrink-0 rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-red-500/80 hover:rotate-90 transition-all duration-300 cursor-pointer"
+                  className="group relative h-5.5 w-5.5 sm:h-7.5 sm:w-7.5 shrink-0 rounded-md sm:rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/15 transition-all duration-200 cursor-pointer"
+                  title="Tutup Modal"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                    className="w-5 h-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18 18 6M6 6l12 12"
-                    />
-                  </svg>
+                  <X className="w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-300 group-hover:rotate-90 group-hover:scale-110" />
                 </button>
               </div>
 
-              <div className="relative flex items-center gap-2">
+              <div className="relative flex items-center gap-1 sm:gap-2 z-10">
                 <div
-                  className={`h-1 flex-1 rounded-full transition-colors duration-300 ${emailStep === "input" || emailStep === "otp" ? "bg-[#00A5EC]" : "bg-white/20"}`}
+                  className={`h-0.5 sm:h-1 flex-1 rounded-full transition-colors duration-300 ${
+                    emailStep === "input" || emailStep === "otp"
+                      ? "bg-[#00A5EC]"
+                      : "bg-white/20"
+                  }`}
                 />
                 <div
-                  className={`h-1 flex-1 rounded-full transition-colors duration-300 ${emailStep === "otp" ? "bg-[#00A5EC]" : "bg-white/20"}`}
+                  className={`h-0.5 sm:h-1 flex-1 rounded-full transition-colors duration-300 ${
+                    emailStep === "otp" ? "bg-[#00A5EC]" : "bg-white/20"
+                  }`}
                 />
               </div>
             </div>
 
-            {/* STEP 1: Input email baru */}
+            {/* STEP 1: Input email baru + Info Cards */}
             {emailStep === "input" && (
-              <form onSubmit={handleRequestOtpEmail} className="p-6 animate-[fadeIn_0.3s_ease-out]">
-                <p className={`text-xs leading-relaxed mb-5 ${sub}`}>
-                  Untuk mengubah alamat email Anda, kami perlu memverifikasi
-                  identitas Anda dengan mengirimkan kode OTP ke alamat email baru
-                  yang Anda daftarkan.
-                </p>
+              <form
+                onSubmit={handleRequestOtpEmail}
+                className="p-2.5 sm:p-5 animate-[fadeIn_0.25s_ease-out] max-h-[85vh] overflow-y-auto"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-5">
+                  {/* Kolom Kiri: Form Input */}
+                  <div className="md:col-span-7 space-y-2 sm:space-y-3">
+                    <p className="text-[9.5px] sm:text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                      Ubah alamat <strong>email kontak pribadi</strong> untuk
+                      korespondensi kegiatan magang dan pengiriman notifikasi.
+                    </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  {/* Kolom kiri: form */}
-                  <div className="md:col-span-2 space-y-4">
-                    <div>
-                      <label className={`text-xs font-bold ${sub}`}>
-                        Email Saat Ini
-                      </label>
-                      <div className="relative mt-1.5">
-                        <span
-                          className={`absolute inset-y-0 left-0 flex items-center pl-4 ${muted}`}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={2}
-                            stroke="currentColor"
-                            className="w-4 h-4"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                            />
-                          </svg>
-                        </span>
-                        <input
-                          type="email"
-                          value={userEmail || ""}
-                          disabled
-                          className={`w-full rounded-xl border pl-11 pr-24 py-3 text-sm cursor-not-allowed focus:outline-none ${dk ? "bg-white/5 border-white/10 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-500"}`}
-                        />
-                        <span
-                          className={`absolute inset-y-0 right-3 flex items-center text-[9px] font-extrabold uppercase tracking-wider ${dk ? "text-[#00A5EC]" : "text-[#004F9F]"}`}
-                        >
-                          Terverifikasi
-                        </span>
+                    <div className="space-y-2 sm:space-y-2.5">
+                      <div>
+                        <label className="text-[9px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-0.5 sm:mb-1">
+                          Email Pribadi Saat Ini
+                        </label>
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-2 sm:pl-3 text-slate-400 pointer-events-none">
+                            <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400" />
+                          </span>
+                          <input
+                            type="email"
+                            value={userEmail || ""}
+                            disabled
+                            className={`w-full rounded-md sm:rounded-xl border pl-7 sm:pl-9 pr-14 sm:pr-20 py-1 sm:py-2 text-[10px] sm:text-xs cursor-not-allowed focus:outline-none ${
+                              dk
+                                ? "bg-white/5 border-white/10 text-slate-400"
+                                : "bg-slate-50 border-slate-200 text-slate-500"
+                            }`}
+                          />
+                          <span className="absolute inset-y-0 right-1.5 sm:right-2.5 flex items-center text-[7.5px] sm:text-[9.5px] font-extrabold uppercase tracking-wider text-blue-600 dark:text-sky-400">
+                            Aktif
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div
-                      className={`border-t ${dk ? "border-white/10" : "border-slate-100"}`}
-                    />
+                      <div>
+                        <label className="text-[9px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-0.5 sm:mb-1">
+                          Email Pribadi Baru
+                        </label>
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-2 sm:pl-3 text-slate-400 pointer-events-none">
+                            <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400" />
+                          </span>
+                          <input
+                            type="email"
+                            value={emailBaru}
+                            onChange={(e) => setEmailBaru(e.target.value)}
+                            required
+                            placeholder="contoh@email.com"
+                            className={`w-full rounded-md sm:rounded-xl border pl-7 sm:pl-9 pr-2.5 py-1 sm:py-2 text-[10px] sm:text-xs font-semibold transition-all focus:ring-2 focus:outline-none focus:ring-[#00A5EC]/20 ${
+                              dk
+                                ? "bg-[#0d1117] border-white/10 text-slate-100 focus:border-[#00A5EC]"
+                                : "bg-white border-slate-200 text-slate-900 focus:border-[#004F9F]"
+                            }`}
+                          />
+                        </div>
+                        <p className="mt-0.5 sm:mt-1 text-[8px] sm:text-[10.5px] text-blue-600 dark:text-sky-400 font-medium">
+                          Pastikan email aktif untuk menerima kode verifikasi OTP.
+                        </p>
+                      </div>
 
-                    <div>
-                      <label className={`text-xs font-bold ${sub}`}>
-                        Email Baru
-                      </label>
-                      <div className="relative mt-1.5">
-                        <span
-                          className={`absolute inset-y-0 left-0 flex items-center pl-4 ${muted}`}
+                      {emailError && (
+                        <div
+                          className={`flex items-center gap-1.5 rounded-md sm:rounded-xl border p-1.5 sm:p-2.5 text-[9.5px] sm:text-xs font-semibold ${
+                            dk
+                              ? "bg-red-500/10 border-red-400/20 text-red-400"
+                              : "bg-red-50 border-red-200 text-red-600"
+                          }`}
                         >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={2}
-                            stroke="currentColor"
-                            className="w-4 h-4"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                            />
-                          </svg>
-                        </span>
-                        <input
-                          type="email"
-                          value={emailBaru}
-                          onChange={(e) => setEmailBaru(e.target.value)}
-                          required
-                          placeholder="contoh@email.com"
-                          className={`w-full rounded-xl border pl-11 pr-4 py-3 text-sm transition-all focus:ring-2 focus:outline-none focus:ring-[#00A5EC]/20 ${dk ? "bg-[#0d1117] border-white/10 text-slate-100 focus:border-[#00A5EC]" : "bg-white border-slate-200 text-[#0B1442] focus:border-[#004F9F]"}`}
-                        />
-                      </div>
-                      <p
-                        className={`mt-2 text-[11px] ${dk ? "text-[#00A5EC]" : "text-[#004F9F]"}`}
-                      >
-                        Pastikan email ini aktif dan dapat diakses untuk menerima
-                        kode OTP.
-                      </p>
-                    </div>
+                          <AlertCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-red-500" />
+                          <span>{emailError}</span>
+                        </div>
+                      )}
 
-                    {emailError && (
-                      <div
-                        className={`flex items-center gap-2 rounded-xl border p-3.5 text-xs font-semibold ${dk ? "bg-red-500/10 border-red-400/20 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
-                      >
-                        <span className="shrink-0">⚠️</span>
-                        <span>{emailError}</span>
+                      <div className="flex gap-1.5 sm:gap-2.5 pt-0.5 sm:pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailModal(false)}
+                          className={`flex-1 rounded-md sm:rounded-xl border px-2.5 py-1 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-bold transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 ${
+                            dk
+                              ? "border-white/10 text-slate-300 hover:bg-white/5"
+                              : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={emailLoading}
+                          className="flex-1 inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-md sm:rounded-xl bg-gradient-to-r from-[#060D2A] via-[#0B1A4C] to-[#004F9F] px-2.5 py-1 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-bold text-white shadow-md shadow-[#004F9F]/20 dark:shadow-sky-950/40 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 disabled:opacity-60 cursor-pointer"
+                        >
+                          {emailLoading ? (
+                            <RefreshCw className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
+                          ) : (
+                            <Send className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          )}
+                          <span>{emailLoading ? "Mengirim..." : "Kirim Kode OTP"}</span>
+                        </button>
                       </div>
-                    )}
-
-                    <div className="flex gap-3 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setShowEmailModal(false)}
-                        className={`flex-1 rounded-xl border-2 px-4 py-3 text-xs font-bold transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 active:translate-y-0 ${dk ? "border-white/10 text-slate-300 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-400" : "border-slate-200 text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-500"}`}
-                      >
-                        Batal
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={emailLoading}
-                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-4 py-3 text-xs font-bold text-white shadow-lg hover:from-[#101F5C] hover:to-[#004F9F] hover:shadow-xl hover:-translate-y-0.5 active:scale-95 active:translate-y-0 transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0 cursor-pointer"
-                      >
-                        {emailLoading ? (
-                          <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={2}
-                            stroke="currentColor"
-                            className="w-3.5 h-3.5"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M6 12 3.269 3.126A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.876L5.999 12Zm0 0h7.5"
-                            />
-                          </svg>
-                        )}
-                        {emailLoading ? "Mengirim..." : "Kirim Kode OTP"}
-                      </button>
                     </div>
                   </div>
 
-                  {/* Kolom kanan: info panel */}
-                  <div className="space-y-4">
+                  {/* Kolom Kanan: Card Info (Informasi Penting & Keamanan Akun) */}
+                  <div className="md:col-span-5 space-y-2 sm:space-y-3">
+                    {/* Card 1: Informasi Penting */}
                     <div
-                      className={`rounded-xl p-4 ${dk ? "bg-[#00A5EC]/10 border border-[#00A5EC]/20" : "bg-[#00A5EC]/5 border border-[#00A5EC]/20"}`}
+                      className={`rounded-lg sm:rounded-2xl p-2 sm:p-3.5 border ${
+                        dk
+                          ? "bg-blue-500/10 border-blue-500/20 text-slate-200"
+                          : "bg-blue-50/80 border-blue-100 text-slate-700"
+                      }`}
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke={dk ? "#38bdf8" : "#004F9F"} className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                          </svg>
-                        </span>
-                        <h4 className={`text-[11px] font-extrabold ${txt}`}>
+                      <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                        <Info className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 dark:text-sky-400 shrink-0" />
+                        <h4 className="text-[9.5px] sm:text-xs font-extrabold text-blue-900 dark:text-sky-300">
                           Informasi Penting
                         </h4>
                       </div>
-                      <ul
-                        className={`space-y-2 text-[10.5px] leading-relaxed ${sub}`}
-                      >
-                        <li className="flex gap-2">
-                          <span className="shrink-0 mt-1 h-1 w-1 rounded-full bg-current opacity-60" />
+                      <ul className="space-y-1 sm:space-y-1.5 text-[8px] sm:text-[10.5px] leading-tight sm:leading-relaxed">
+                        <li className="flex items-start gap-1 sm:gap-1.5">
+                          <span className="shrink-0 mt-0.5 sm:mt-1 h-1 w-1 rounded-full bg-blue-500 dark:bg-sky-400" />
                           <span>
-                            Email baru akan digunakan untuk seluruh komunikasi
-                            portal.
+                            Email baru akan otomatis menjadi alamat login akun portal SIM Magang &amp; tujuan notifikasi resmi.
                           </span>
                         </li>
-                        <li className="flex gap-2">
-                          <span className="shrink-0 mt-1 h-1 w-1 rounded-full bg-current opacity-60" />
+                        <li className="flex items-start gap-1 sm:gap-1.5">
+                          <span className="shrink-0 mt-0.5 sm:mt-1 h-1 w-1 rounded-full bg-blue-500 dark:bg-sky-400" />
                           <span>
-                            Email lama otomatis tidak berlaku setelah verifikasi
-                            berhasil.
+                            Pastikan alamat email baru aktif dan dapat menerima pesan masuk.
                           </span>
                         </li>
-                        <li className="flex gap-2">
-                          <span className="shrink-0 mt-1 h-1 w-1 rounded-full bg-current opacity-60" />
+                        <li className="flex items-start gap-1 sm:gap-1.5">
+                          <span className="shrink-0 mt-0.5 sm:mt-1 h-1 w-1 rounded-full bg-blue-500 dark:bg-sky-400" />
                           <span>
-                            Jika Anda tidak menerima OTP dalam 5 menit, silakan coba
-                            lagi.
+                            Jika tidak menerima kode OTP dalam 5 menit, silakan kirim ulang kode.
                           </span>
                         </li>
                       </ul>
                     </div>
 
+                    {/* Card 2: Keamanan Akun */}
                     <div
-                      className={`rounded-xl p-4 ${dk ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-emerald-50 border border-emerald-200"}`}
+                      className={`rounded-lg sm:rounded-2xl p-2 sm:p-3.5 border ${
+                        dk
+                          ? "bg-emerald-500/10 border-emerald-500/20 text-slate-200"
+                          : "bg-emerald-50/80 border-emerald-100 text-slate-700"
+                      }`}
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke={dk ? "#34d399" : "#059669"} className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Z" />
-                          </svg>
-                        </span>
-                        <h4 className={`text-[11px] font-extrabold ${txt}`}>
+                      <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                        <ShieldCheck className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
+                        <h4 className="text-[9.5px] sm:text-xs font-extrabold text-emerald-900 dark:text-emerald-300">
                           Keamanan Akun
                         </h4>
                       </div>
-                      <p className={`text-[10.5px] leading-relaxed ${sub}`}>
-                        Setiap perubahan email selalu diverifikasi lewat kode OTP demi keamanan akun Anda.
+                      <p className="text-[8px] sm:text-[10.5px] leading-tight sm:leading-relaxed text-slate-600 dark:text-slate-300">
+                        Setiap pembaruan email diverifikasi melalui kode OTP demi mencegah kekeliruan dan menjaga validitas data akun.
                       </p>
                     </div>
                   </div>
@@ -401,42 +396,26 @@ const GantiEmailModal = ({
             {emailStep === "otp" && (
               <form
                 onSubmit={handleVerifikasiOtpEmail}
-                className="p-6 max-w-md mx-auto animate-[fadeIn_0.3s_ease-out]"
+                className="p-2.5 sm:p-5 max-w-xs sm:max-w-sm mx-auto space-y-2 sm:space-y-3 animate-[fadeIn_0.25s_ease-out]"
               >
-                <div className="flex flex-col items-center py-2">
-                  <div
-                    className={`h-16 w-16 rounded-full flex items-center justify-center mb-4 ${dk ? "bg-[#00A5EC]/10" : "bg-[#00A5EC]/10"}`}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="#004F9F"
-                      className="w-8 h-8"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                      />
-                    </svg>
+                <div className="flex flex-col items-center py-0.5 sm:py-1 text-center">
+                  <div className="h-8 w-8 sm:h-12 sm:w-12 rounded-full flex items-center justify-center mb-1.5 sm:mb-2 bg-blue-50 dark:bg-sky-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-sky-800/40">
+                    <Mail className="w-4 h-4 sm:w-6 sm:h-6" />
                   </div>
-                  <h3 className={`text-sm font-extrabold text-center ${txt}`}>
-                    Verifikasi Identitas Anda
+                  <h3 className="text-[11px] sm:text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                    Verifikasi Email Baru
                   </h3>
-                  <p className={`text-xs text-center leading-relaxed mt-2 ${sub}`}>
-                    Kami telah mengirimkan kode verifikasi 6 digit ke alamat email
-                    baru
+                  <p className="text-[9.5px] sm:text-xs leading-relaxed mt-0.5 text-slate-500 dark:text-slate-400">
+                    Masukkan 6 digit kode OTP yang dikirim ke:
                   </p>
-                  <p className={`text-sm font-extrabold mt-1 ${txt}`}>
+                  <p className="text-[10px] sm:text-xs font-extrabold mt-0.5 text-blue-600 dark:text-sky-400 break-all">
                     {emailBaru}
                   </p>
                 </div>
 
                 {/* Kotak OTP */}
                 <div
-                  className="flex justify-center gap-2 mt-5"
+                  className="flex justify-center gap-1 sm:gap-2 my-1.5 sm:my-3"
                   onPaste={handleOtpPaste}
                 >
                   {otpDigits.map((digit, i) => (
@@ -449,29 +428,41 @@ const GantiEmailModal = ({
                       value={digit}
                       onChange={(e) => handleOtpBoxChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      className={`h-12 w-11 rounded-xl border text-center text-lg font-extrabold transition-all focus:ring-2 focus:outline-none focus:ring-[#00A5EC]/20 ${dk ? "bg-[#0d1117] border-white/10 text-slate-100 focus:border-[#00A5EC]" : "bg-white border-slate-200 text-[#0B1442] focus:border-[#004F9F]"}`}
+                      className={`h-8 w-7 sm:h-11 sm:w-10 rounded-md sm:rounded-xl border text-center text-xs sm:text-base font-extrabold transition-all focus:ring-2 focus:outline-none focus:ring-[#00A5EC]/20 ${
+                        dk
+                          ? "bg-[#0d1117] border-white/10 text-slate-100 focus:border-[#00A5EC]"
+                          : "bg-white border-slate-200 text-[#0B1442] focus:border-[#004F9F]"
+                      }`}
                     />
                   ))}
                 </div>
 
-                <div className="flex items-center justify-center gap-1.5 mt-4 text-[11px]">
+                <div className="flex items-center justify-center gap-1 text-[9.5px] sm:text-[11px]">
                   <button
                     type="button"
                     onClick={handleResendOtp}
                     disabled={resendCooldown > 0 || emailLoading}
-                    className={`font-bold transition-colors cursor-pointer disabled:cursor-not-allowed ${resendCooldown > 0 ? muted : "text-[#004F9F] hover:text-[#00A5EC]"}`}
+                    className={`font-bold transition-colors cursor-pointer disabled:cursor-not-allowed ${
+                      resendCooldown > 0
+                        ? "text-slate-400"
+                        : "text-[#004F9F] dark:text-sky-400 hover:underline"
+                    }`}
                   >
                     {resendCooldown > 0
                       ? `Kirim Ulang Kode (${resendCooldown}s)`
-                      : "Kirim Ulang Kode"}
+                      : "Kirim Ulang Kode OTP"}
                   </button>
                 </div>
 
                 {emailError && (
                   <div
-                    className={`mt-4 flex items-center gap-2 rounded-xl border p-3.5 text-xs font-semibold ${dk ? "bg-red-500/10 border-red-400/20 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
+                    className={`flex items-center gap-1.5 rounded-md sm:rounded-xl border p-1.5 sm:p-2.5 text-[9.5px] sm:text-xs font-semibold ${
+                      dk
+                        ? "bg-red-500/10 border-red-400/20 text-red-400"
+                        : "bg-red-50 border-red-200 text-red-600"
+                    }`}
                   >
-                    <span className="shrink-0">⚠️</span>
+                    <AlertCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-red-500" />
                     <span>{emailError}</span>
                   </div>
                 )}
@@ -479,45 +470,38 @@ const GantiEmailModal = ({
                 <button
                   type="submit"
                   disabled={emailLoading || otpInput.length !== 6}
-                  className="w-full mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-4 py-3.5 text-xs font-bold text-white shadow-lg hover:from-[#101F5C] hover:to-[#004F9F] hover:shadow-xl hover:-translate-y-0.5 active:scale-95 active:translate-y-0 transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0 cursor-pointer"
+                  className="w-full inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-md sm:rounded-xl bg-gradient-to-r from-[#060D2A] via-[#0B1A4C] to-[#004F9F] px-2.5 py-1.5 sm:py-2.5 text-[10.5px] sm:text-sm font-bold text-white shadow-md shadow-[#004F9F]/20 dark:shadow-sky-950/40 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 disabled:opacity-60 cursor-pointer"
                 >
-                  {emailLoading && (
-                    <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  {emailLoading ? (
+                    <RefreshCw className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   )}
-                  {emailLoading ? "Memverifikasi..." : "Verifikasi"}
+                  {emailLoading ? "Memverifikasi..." : "Verifikasi & Simpan"}
                 </button>
 
                 <button
                   type="button"
                   onClick={handleBackToEmailInput}
-                  className={`group w-full mt-2.5 flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:scale-95 active:translate-y-0 ${dk ? "border-transparent text-slate-400 hover:border-[#00A5EC]/30 hover:bg-[#00A5EC]/10 hover:text-[#00A5EC]" : "border-transparent text-slate-500 hover:border-[#004F9F]/20 hover:bg-[#004F9F]/5 hover:text-[#004F9F]"}`}
+                  className={`group w-full flex items-center justify-center gap-1 rounded-md sm:rounded-xl border px-2.5 py-1 sm:py-1.5 text-[9.5px] sm:text-xs font-bold transition-all duration-200 cursor-pointer ${
+                    dk
+                      ? "border-transparent text-slate-400 hover:text-[#00A5EC]"
+                      : "border-transparent text-slate-500 hover:text-[#004F9F]"
+                  }`}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-x-1">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                  </svg>
+                  <ArrowLeft className="w-2.5 h-2.5 sm:w-3 sm:h-3 transition-transform duration-200 group-hover:-translate-x-0.5" />
                   Kembali ke Email
                 </button>
 
                 <div
-                  className={`mt-5 pt-4 border-t flex items-start gap-2 ${dk ? "border-white/10" : "border-slate-100"}`}
+                  className={`pt-1.5 sm:pt-2.5 border-t flex items-start gap-1 sm:gap-1.5 ${
+                    dk ? "border-white/10" : "border-slate-100"
+                  }`}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                    className={`w-4 h-4 shrink-0 mt-0.5 ${muted}`}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
-                    />
-                  </svg>
-                  <p className={`text-[10.5px] leading-relaxed ${muted}`}>
-                    Demi keamanan, kode ini akan kedaluwarsa dalam 10 menit. Jika
-                    Anda tidak meminta perubahan email, segera amankan akun Anda.
+                  <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 mt-0.5 text-slate-400" />
+                  <p className="text-[8px] sm:text-[10px] leading-tight sm:leading-relaxed text-slate-400 text-left">
+                    Kode OTP berlaku selama 10 menit. Pastikan mengecek folder kotak
+                    masuk atau spam pada email Anda.
                   </p>
                 </div>
               </form>
@@ -525,7 +509,8 @@ const GantiEmailModal = ({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

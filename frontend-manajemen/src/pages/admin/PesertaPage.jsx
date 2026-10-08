@@ -9,7 +9,7 @@ import AssignMentorModal from "../../components/manajemen/admin/peserta/AssignMe
 import ExportDropdown from "../../components/manajemen/admin/pendaftaran/ExportDropdown";
 import Pagination from "../../components/manajemen/admin/pendaftaran/Pagination";
 import {
-  getAllAkunPeserta, updateStatusAkun, resetPasswordPeserta, deleteAkun, cekAkunBisaDihapus,
+  getAllAkunPeserta, updateStatusAkun, deleteAkun, cekAkunBisaDihapus,
 } from "../../services/adminService";
 import { confirmDialog, toastSuccess, toastError, blockedActionDialog } from "../../utils/swal";
 import { useManajemenTheme } from "../../context/useManajemenTheme";
@@ -151,23 +151,6 @@ const PesertaPage = () => {
     }
   };
 
-  const handleResetPassword = async (m) => {
-    const emailPeserta = m.email_login || m.email_notifikasi || m.email || "-";
-    const result = await confirmDialog({
-      title: `Reset password ${m.nama}?`,
-      text: `Password baru akan dibuat otomatis dan dikirim ke email peserta (${emailPeserta}).`,
-      confirmText: "Ya, Reset Password",
-      icon: "question",
-    });
-    if (!result.isConfirmed) return;
-
-    try {
-      await resetPasswordPeserta(m.id);
-      toastSuccess("Password berhasil direset dan dikirim ke email peserta");
-    } catch (err) {
-      toastError(err.response?.data?.message || "Gagal mereset password.");
-    }
-  };
 
   const handleDelete = async (m) => {
     let cekResult;
@@ -738,7 +721,6 @@ const PesertaPage = () => {
                                 <td className="px-2 sm:px-6 py-2.5 sm:py-4 text-right">
                                   <PesertaActionsDropdown
                                     onDetail={() => setSelectedDetailId(m.id)}
-                                    onResetPassword={() => handleResetPassword(m)}
                                     onDelete={() => handleDelete(m)}
                                     isDark={isDark}
                                   />

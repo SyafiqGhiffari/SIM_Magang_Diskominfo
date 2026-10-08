@@ -36,19 +36,17 @@ export const filterNotifikasiSesuaiPreferensiPeserta = (items) => {
 
   return items.filter((item) => {
     const tipe = (item.tipe || "").toLowerCase();
-    if (tipe === "chat_baru" && userSettings.chatMentor === false) return false;
-    if (tipe === "presensi_masuk" && userSettings.checkinReminder === false) return false;
+    if ((tipe === "presensi_masuk" || tipe === "peringatan_belum_presensi" || tipe === "presensi_alfa") && userSettings.checkinReminder === false) return false;
     if (tipe === "presensi_pulang" && userSettings.checkoutReminder === false) return false;
     if (tipe === "izin_status" && userSettings.izinStatus === false) return false;
     if (tipe === "logbook_reminder" && userSettings.logbookReminder === false) return false;
-    if ((tipe === "revisi_dokumen" || tipe === "logbook_revisi" || tipe === "logbook_verifikasi") && userSettings.logbookVerification === false) return false;
+    if ((tipe === "materi_baru" || tipe === "materi") && userSettings.materiBaru === false) return false;
     if (tipe === "tugas_baru" && userSettings.tugasBaru === false) return false;
     if ((tipe === "tugas_nilai" || tipe === "tugas_feedback") && userSettings.tugasFeedback === false) return false;
     if (tipe === "tugas_deadline" && userSettings.tugasDeadline === false) return false;
     if (tipe === "laporan_akhir" && userSettings.laporanAkhirStatus === false) return false;
     if (tipe === "rapor_nilai" && userSettings.raporNilai === false) return false;
     if ((tipe === "sertifikat_pending" || tipe === "sertifikat_terbit") && userSettings.sertifikatTerbit === false) return false;
-    if (tipe === "keamanan_login" && userSettings.loginSecurityAlert === false) return false;
     if (tipe === "keamanan_password" && userSettings.passwordEmailChangeAlert === false) return false;
     return true;
   });
@@ -98,9 +96,12 @@ export const petakanNotifikasiKeKunciMenuPeserta = (item) => {
   if (
     tipe === "presensi_masuk" ||
     tipe === "presensi_pulang" ||
+    tipe === "peringatan_belum_presensi" ||
+    tipe === "presensi_alfa" ||
     tipe === "logbook_reminder" ||
     url === "/peserta/presensi" ||
-    url.startsWith("/peserta/presensi?")
+    url.startsWith("/peserta/presensi?") ||
+    url === "/peserta/presensi/logbook"
   ) {
     return "presensi";
   }

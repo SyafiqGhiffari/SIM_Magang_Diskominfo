@@ -668,3 +668,9 @@ input::-webkit-credentials-auto-fill-button {
     height: 2px !important;
   }
 }
+
+/* Pastikan seluruh alert, dialog konfirmasi, dan toast SweetAlert2 selalu berada paling depan di atas modal apapun */
+.swal2-container,
+div:where(.swal2-container) {
+  z-index: 2147483647 !important;
+}

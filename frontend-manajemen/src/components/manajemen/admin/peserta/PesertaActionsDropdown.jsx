@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MoreVertical, Eye, KeyRound, Trash2 } from "lucide-react";
+import { MoreVertical, Eye, Trash2 } from "lucide-react";
 
-const PesertaActionsDropdown = ({ onDetail, onResetPassword, onDelete, isDark = false }) => {
+const PesertaActionsDropdown = ({ onDetail, onDelete, isDark = false }) => {
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -21,7 +21,7 @@ const PesertaActionsDropdown = ({ onDetail, onResetPassword, onDelete, isDark = 
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
     const menuWidth = 224;
-    const menuHeight = 175;
+    const menuHeight = 120;
 
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
@@ -164,35 +164,7 @@ const PesertaActionsDropdown = ({ onDetail, onResetPassword, onDelete, isDark = 
                     </div>
                   </button>
 
-                  {/* 2. Reset Password */}
-                  <button
-                    onClick={() => handleAction(onResetPassword)}
-                    className={`group/item flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-all duration-300 border hover:scale-[1.015] active:scale-95 cursor-pointer ${
-                      isDark
-                        ? "bg-[#162923] border-emerald-500/10 hover:border-emerald-500/30 hover:bg-emerald-500/[0.05] hover:shadow-lg hover:shadow-emerald-500/5"
-                        : "bg-emerald-50/20 border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50/50 hover:shadow-md"
-                    }`}
-                  >
-                    <span
-                      className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-lg transition-all duration-300 ${
-                        isDark
-                          ? "bg-emerald-500/15 text-emerald-400 group-hover/item:scale-110 group-hover/item:-rotate-6 group-hover/item:bg-emerald-500/25"
-                          : "bg-emerald-100 text-emerald-600 group-hover/item:scale-110 group-hover/item:-rotate-6"
-                      }`}
-                    >
-                      <KeyRound className="w-3.5 h-3.5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-[11px] font-bold transition-colors ${
-                        isDark ? "text-emerald-400 group-hover/item:text-emerald-300" : "text-[#0B1442] group-hover/item:text-emerald-700"
-                      }`}>
-                        Reset Password
-                      </p>
-                      <p className="text-[9px] text-slate-400">Kirim kredensial baru ke email peserta</p>
-                    </div>
-                  </button>
-
-                  {/* 3. Hapus Akun */}
+                  {/* 2. Hapus Akun */}
                   <button
                     onClick={() => handleAction(onDelete)}
                     className={`group/item flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-all duration-300 border hover:scale-[1.015] active:scale-95 cursor-pointer ${
@@ -263,29 +235,7 @@ const PesertaActionsDropdown = ({ onDetail, onResetPassword, onDelete, isDark = 
 
               <div className={`border-t ${isDark ? "border-white/10" : "border-slate-100"}`} />
 
-              {/* 2. Reset Password */}
-              <button
-                onClick={() => handleAction(onResetPassword)}
-                className={`group/item flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-200 cursor-pointer ${
-                  isDark ? "bg-emerald-500/[0.04] hover:bg-emerald-500/[0.12]" : "bg-emerald-50/40 hover:bg-emerald-50/70"
-                }`}
-              >
-                <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200 group-hover/item:scale-110 group-hover/item:-rotate-6 ${
-                    isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-600"
-                  }`}
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                </span>
-                <div className="min-w-0">
-                  <p className={`text-xs font-bold ${isDark ? "text-emerald-400" : "text-emerald-700"}`}>Reset Password</p>
-                  <p className="text-[10px] text-slate-400 whitespace-nowrap">Kirim password baru via email</p>
-                </div>
-              </button>
-
-              <div className={`border-t ${isDark ? "border-white/10" : "border-slate-100"}`} />
-
-              {/* 3. Hapus */}
+              {/* 2. Hapus */}
               <button
                 onClick={() => handleAction(onDelete)}
                 className={`group/item flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-200 cursor-pointer ${

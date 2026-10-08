@@ -356,53 +356,130 @@ export const buildTranskripNilaiPdfDoc = async (data) => {
   currentY = doc.lastAutoTable.finalY + 10;
 
   // ─────────────────────────────────────────────────────────────
-  // 5. RINGKASAN NILAI AKHIR (KOTAK RESMI)
+  // 5. RINGKASAN NILAI AKHIR (KOTAK RESMI DINAMIS: 3 KOLOM SEJAJAR & CATATAN BERJUDUL)
   // ─────────────────────────────────────────────────────────────
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin, currentY, contentWidth, 54, 4, 4, "FD");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.setTextColor(11, 20, 66);
-  doc.text("RINGKASAN NILAI AKHIR MAGANG", margin + 10, currentY + 14);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(71, 85, 105);
-
   const nilaiAkhirStr = Number(pn.nilai_akhir_angka || 0).toFixed(2);
   const indeksStr = pn.indeks_nilai_akhir || "A";
   const predikatStr = pn.predikat_akhir || "Sangat Baik";
 
-  doc.text(`• Nilai Akhir Kumulatif : `, margin + 10, currentY + 28);
+  const rawCatatan = pn.catatan_mentor
+    ? String(pn.catatan_mentor)
+        .replace(/^Catatan\s*:\s*/i, "")
+        .replace(/^["“]+|["”]+$/g, "")
+        .trim()
+    : "";
+  const adaCatatan =
+    layoutConfig.tampilkan_catatan_mentor !== false && rawCatatan.length > 0;
+  const catatanTeks = adaCatatan ? `"${rawCatatan}"` : "";
+
+  // Lebar catatan memenuhi dari kiri sampai kanan di dalam kotak (full width)
+  const fullCatatanWidth = contentWidth - 20; // Padding kiri 10, kanan 10
+  const catatanLineHeight = 9.5;
+
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7.5);
+  let splitCatatan = catatanTeks
+    ? doc.splitTextToSize(catatanTeks, fullCatatanWidth)
+    : [];
+
+  // Hitung ruang vertikal yang tersedia di halaman A4 agar dokumen tetap rapi di 1 halaman
+  const maxAllowableBottom = 805; // Batas margin bawah halaman A4 (841.89 - 36)
+  const estimasiTinggiTtdDanBobot = 78; // Tinggi blok tabel bobot dan tanda tangan
+  const jarakSetelahKotak = 12;
+  const maxAvailableBoxHeight = Math.max(
+    42,
+    maxAllowableBottom - currentY - estimasiTinggiTtdDanBobot - jarakSetelahKotak
+  );
+
+  // Tinggi dasar untuk header kotak + 3 metrik horizontal + judul catatan
+  const tinggiHeaderDanMetrik = 34;
+  let tinggiCatatan = splitCatatan.length > 0
+    ? 15 + (splitCatatan.length * catatanLineHeight) + 6
+    : 0;
+
+  let boxHeight = tinggiHeaderDanMetrik + tinggiCatatan;
+  boxHeight = Math.max(adaCatatan ? 56 : 36, boxHeight);
+
+  // Jika catatan luar biasa panjang, proteksi batas baris agar tidak tumpah ke halaman 2
+  if (boxHeight > maxAvailableBoxHeight) {
+    const maxLines = Math.max(2, Math.floor((maxAvailableBoxHeight - tinggiHeaderDanMetrik - 21) / catatanLineHeight));
+    if (splitCatatan.length > maxLines) {
+      splitCatatan = splitCatatan.slice(0, maxLines);
+      splitCatatan[maxLines - 1] = splitCatatan[maxLines - 1].replace(/["”]?\.*$/, '..."');
+      tinggiCatatan = 15 + (splitCatatan.length * catatanLineHeight) + 6;
+      boxHeight = Math.max(36, tinggiHeaderDanMetrik + tinggiCatatan);
+    }
+  }
+
+  const boxY = currentY;
+
+  // Gambar background rounded rectangle dengan tinggi dinamis mengikuti konten
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, boxY, contentWidth, boxHeight, 4, 4, "FD");
+
+  // Judul Kotak
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(11, 20, 66);
+  doc.text("RINGKASAN NILAI AKHIR MAGANG", margin + 10, boxY + 13);
+
+  // ── 3 METRIK SEJAJAR HORIZONTAL ──
+  const metrikY = boxY + 25;
+
+  // 1. Nilai Akhir Kumulatif (Kiri)
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text("• Nilai Akhir Kumulatif : ", margin + 10, metrikY);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(11, 20, 66);
-  doc.text(`${nilaiAkhirStr} (Skala 100)`, margin + 110, currentY + 28);
+  doc.text(`${nilaiAkhirStr} (Skala 100)`, margin + 104, metrikY);
 
+  // 2. Predikat Kelulusan (Tengah)
   doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
   doc.setTextColor(71, 85, 105);
-  doc.text(`• Indeks Huruf Mutu   : `, margin + 10, currentY + 42);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(11, 20, 66);
-  doc.text(`${indeksStr}`, margin + 110, currentY + 42);
-
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(71, 85, 105);
-  doc.text(`• Predikat Kelulusan  : `, margin + 220, currentY + 28);
+  doc.text("• Predikat Kelulusan : ", margin + 205, metrikY);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(16, 185, 129);
-  doc.text(`${predikatStr}`, margin + 310, currentY + 28);
+  doc.text(predikatStr, margin + 292, metrikY);
 
-  if (layoutConfig.tampilkan_catatan_mentor !== false && pn.catatan_mentor) {
+  // 3. Indeks Huruf Mutu (Kanan)
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text("• Indeks Huruf Mutu : ", margin + 380, metrikY);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(11, 20, 66);
+  doc.text(indeksStr, margin + 472, metrikY);
+
+  // ── CATATAN MENTOR DI BAWAH (JUDUL TANPA TITIK & PETIK ISI CATATAN DI BAWAHNYA) ──
+  if (adaCatatan && splitCatatan.length > 0) {
+    // Garis sekat tipis antara 3 metrik dan catatan
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.4);
+    doc.line(margin + 10, boxY + 31, margin + contentWidth - 10, boxY + 31);
+
+    // Judul kolom catatan (tanpa titik bullet)
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text("Catatan Evaluasi Pembimbing :", margin + 10, boxY + 41);
+
+    // Isi petik catatan mentor di bawah judul kolom (memenuhi dari kiri sampai kanan)
     doc.setFont("helvetica", "italic");
     doc.setFontSize(7.5);
     doc.setTextColor(100, 116, 139);
-    doc.text(`"Catatan: ${pn.catatan_mentor}"`, margin + 220, currentY + 42, { maxWidth: 280 });
+    let barisY = boxY + 51;
+    splitCatatan.forEach((baris) => {
+      doc.text(baris, margin + 10, barisY);
+      barisY += catatanLineHeight;
+    });
   }
 
-  // Jarak renggang yang rapi menuju tabel bobot & tanda tangan
-  currentY += 76;
+  // Jarak vertikal dinamis menuju tabel bobot & tanda tangan (selalu di bawah kotak yang meluas)
+  currentY = boxY + boxHeight + 12;
 
   // ─────────────────────────────────────────────────────────────
   // 6. TABEL BOBOT PENILAIAN (KIRI) & TANDA TANGAN KEPALA DINAS (KANAN)
@@ -511,9 +588,13 @@ export const buildTranskripNilaiPdfDoc = async (data) => {
 /**
  * Ekspor Transkrip Nilai Magang Resmi Diskominfo Ponorogo ke file PDF
  */
-export const exportTranskripNilaiPdf = async (data) => {
-  const doc = await buildTranskripNilaiPdfDoc(data);
-  const p = data?.peserta || {};
+export const exportTranskripNilaiPdf = async (data, tplExplicit = null) => {
+  const mergedData = {
+    ...data,
+    template_rapor: tplExplicit || data?.template_rapor || null,
+  };
+  const doc = await buildTranskripNilaiPdfDoc(mergedData);
+  const p = mergedData?.peserta || {};
   const namaFileClean = (p.nama || "Peserta").replace(/[^a-zA-Z0-9]/g, "_");
   doc.save(`Transkrip_Nilai_${namaFileClean}.pdf`);
 };

@@ -1,3 +1,11 @@
+// ==============================================================================
+// CONTROLLER: PENDAFTARAN MAGANG CONTROLLER
+// DESKRIPSI : Pengelolaan formulir dan berkas pendaftaran magang bagi calon peserta,
+//             peninjauan dan verifikasi checklist berkas oleh admin, serta otomatisasi
+//             pembuatan akun magang saat pendaftar dinyatakan diterima.
+// ROLE TERKAIT: [ROLE: PENDAFTAR], [ROLE: ADMIN]
+// ==============================================================================
+
 package controllers
 
 import (
@@ -165,7 +173,9 @@ func gantiFile(pathLama, pathBaru string) {
 	hapusFileLama(lama)
 }
 
-// Fungsi untuk peserta mengirim pendaftaran magang
+// [ROLE: PENDAFTAR]
+// CreatePendaftaranMagang mengirim formulir pendaftaran magang baru beserta dokumen persyaratan (CV, surat pengantar, transkrip, portofolio, pas foto, proposal).
+// Endpoint: POST /api/pendaftaran/magang
 func CreatePendaftaranMagang(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -393,10 +403,10 @@ func CreatePendaftaranMagang(c *gin.Context) {
 		}
 	}()
 
-	// Notifikasi in-app untuk admin (tanpa email)
+	// Notifikasi in-app & email untuk admin: "Pendaftaran Magang Baru"
 	go services.KirimNotifikasiAdmin(
 		"pendaftaran_baru",
-		"Pendaftaran magang baru",
+		"Pendaftaran Magang Baru",
 		fmt.Sprintf("%s (%s) mendaftar untuk bidang %s.",
 			pendaftaran.NamaLengkap, pendaftaran.KategoriPendaftar, pendaftaran.PosisiBidang),
 		"pendaftaran_magangs", &pendaftaran.ID,
@@ -404,10 +414,36 @@ func CreatePendaftaranMagang(c *gin.Context) {
 		"tinggi", false,
 	)
 
+	go func(p models.PendaftaranMagang) {
+		institusi := p.AsalKampus
+		if institusi == "" {
+			institusi = p.AsalSekolah
+		}
+		jurusan := p.ProgramStudi
+		if jurusan == "" {
+			jurusan = p.JurusanSekolah
+		}
+		subject := fmt.Sprintf("Pendaftaran Magang Baru: %s - %s", p.NamaLengkap, p.PosisiBidang)
+		body := emailtemplates.TemplatePendaftaranMagangBaruAdmin(
+			p.NamaLengkap,
+			p.KategoriPendaftar,
+			institusi,
+			jurusan,
+			p.NomorHP,
+			p.PosisiBidang,
+			p.TanggalMulai,
+			p.TanggalSelesai,
+			p.ID,
+		)
+		services.KirimEmailKeSemuaAdmin(subject, body)
+	}(pendaftaran)
+
 	utils.SuccessResponse(c, http.StatusCreated, "Pendaftaran magang berhasil dikirim", pendaftaran)
 }
 
-// Fungsi untuk peserta melihat status pendaftaran magang mereka
+// [ROLE: PENDAFTAR]
+// GetStatusPendaftaranSaya melihat status verifikasi pendaftaran magang dan riwayat catatan review dari admin bagi calon peserta yang sedang login.
+// Endpoint: GET /api/pendaftaran/magang/status
 func GetStatusPendaftaranSaya(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -416,7 +452,7 @@ func GetStatusPendaftaranSaya(c *gin.Context) {
 	}
 
 	var pendaftaran models.PendaftaranMagang
-	if err := config.DB.Where("user_pendaftaran_id = ?", userID).First(&pendaftaran).Error; err != nil {
+	if err := config.DB.Preload("SuratPenerimaan").Where("user_pendaftaran_id = ?", userID).First(&pendaftaran).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "Data pendaftaran belum ditemukan")
 		return
 	}
@@ -424,7 +460,9 @@ func GetStatusPendaftaranSaya(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Data pendaftaran berhasil ditemukan", pendaftaran)
 }
 
-// Fungsi untuk admin melihat semua pendaftaran magang peserta
+// [ROLE: ADMIN]
+// GetAllPendaftaranMagang mengambil seluruh daftar data pendaftaran magang peserta untuk ditinjau oleh admin.
+// Endpoint: GET /api/manajemen/admin/pendaftaran
 func GetAllPendaftaranMagang(c *gin.Context) {
 	var pendaftarans []models.PendaftaranMagang
 
@@ -445,7 +483,9 @@ type UpdateStatusPendaftaranInput struct {
 	TanggalMulai      string `json:"tanggal_mulai"`
 	Silent            bool   `json:"silent"` // true = hanya simpan progres, jangan kirim email/notifikasi
 }
-// Fungsi untuk admin mengubah status pendaftaran magang peserta
+// [ROLE: ADMIN]
+// UpdateStatusPendaftaranMagang mengubah status pendaftaran peserta (menunggu, revisi, diterima, ditolak), menyimpan catatan checklist verifikasi berkas, serta otomatis membuat akun magang jika status diterima.
+// Endpoint: PUT /api/manajemen/admin/pendaftaran/:id/status
 func UpdateStatusPendaftaranMagang(c *gin.Context) {
 	id := c.Param("id")
 
@@ -605,7 +645,9 @@ func UpdateStatusPendaftaranMagang(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Status pendaftaran berhasil diperbarui", pendaftaran)
 }
 
-// Fungsi untuk peserta mengirim revisi dokumen jika status pendaftaran adalah revisi
+// [ROLE: PENDAFTAR]
+// RevisiDokumenPendaftaranMagang mengunggah berkas revisi dokumen persyaratan yang diminta admin dan mengembalikan status verifikasi pendaftaran ke tahap menunggu.
+// Endpoint: PUT /api/pendaftaran/magang/revisi
 func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 	userID, ok := getUserIDFromContext(c)
 	if !ok {
@@ -805,9 +847,34 @@ func RevisiDokumenPendaftaranMagang(c *gin.Context) {
 			"tinggi", true,
 		)
 
+		// Email tanda terima konfirmasi ke pemohon pendaftaran
+		go func(em, nm string) {
+			subject := "Revisi Berkas Pendaftaran Berhasil Dikirim"
+			body := emailtemplates.TemplateRevisiDokumenBerhasil(nm)
+			if err := services.SendEmail(em, subject, body); err != nil {
+				log.Println("Gagal mengirim email tanda terima revisi:", err)
+			}
+		}(pendaftaran.Email, pendaftaran.NamaLengkap)
+
+		// Email pemberitahuan ke seluruh admin agar segera memverifikasi
+		go func(p models.PendaftaranMagang, ctt string) {
+			subject := fmt.Sprintf("Berkas Revisi Masuk: %s - %s", p.NamaLengkap, p.PosisiBidang)
+			body := emailtemplates.TemplateRevisiDokumenMasukAdmin(
+				p.NamaLengkap,
+				p.KategoriPendaftar,
+				p.PosisiBidang,
+				ctt,
+				p.ID,
+			)
+			services.KirimEmailKeSemuaAdmin(subject, body)
+		}(pendaftaran, pendaftaran.CatatanPeserta)
+
 		utils.SuccessResponse(c, http.StatusOK, "Revisi dokumen berhasil dikirim dan menunggu review ulang admin", pendaftaran)
 	}
 
+// [ROLE: ADMIN]
+// GetDetailPendaftaranMagang mengambil rincian lengkap data pendaftaran calon peserta magang berdasarkan ID.
+// Endpoint: GET /api/manajemen/admin/pendaftaran/:id
 func GetDetailPendaftaranMagang(c *gin.Context) {
 	id := c.Param("id")
 

@@ -318,26 +318,39 @@ export const TemplateRaporPreview = ({ template, base = 2.5, kategori = "mahasis
         <p className="font-bold text-[#0B1442]" style={{ fontSize: px(1.05) }}>
           RINGKASAN NILAI AKHIR MAGANG
         </p>
-        <div className="grid grid-cols-2 gap-2" style={{ marginTop: px(0.5), fontSize: px(0.95), lineHeight: 1.4 }}>
+        {/* Tiga Metrik Sejajar Horizontal */}
+        <div
+          className="grid grid-cols-3 gap-2 border-b border-slate-200"
+          style={{ marginTop: px(0.4), paddingBottom: px(0.5), fontSize: px(0.95), lineHeight: 1.4 }}
+        >
           <div>
-            <p className="text-slate-600">
-              • Nilai Akhir Kumulatif : <span className="font-bold text-[#0B1442]">90.55 (Skala 100)</span>
-            </p>
-            <p className="text-slate-600" style={{ marginTop: px(0.2) }}>
-              • Indeks Huruf Mutu : <span className="font-bold text-[#0B1442]">A</span>
-            </p>
+            <span className="text-slate-600">• Nilai Akhir Kumulatif : </span>
+            <span className="font-bold text-[#0B1442]">90.55 (Skala 100)</span>
           </div>
           <div>
-            <p className="text-slate-600">
-              • Predikat Kelulusan : <span className="font-bold text-emerald-600">Sangat Baik</span>
-            </p>
-            {layoutConfig.tampilkan_catatan_mentor !== false && (
-              <p className="italic text-slate-500 line-clamp-2" style={{ marginTop: px(0.2), fontSize: px(0.85) }}>
-                "Catatan: Peserta menunjukkan kedisiplinan yang tinggi, inisiatif yang kuat, serta mampu bekerja sama secara produktif dalam tim pengembangan sistem kedinasan."
-              </p>
-            )}
+            <span className="text-slate-600">• Predikat Kelulusan : </span>
+            <span className="font-bold text-emerald-600">Sangat Baik</span>
+          </div>
+          <div>
+            <span className="text-slate-600">• Indeks Huruf Mutu : </span>
+            <span className="font-bold text-[#0B1442]">A</span>
           </div>
         </div>
+
+        {/* Catatan Evaluasi: Judul Kolom (Tanpa Titik) & Isi Kutipan di Bawahnya */}
+        {layoutConfig.tampilkan_catatan_mentor !== false && (
+          <div style={{ marginTop: px(0.35) }}>
+            <p className="text-slate-600 font-medium" style={{ fontSize: px(0.9) }}>
+              Catatan Evaluasi Pembimbing :
+            </p>
+            <p
+              className="italic text-slate-500 w-full"
+              style={{ marginTop: px(0.12), fontSize: px(0.85), lineHeight: 1.4 }}
+            >
+              "Peserta menunjukkan kedisiplinan yang tinggi, inisiatif yang kuat, serta mampu bekerja sama secara produktif dalam tim pengembangan sistem kedinasan."
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 6. Tabel Bobot Penilaian (Kiri) & Tanda Tangan Kepala Dinas (Kanan) */}

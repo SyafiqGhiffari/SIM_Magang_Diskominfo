@@ -1,3 +1,10 @@
+// ==============================================================================
+// CONTROLLER: Akun Peserta Controller
+// DESKRIPSI: Mengelola pembuatan akun, penugasan mentor, reset kata sandi,
+//            dan manajemen berkas dokumen peserta magang aktif.
+// ROLE TERKAIT: [ROLE: ADMIN]
+// ==============================================================================
+
 package controllers
 
 import (
@@ -23,6 +30,7 @@ import (
 
 const passwordCharset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
 
+// Helper internal: membuat kata sandi acak untuk inisialisasi / reset
 func generateRandomPassword(length int) string {
 	rand.Seed(time.Now().UnixNano())
 	b := make([]byte, length)
@@ -32,9 +40,9 @@ func generateRandomPassword(length int) string {
 	return string(b)
 }
 
-// CreateAkunPeserta — dipanggil admin dari tabel Kelola Pendaftaran sebagai fallback jika
-// ada data pendaftaran diterima yang belum memiliki akun UserManajemen.
-// Menggunakan email aktif pribadi peserta dan kata sandi dari pendaftaran.
+// [ROLE: ADMIN]
+// CreateAkunPeserta membuat akun login UserManajemen untuk peserta yang sudah berstatus 'diterima'.
+// Endpoint: POST /api/manajemen/admin/akun-peserta/buat/:id
 func CreateAkunPeserta(c *gin.Context) {
 	pendaftaranID := c.Param("id")
 
@@ -117,8 +125,10 @@ func CreateAkunPeserta(c *gin.Context) {
 	})
 }
 
-// GetAllAkunPeserta — daftar semua akun manajemen dengan role=peserta,
-// dilengkapi info pendaftaran magang dan mentor pembimbing terkait.
+// [ROLE: ADMIN]
+// GetAllAkunPeserta mengambil daftar semua akun manajemen dengan role 'peserta',
+// dilengkapi informasi pendaftaran magang dan mentor pembimbing terkait.
+// Endpoint: GET /api/manajemen/admin/akun-peserta
 func GetAllAkunPeserta(c *gin.Context) {
 	var users []models.UserManajemen
 	if err := config.DB.Where("role = ?", "peserta").Order("created_at desc").Find(&users).Error; err != nil {
@@ -198,59 +208,11 @@ func GetAllAkunPeserta(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Data akun peserta berhasil diambil", result)
 }
 
-// ResetPasswordAkunPeserta — admin membuat ulang password acak untuk akun peserta,
-// lalu mengirimkannya ke email aktif peserta tersebut.
-func ResetPasswordAkunPeserta(c *gin.Context) {
-	id := c.Param("id")
 
-	var user models.UserManajemen
-	if err := config.DB.First(&user, id).Error; err != nil {
-		utils.ErrorResponse(c, http.StatusNotFound, "Akun tidak ditemukan")
-		return
-	}
-	if user.Role != "peserta" {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Reset password ini khusus untuk akun peserta")
-		return
-	}
-
-	var pendaftaran models.PendaftaranMagang
-	if err := config.DB.Where("akun_peserta_id = ?", user.ID).First(&pendaftaran).Error; err != nil {
-		utils.ErrorResponse(c, http.StatusNotFound, "Data pendaftaran terkait akun ini tidak ditemukan")
-		return
-	}
-
-	newPassword := generateRandomPassword(10)
-	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengenkripsi password")
-		return
-	}
-
-	user.Password = string(hashed)
-	if err := config.DB.Save(&user).Error; err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui password")
-		return
-	}
-
-	// Sinkronkan ke akun UserPendaftaran jika ada
-	if pendaftaran.UserPendaftaranID > 0 {
-		config.DB.Model(&models.UserPendaftaran{}).Where("id = ?", pendaftaran.UserPendaftaranID).Update("password", string(hashed))
-	}
-
-	go func() {
-		subject := emailtemplates.SubjectResetPasswordPeserta()
-		body := emailtemplates.TemplateResetPasswordPeserta(user.Nama, user.Email, newPassword)
-
-		if err := services.SendEmail(pendaftaran.Email, subject, body); err != nil {
-			fmt.Println("Gagal mengirim email reset password:", err)
-		}
-	}()
-
-	utils.SuccessResponse(c, http.StatusOK, "Password berhasil direset dan dikirim ke email peserta", nil)
-}
-
-// GetDetailAkunPeserta — data lengkap satu akun peserta untuk modal Detail di
-// halaman Kelola Peserta, digabung dari UserManajemen + PendaftaranMagang terkait.
+// [ROLE: ADMIN]
+// GetDetailAkunPeserta mengambil data lengkap satu akun peserta untuk modal Detail di
+// halaman Kelola Peserta (gabungan UserManajemen + PendaftaranMagang).
+// Endpoint: GET /api/manajemen/admin/akun-peserta/:id
 func GetDetailAkunPeserta(c *gin.Context) {
 	id := c.Param("id")
 
@@ -286,8 +248,10 @@ type AssignMentorPesertaInput struct {
 	MentorID *uint `json:"mentor_id"`
 }
 
-// AssignMentorPeserta — admin menetapkan mentor pembimbing untuk peserta tertentu.
-// Mentor yang dipilih WAJIB berasal dari bidang yang sama dengan bidang peserta.
+// [ROLE: ADMIN]
+// AssignMentorPeserta menetapkan / memetakan mentor pembimbing untuk peserta magang.
+// Mentor yang dipilih harus berada pada divisi/bidang yang sesuai.
+// Endpoint: PUT /api/manajemen/admin/akun-peserta/:id/mentor
 func AssignMentorPeserta(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -346,11 +310,12 @@ func AssignMentorPeserta(c *gin.Context) {
 		return
 	}
 
-	// Kirim notifikasi ke email peserta setiap kali
-	// mentor pembimbing ditentukan/diganti, supaya peserta tahu siapa mentornya.
+	// Kirim notifikasi ke email peserta dan mentor setiap kali
+	// mentor pembimbing ditentukan/diganti
 	if input.MentorID != nil {
 		var mentorTerpilih models.UserManajemen
 		if err := config.DB.First(&mentorTerpilih, *input.MentorID).Error; err == nil {
+			// 1. Notifikasi ke email peserta
 			go func() {
 				subject := emailtemplates.SubjectMentorDitugaskan()
 				body := emailtemplates.TemplateMentorDitugaskan(
@@ -360,9 +325,48 @@ func AssignMentorPeserta(c *gin.Context) {
 					pendaftaran.PosisiBidang,
 				)
 				if err := services.SendEmail(pendaftaran.Email, subject, body); err != nil {
-					fmt.Println("Gagal mengirim email penugasan mentor:", err)
+					fmt.Println("Gagal mengirim email penugasan mentor ke peserta:", err)
 				}
 			}()
+
+			// 2. Notifikasi in-app & email ke mentor bersangkutan
+			go func(m models.UserManajemen, p models.PendaftaranMagang) {
+				institusi := p.AsalKampus
+				if institusi == "" {
+					institusi = p.AsalSekolah
+				}
+				jurusan := p.ProgramStudi
+				if jurusan == "" {
+					jurusan = p.JurusanSekolah
+				}
+
+				mID := m.ID
+				services.KirimNotifikasi(services.NotifikasiInput{
+					TargetRole:   "mentor",
+					TargetUserID: &mID,
+					Tipe:         "penugasan_peserta_baru",
+					Prioritas:    "tinggi",
+					Judul:        "Penugasan Peserta Bimbingan Baru",
+					Pesan:        fmt.Sprintf("Anda telah ditugaskan sebagai mentor pembimbing untuk peserta %s (%s - %s).", p.NamaLengkap, p.PosisiBidang, institusi),
+					RefTabel:     "pendaftaran_magangs",
+					RefID:        &p.ID,
+					UrlTujuan:    "/mentor/presensi",
+				})
+
+				if m.Email != "" {
+					subject := "Penugasan Peserta Bimbingan Baru: " + p.NamaLengkap
+					body := emailtemplates.TemplatePenugasanMentorBaru(
+						m.Nama,
+						p.NamaLengkap,
+						institusi,
+						jurusan,
+						p.PosisiBidang,
+						p.TanggalMulai,
+						p.TanggalSelesai,
+					)
+					_ = services.SendEmail(m.Email, subject, body)
+				}
+			}(mentorTerpilih, pendaftaran)
 		}
 	}
 
@@ -437,7 +441,9 @@ func simpanDokumenPeserta(c *gin.Context, file *multipart.FileHeader, jenis stri
 	return strings.ReplaceAll(filePath, "\\", "/"), nil
 }
 
-// UploadDokumenPeserta menangani pengunggahan dokumen lampiran dari profil akun peserta
+// [ROLE: PESERTA]
+// UploadDokumenPeserta menangani pengunggahan berkas dokumen lampiran (CV, surat pengantar, transkrip, portofolio, pas foto, dll) langsung dari akun peserta.
+// Endpoint: POST /api/manajemen/peserta/dokumen
 func UploadDokumenPeserta(c *gin.Context) {
 	pesertaID, ok := pesertaIDDariToken(c)
 	if !ok {
@@ -500,9 +506,9 @@ func UploadDokumenPeserta(c *gin.Context) {
 	case "file_pas_foto":
 		oldFile = pendaftaran.FilePasFoto
 		pendaftaran.FilePasFoto = savedPath
-		// Jika user belum punya foto profil, sinkronkan
+		// Sinkronkan selalu ke foto profil user manajemen peserta
 		var user models.UserManajemen
-		if config.DB.First(&user, pesertaID).Error == nil && user.FotoProfil == "" {
+		if config.DB.First(&user, pesertaID).Error == nil {
 			user.FotoProfil = savedPath
 			config.DB.Save(&user)
 		}

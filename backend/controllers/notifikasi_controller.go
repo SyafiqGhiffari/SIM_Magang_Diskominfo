@@ -1,3 +1,11 @@
+// ==============================================================================
+// CONTROLLER: NOTIFIKASI CONTROLLER
+// DESKRIPSI : Pengelolaan sistem notifikasi in-app untuk seluruh pengguna manajemen
+//             (Admin, Mentor, Peserta). Termasuk sinkronisasi otomatis notifikasi
+//             tugas, izin, laporan akhir, penandaan baca, dan pembersihan notifikasi.
+// ROLE TERKAIT: [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// ==============================================================================
+
 package controllers
 
 import (
@@ -10,6 +18,7 @@ import (
 
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
+	"sim-magang-backend/services"
 	"sim-magang-backend/utils"
 
 	"github.com/gin-gonic/gin"
@@ -373,7 +382,135 @@ func sinkronkanNotifikasiPesertaLaporan(pesertaID uint) {
 	}
 }
 
-// GET /api/manajemen/notifikasi?only_unread=true&limit=20
+// sinkronkanNotifikasiPesertaPresensi memeriksa kehadiran peserta hari ini dan membuat
+// notifikasi pengingat presensi masuk / peringatan belum presensi / pengingat pulang.
+func sinkronkanNotifikasiPesertaPresensi(pesertaID uint) {
+	kal, err := utils.MuatKalenderKerja(config.DB)
+	if err != nil {
+		return
+	}
+	tanggal := utils.TanggalHariIni()
+	sekarang := utils.SekarangWIB()
+	info := kal.CekHari(tanggal)
+	if !info.HariKerja {
+		return
+	}
+
+	// Cek apakah peserta aktif
+	var pendaftaran models.PendaftaranMagang
+	if err := config.DB.Where("akun_peserta_id = ? AND status_pendaftaran = 'diterima'", pesertaID).
+		Order("id DESC").First(&pendaftaran).Error; err != nil {
+		return
+	}
+
+	// Cek periode magang
+	if pendaftaran.TanggalMulai != "" && tanggal < normalisasiTanggal(pendaftaran.TanggalMulai) {
+		return
+	}
+	if pendaftaran.TanggalSelesai != "" && tanggal > normalisasiTanggal(pendaftaran.TanggalSelesai) {
+		return
+	}
+
+	// Cek apakah ada izin/sakit yang disetujui pada hari ini
+	var countIzin int64
+	config.DB.Model(&models.PengajuanIzin{}).
+		Where("peserta_id = ? AND status = 'disetujui' AND ? BETWEEN tanggal_mulai AND tanggal_selesai", pesertaID, tanggal).
+		Count(&countIzin)
+	if countIzin > 0 {
+		return
+	}
+
+	// Cek baris presensi hari ini
+	var presensi models.Presensi
+	errPresensi := config.DB.Where("peserta_id = ? AND tanggal = ?", pesertaID, tanggal).First(&presensi).Error
+
+	jamStr := utils.JamSekarang()
+	jamMasukJadwal := "07:30"
+	if info.JamKerja.JamMasuk != "" {
+		jamMasukJadwal = info.JamKerja.JamMasuk
+	}
+	jamPulangJadwal := "15:30"
+	if info.JamKerja.JamPulang != "" {
+		jamPulangJadwal = info.JamKerja.JamPulang
+	}
+
+	// KONDISI 1: Belum presensi masuk
+	if errPresensi != nil || presensi.JamMasuk == nil || *presensi.JamMasuk == "" {
+		if jamStr >= "07:15" && jamStr < jamPulangJadwal {
+			var countNotif int64
+			config.DB.Model(&models.Notifikasi{}).
+				Where("target_role = 'peserta' AND target_user_id = ? AND tipe = 'presensi_masuk' AND DATE(created_at) = ?", pesertaID, tanggal).
+				Count(&countNotif)
+			if countNotif == 0 {
+				config.DB.Create(&models.Notifikasi{
+					TargetRole:   "peserta",
+					TargetUserID: &pesertaID,
+					Tipe:         "presensi_masuk",
+					Prioritas:    "normal",
+					Judul:        "Pengingat Presensi Masuk Hari Ini",
+					Pesan:        fmt.Sprintf("Jam kerja operasional telah dimulai (jadwal masuk pukul %s WIB). Harap segera melakukan presensi masuk dan swafoto di SIM Magang.", jamMasukJadwal),
+					RefTabel:     "presensis",
+					UrlTujuan:    "/peserta/presensi",
+				})
+			}
+		} else if jamStr >= jamPulangJadwal {
+			// Jam sore hingga malam (misal pukul 15:30 - 23:59)
+			var countNotif int64
+			config.DB.Model(&models.Notifikasi{}).
+				Where("target_role = 'peserta' AND target_user_id = ? AND tipe = 'peringatan_belum_presensi' AND DATE(created_at) = ?", pesertaID, tanggal).
+				Count(&countNotif)
+			if countNotif == 0 {
+				config.DB.Create(&models.Notifikasi{
+					TargetRole:   "peserta",
+					TargetUserID: &pesertaID,
+					Tipe:         "peringatan_belum_presensi",
+					Prioritas:    "tinggi",
+					Judul:        "Peringatan: Anda Belum Melakukan Presensi Hari Ini",
+					Pesan:        "Sistem mendeteksi Anda belum melakukan presensi hingga saat ini. Segera lakukan presensi sebelum hari berganti agar tidak tercatat alpa.",
+					RefTabel:     "presensis",
+					UrlTujuan:    "/peserta/presensi",
+				})
+			}
+		}
+	} else {
+		// Sudah presensi masuk!
+		// Tandai pengingat masuk & peringatan belum presensi hari ini sebagai sudah dibaca jika belum dibaca
+		config.DB.Model(&models.Notifikasi{}).
+			Where("target_role = 'peserta' AND target_user_id = ? AND tipe IN ('presensi_masuk', 'peringatan_belum_presensi') AND DATE(created_at) = ? AND dibaca_pada IS NULL", pesertaID, tanggal).
+			Update("dibaca_pada", sekarang)
+
+		// KONDISI 2: Sudah masuk, tetapi belum pulang setelah jam kepulangan
+		if (presensi.JamPulang == nil || *presensi.JamPulang == "") && jamStr >= jamPulangJadwal {
+			var countNotif int64
+			config.DB.Model(&models.Notifikasi{}).
+				Where("target_role = 'peserta' AND target_user_id = ? AND tipe = 'presensi_pulang' AND DATE(created_at) = ?", pesertaID, tanggal).
+				Count(&countNotif)
+			if countNotif == 0 {
+				presID := presensi.ID
+				config.DB.Create(&models.Notifikasi{
+					TargetRole:   "peserta",
+					TargetUserID: &pesertaID,
+					Tipe:         "presensi_pulang",
+					Prioritas:    "normal",
+					Judul:        "Pengingat Presensi Pulang & Logbook",
+					Pesan:        fmt.Sprintf("Jam operasional kantor telah berakhir (mulai %s WIB). Silakan lakukan presensi pulang dan catat capaian logbook harian Anda.", jamPulangJadwal),
+					RefTabel:     "presensis",
+					RefID:        &presID,
+					UrlTujuan:    "/peserta/presensi",
+				})
+			}
+		} else if presensi.JamPulang != nil && *presensi.JamPulang != "" {
+			// Sudah pulang! Tandai notif presensi_pulang hari ini sebagai sudah dibaca
+			config.DB.Model(&models.Notifikasi{}).
+				Where("target_role = 'peserta' AND target_user_id = ? AND tipe = 'presensi_pulang' AND DATE(created_at) = ? AND dibaca_pada IS NULL", pesertaID, tanggal).
+				Update("dibaca_pada", sekarang)
+		}
+	}
+}
+
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// GetNotifikasiSaya mengambil daftar notifikasi in-app milik pengguna yang sedang login (dapat difilter hanya yang belum dibaca).
+// Endpoint: GET /api/manajemen/notifikasi
 func GetNotifikasiSaya(c *gin.Context) {
 	role, userID := filterNotifikasi(c)
 
@@ -383,6 +520,9 @@ func GetNotifikasiSaya(c *gin.Context) {
 		sinkronkanNotifikasiMentorLaporan(userID)
 	} else if role == "peserta" && userID > 0 {
 		sinkronkanNotifikasiPesertaLaporan(userID)
+		sinkronkanNotifikasiPesertaPresensi(userID)
+	} else if role == "admin" || role == "super_admin" {
+		services.JalankanPengingatAdmin()
 	}
 
 	limit := 20
@@ -418,7 +558,9 @@ func GetNotifikasiSaya(c *gin.Context) {
 	})
 }
 
-// GET /api/manajemen/notifikasi/unread-count
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// GetUnreadNotifikasiCount menghitung total notifikasi yang belum dibaca untuk indikator badge merah lonceng navbar.
+// Endpoint: GET /api/manajemen/notifikasi/unread-count
 func GetUnreadNotifikasiCount(c *gin.Context) {
 	role, userID := filterNotifikasi(c)
 
@@ -428,6 +570,9 @@ func GetUnreadNotifikasiCount(c *gin.Context) {
 		sinkronkanNotifikasiMentorLaporan(userID)
 	} else if role == "peserta" && userID > 0 {
 		sinkronkanNotifikasiPesertaLaporan(userID)
+		sinkronkanNotifikasiPesertaPresensi(userID)
+	} else if role == "admin" || role == "super_admin" {
+		services.JalankanPengingatAdmin()
 	}
 
 	var unread int64
@@ -438,7 +583,9 @@ func GetUnreadNotifikasiCount(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Jumlah notifikasi belum dibaca", gin.H{"unread_count": unread})
 }
 
-// PUT /api/manajemen/notifikasi/:id/baca
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// BacaNotifikasi menandai satu notifikasi tertentu sebagai telah dibaca berdasarkan ID notifikasi.
+// Endpoint: PUT /api/manajemen/notifikasi/:id/baca
 func BacaNotifikasi(c *gin.Context) {
 	role, userID := filterNotifikasi(c)
 	id := c.Param("id")
@@ -461,7 +608,9 @@ func BacaNotifikasi(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Notifikasi ditandai sudah dibaca", notif)
 }
 
-// PUT /api/manajemen/notifikasi/baca-semua
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// BacaSemuaNotifikasi menandai seluruh notifikasi yang belum dibaca milik pengguna menjadi sudah dibaca.
+// Endpoint: PUT /api/manajemen/notifikasi/baca-semua
 func BacaSemuaNotifikasi(c *gin.Context) {
 	role, userID := filterNotifikasi(c)
 
@@ -475,7 +624,9 @@ func BacaSemuaNotifikasi(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Semua notifikasi ditandai sudah dibaca", nil)
 }
 
-// DELETE /api/manajemen/notifikasi/:id
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// HapusNotifikasi menghapus satu data notifikasi tertentu milik pengguna berdasarkan ID.
+// Endpoint: DELETE /api/manajemen/notifikasi/:id
 func HapusNotifikasi(c *gin.Context) {
 	role, userID := filterNotifikasi(c)
 
@@ -490,9 +641,9 @@ func HapusNotifikasi(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Notifikasi berhasil dihapus", nil)
 }
 
-// DELETE /api/manajemen/notifikasi/semua/hapus
-// Pola URL "/semua/hapus" dipakai (bukan "/semua") agar tidak bertabrakan
-// dengan rute wildcard "/:id" di pohon router Gin.
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// HapusSemuaNotifikasi menghapus seluruh riwayat notifikasi milik pengguna yang sedang login.
+// Endpoint: DELETE /api/manajemen/notifikasi/semua/hapus
 func HapusSemuaNotifikasi(c *gin.Context) {
 	role, userID := filterNotifikasi(c)
 
@@ -507,8 +658,9 @@ func HapusSemuaNotifikasi(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Semua notifikasi berhasil dihapus", nil)
 }
 
-// POST /api/manajemen/notifikasi/test
-// Endpoint untuk mengirim notifikasi uji coba ke akun sendiri
+// [ROLE: SEMUA USER MANAJEMEN: ADMIN, MENTOR, PESERTA]
+// KirimNotifikasiTest mengirimkan notifikasi simulasi/uji coba ke akun sendiri untuk memverifikasi fitur lonceng notifikasi web.
+// Endpoint: POST /api/manajemen/notifikasi/test
 func KirimNotifikasiTest(c *gin.Context) {
 	role, userID := filterNotifikasi(c)
 

@@ -193,6 +193,17 @@ const MentorLayout = ({ children, searchValue = "", onSearchChange }) => {
       }
     };
     fetchProfile();
+
+    const handleProfileSync = () => {
+      const u = getUser();
+      if (u) setProfile((prev) => ({ ...prev, ...u }));
+    };
+    window.addEventListener("sim_auth_user_updated", handleProfileSync);
+    window.addEventListener("storage", handleProfileSync);
+    return () => {
+      window.removeEventListener("sim_auth_user_updated", handleProfileSync);
+      window.removeEventListener("storage", handleProfileSync);
+    };
   }, [navigate]);
 
   const handleLogout = async () => {

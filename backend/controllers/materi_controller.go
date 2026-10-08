@@ -1,3 +1,11 @@
+// ==============================================================================
+// CONTROLLER: MATERI CONTROLLER
+// DESKRIPSI : Pengelolaan modul dan materi pembelajaran bimbingan magang.
+//             Mencakup pembuatan materi, kategori, berkas lampiran, penentuan
+//             target akses (semua/spesifik jenjang/peserta), serta akses baca peserta.
+// ROLE TERKAIT: [ROLE: MENTOR], [ROLE: PESERTA]
+// ==============================================================================
+
 package controllers
 
 import (
@@ -64,7 +72,13 @@ func simpanFileMateri(c *gin.Context, file *multipart.FileHeader, mentorID uint)
 	return strings.ReplaceAll(filePath, "\\", "/"), nil
 }
 
-// ── 1. GET DAFTAR MATERI MENTOR ──────────────────────────────────────────────
+// ==============================================================================
+// ── BAGIAN MENTOR: KELOLA MATERI PEMBELAJARAN ─────────────────────────────────
+// ==============================================================================
+
+// [ROLE: MENTOR]
+// GetMateriMentor mengambil daftar seluruh modul/materi bimbingan yang telah dibuat oleh mentor yang sedang login.
+// Endpoint: GET /api/manajemen/mentor/materi
 func GetMateriMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -81,6 +95,39 @@ func GetMateriMentor(c *gin.Context) {
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memuat daftar materi")
 		return
+	}
+
+	// Pastikan foto profil peserta akses terisi (fallback ke pas foto pendaftaran jika kosong)
+	var allMateriUserIDs []uint
+	for _, m := range materiList {
+		for _, u := range m.PesertaAkses {
+			allMateriUserIDs = append(allMateriUserIDs, u.ID)
+		}
+	}
+	if len(allMateriUserIDs) > 0 {
+		var pendaftaransFoto []struct {
+			AkunPesertaID uint   `gorm:"column:akun_peserta_id"`
+			FilePasFoto   string `gorm:"column:file_pas_foto"`
+		}
+		config.DB.Model(&models.PendaftaranMagang{}).
+			Select("akun_peserta_id, file_pas_foto").
+			Where("akun_peserta_id IN ? AND file_pas_foto != ''", allMateriUserIDs).
+			Scan(&pendaftaransFoto)
+
+		fotoMap := make(map[uint]string)
+		for _, pf := range pendaftaransFoto {
+			fotoMap[pf.AkunPesertaID] = pf.FilePasFoto
+		}
+
+		for i := range materiList {
+			for j := range materiList[i].PesertaAkses {
+				if materiList[i].PesertaAkses[j].FotoProfil == "" {
+					if f, ok := fotoMap[materiList[i].PesertaAkses[j].ID]; ok {
+						materiList[i].PesertaAkses[j].FotoProfil = f
+					}
+				}
+			}
+		}
 	}
 
 	// Kategori unik & hitungan statistik
@@ -124,16 +171,18 @@ func GetMateriMentor(c *gin.Context) {
 	})
 
 	utils.SuccessResponse(c, http.StatusOK, "Daftar materi bimbingan berhasil dimuat", gin.H{
-		"total_materi":           len(materiList),
+		"total_materi":          len(materiList),
 		"total_semua_bimbingan": totalSemuaBimbingan,
-		"total_spesifik":        totalSpesifik,
-		"total_kategori":        len(daftarKategori),
-		"kategori":              daftarKategori,
-		"materi":                materiList,
+		"total_spesifik":       totalSpesifik,
+		"total_kategori":       len(daftarKategori),
+		"kategori":             daftarKategori,
+		"materi":               materiList,
 	})
 }
 
-// ── GET DAFTAR KATEGORI MATERI MENTOR ────────────────────────────────────────
+// [ROLE: MENTOR]
+// GetKategoriMateri mengambil daftar kategori materi bimbingan beserta jumlah modul aktif per kategori.
+// Endpoint: GET /api/manajemen/mentor/materi/kategori
 func GetKategoriMateri(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -184,7 +233,9 @@ func GetKategoriMateri(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Daftar kategori materi berhasil dimuat", daftar)
 }
 
-// ── SIMPAN KATEGORI MATERI BARU ──────────────────────────────────────────────
+// [ROLE: MENTOR]
+// CreateKategoriMateri menambahkan kategori modul materi pembelajaran baru untuk mentor.
+// Endpoint: POST /api/manajemen/mentor/materi/kategori
 func CreateKategoriMateri(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -228,7 +279,9 @@ func CreateKategoriMateri(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusCreated, "Kategori materi berhasil disimpan ke database", kategoriBaru)
 }
 
-// ── 2. GET PESERTA BIMBINGAN KHUSUS FORM MATERI ──────────────────────────────
+// [ROLE: MENTOR]
+// GetPesertaBimbinganUntukMateri mengambil daftar peserta bimbingan aktif untuk opsi pemilihan target spesifik saat membuat/mengedit materi.
+// Endpoint: GET /api/manajemen/mentor/materi/peserta-bimbingan
 func GetPesertaBimbinganUntukMateri(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -259,11 +312,28 @@ func GetPesertaBimbinganUntukMateri(c *gin.Context) {
 
 	var hasil []PesertaItem
 	sudahAda := make(map[uint]bool)
+	now := time.Now().Truncate(24 * time.Hour)
 
 	for _, p := range pendaftaranList {
 		if p.AkunPesertaID == nil || sudahAda[*p.AkunPesertaID] {
 			continue
 		}
+
+		// Jangan tampilkan peserta yang sudah selesai magang atau akun nonaktif
+		if p.AkunPeserta != nil {
+			if p.AkunPeserta.StatusMagang == "selesai" || p.AkunPeserta.StatusAkun != "aktif" {
+				continue
+			}
+		}
+		if p.TanggalSelesai != "" {
+			datePart := strings.Split(p.TanggalSelesai, "T")[0]
+			if tSelesai, err := time.Parse("2006-01-02", datePart); err == nil {
+				if now.After(tSelesai) {
+					continue
+				}
+			}
+		}
+
 		sudahAda[*p.AkunPesertaID] = true
 
 		foto := ""
@@ -293,7 +363,9 @@ func GetPesertaBimbinganUntukMateri(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Daftar peserta bimbingan berhasil diambil", hasil)
 }
 
-// ── 3. TAMBAH MATERI BARU MENTOR ─────────────────────────────────────────────
+// [ROLE: MENTOR]
+// CreateMateriMentor membuat modul materi pembelajaran baru, mengunggah lampiran dokumen/modul, dan mengirimkan notifikasi in-app ke peserta bimbingan.
+// Endpoint: POST /api/manajemen/mentor/materi
 func CreateMateriMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -393,11 +465,19 @@ func CreateMateriMentor(c *gin.Context) {
 			}
 		}
 	} else if targetPeserta == "semua_bimbingan" {
-		// Dapatkan semua peserta bimbingan untuk kirim notifikasi
+		// Dapatkan semua peserta bimbingan aktif untuk kirim notifikasi (tidak kirim ke alumni)
+		hariIni := utils.TanggalHariIni()
 		var pendaftarans []models.PendaftaranMagang
-		config.DB.Select("akun_peserta_id").
-			Where("mentor_id = ? AND status_pendaftaran = 'diterima' AND akun_peserta_id IS NOT NULL", mentorID).
-			Find(&pendaftarans)
+		q := config.DB.
+			Joins("JOIN user_manajemens u ON u.id = pendaftaran_magangs.akun_peserta_id").
+			Where("pendaftaran_magangs.mentor_id = ? AND pendaftaran_magangs.status_pendaftaran = 'diterima' AND pendaftaran_magangs.akun_peserta_id IS NOT NULL", mentorID).
+			Where("u.status_magang = 'aktif' AND u.status_akun = 'aktif'").
+			Where("pendaftaran_magangs.tanggal_selesai IS NULL OR DATE(pendaftaran_magangs.tanggal_selesai) >= ?", hariIni)
+
+		if targetJenjang != "" && targetJenjang != "semua" {
+			q = q.Where("LOWER(pendaftaran_magangs.kategori_pendaftar) = ?", strings.ToLower(targetJenjang))
+		}
+		q.Select("pendaftaran_magangs.akun_peserta_id").Find(&pendaftarans)
 		for _, p := range pendaftarans {
 			if p.AkunPesertaID != nil {
 				targetUserIDs = append(targetUserIDs, *p.AkunPesertaID)
@@ -418,7 +498,7 @@ func CreateMateriMentor(c *gin.Context) {
 				Pesan:        fmt.Sprintf("Mentor membagikan materi baru: \"%s\". Buka modul untuk mempelajarinya.", judulMateri),
 				RefTabel:     "materi_pembelajarans",
 				RefID:        &mID,
-				UrlTujuan:    "/peserta/materi",
+				UrlTujuan:    "/peserta/pembelajaran/materi",
 			})
 		}
 	}(targetUserIDs, judul, materi.ID)
@@ -429,7 +509,9 @@ func CreateMateriMentor(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusCreated, "Materi pembelajaran berhasil dibuat", materi)
 }
 
-// ── 4. UPDATE MATERI MENTOR ──────────────────────────────────────────────────
+// [ROLE: MENTOR]
+// UpdateMateriMentor memperbarui informasi modul materi, mengganti berkas lampiran, dan menyesuaikan daftar peserta yang memiliki akses khusus.
+// Endpoint: PUT /api/manajemen/mentor/materi/:id
 func UpdateMateriMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -566,7 +648,7 @@ func UpdateMateriMentor(c *gin.Context) {
 				Pesan:        fmt.Sprintf("Mentor memperbarui materi \"%s\". Buka modul untuk melihat pembaruan materi.", judulMateri),
 				RefTabel:     "materi_pembelajarans",
 				RefID:        &mID,
-				UrlTujuan:    "/peserta/materi",
+				UrlTujuan:    "/peserta/pembelajaran/materi",
 				Gabungkan:    true,
 			})
 		}
@@ -575,7 +657,9 @@ func UpdateMateriMentor(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Materi pembelajaran berhasil diperbarui", materi)
 }
 
-// ── 5. HAPUS MATERI MENTOR ───────────────────────────────────────────────────
+// [ROLE: MENTOR]
+// DeleteMateriMentor menghapus modul materi bimbingan beserta berkas fisik lampirannya dari server.
+// Endpoint: DELETE /api/manajemen/mentor/materi/:id
 func DeleteMateriMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -611,4 +695,58 @@ func DeleteMateriMentor(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Materi pembelajaran berhasil dihapus", nil)
+}
+
+// ==============================================================================
+// ── BAGIAN PESERTA: LIHAT & AKSES MATERI PEMBELAJARAN ─────────────────────────
+// ==============================================================================
+
+// [ROLE: PESERTA]
+// GetMateriPeserta mengambil daftar seluruh materi pembelajaran yang diberikan oleh mentor pembimbing atau admin yang relevan dengan bidang dan jenjang peserta login.
+// Endpoint: GET /api/manajemen/peserta/materi
+func GetMateriPeserta(c *gin.Context) {
+	pesertaID, ok := pesertaIDDariToken(c)
+	if !ok {
+		return
+	}
+
+	var pendaftaran models.PendaftaranMagang
+	config.DB.Where("akun_peserta_id = ?", pesertaID).Order("id desc").First(&pendaftaran)
+
+	bidang := pendaftaran.PosisiBidang
+
+	var materiList []models.MateriPembelajaran
+	q := config.DB.Model(&models.MateriPembelajaran{}).Preload("Mentor")
+
+	jenjang := pendaftaran.KategoriPendaftar
+	if pendaftaran.MentorID != nil {
+		q = q.Where(
+			"(mentor_id = ? AND ((target_peserta = 'semua_bimbingan' AND (target_jenjang = 'semua' OR target_jenjang = ? OR target_jenjang IS NULL OR target_jenjang = '')) OR id IN (SELECT materi_id FROM materi_peserta_akses WHERE peserta_id = ?))) OR (dibuat_oleh_id IN (SELECT id FROM user_manajemens WHERE role = 'admin'))",
+			*pendaftaran.MentorID, jenjang, pesertaID,
+		)
+	} else {
+		q = q.Where("dibuat_oleh_id IN (SELECT id FROM user_manajemens WHERE role = 'admin')")
+	}
+
+	if bidang != "" {
+		q = q.Where("posisi_bidang = 'semua' OR posisi_bidang = ? OR mentor_id IS NOT NULL", bidang)
+	}
+	q.Order("id desc").Find(&materiList)
+
+	// Kategori unik
+	setKategori := make(map[string]bool)
+	var daftarKategori []string
+	for _, m := range materiList {
+		if !setKategori[m.Kategori] && m.Kategori != "" {
+			setKategori[m.Kategori] = true
+			daftarKategori = append(daftarKategori, m.Kategori)
+		}
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Daftar materi pembelajaran berhasil dimuat", gin.H{
+		"bidang":       bidang,
+		"kategori":     daftarKategori,
+		"total_materi": len(materiList),
+		"materi":       materiList,
+	})
 }

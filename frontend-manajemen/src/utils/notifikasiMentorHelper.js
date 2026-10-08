@@ -9,6 +9,7 @@ export const initialLencanaMentor = {
   "review-tugas": 0,
   "laporan-akhir": 0,
   "presensi-bimbingan": 0,
+  "penilaian": 0,
 };
 
 /**
@@ -54,9 +55,18 @@ export const petakanNotifikasiKeKunciMenuMentor = (item) => {
     tipe.startsWith("presensi_") ||
     tipe === "keterlambatan" ||
     tipe === "presensi_alfa" ||
+    tipe === "penugasan_peserta_baru" ||
     url.includes("/mentor/presensi")
   ) {
     return "presensi-bimbingan";
+  }
+
+  // 5. Penilaian 4 Pilar
+  if (
+    tipe === "pengingat_evaluasi_akhir" ||
+    url.includes("/mentor/penilaian")
+  ) {
+    return "penilaian";
   }
 
   return null;
@@ -75,6 +85,7 @@ export const hitungLencanaMentor = (rawNotifList, antreanData = {}) => {
     "review-tugas": antreanData.tugas || 0,
     "laporan-akhir": antreanData.laporan_akhir || 0,
     "presensi-bimbingan": 0,
+    "penilaian": antreanData.penilaian || 0,
   };
 
   if (Array.isArray(rawNotifList)) {
@@ -91,6 +102,7 @@ export const hitungLencanaMentor = (rawNotifList, antreanData = {}) => {
     counts["review-tugas"] = Math.max(counts["review-tugas"], notifCounts["review-tugas"] || 0);
     counts["laporan-akhir"] = Math.max(counts["laporan-akhir"], notifCounts["laporan-akhir"] || 0);
     counts["presensi-bimbingan"] = notifCounts["presensi-bimbingan"] || 0;
+    counts["penilaian"] = Math.max(counts["penilaian"] || 0, notifCounts["penilaian"] || 0);
   }
 
   return counts;

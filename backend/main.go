@@ -36,6 +36,10 @@ func main() {
 	// akun peserta belum dibuat, mentor belum ditugaskan, sertifikat pending.
 	services.MulaiPengingatNotifikasiAdmin(config.DB)
 
+	// Penjadwal pengingat otomatis peserta: deadline tugas (H-1),
+	// pengisian logbook harian sore (16:30 WIB), dan laporan akhir (H-14, H-7, H-3).
+	services.MulaiSchedulerPengingatOtomatis(config.DB)
+
 	// Penjadwal pembersihan berkas sampah / lampiran terhapus > 30 hari
 	services.MulaiPenjadwalPembersihanBerkas(config.DB)
 

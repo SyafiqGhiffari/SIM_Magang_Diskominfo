@@ -72,6 +72,7 @@ const AppRoutes = () => {
       <Route path="/admin/faq" element={<ProtectedRoute allowedRoles={["admin"]}><FaqPage /></ProtectedRoute>} />
       <Route path="/admin/analitik-faq" element={<AnalitikFaqPage />} />
       <Route path="/admin/akun" element={<ProtectedRoute allowedRoles={["admin"]}><KelolaAkunPage /></ProtectedRoute>} />
+      <Route path="/admin/kelola-akun" element={<Navigate to="/admin/akun" replace />} />
       <Route path="/admin/bidang" element={<ProtectedRoute allowedRoles={["admin"]}><BidangPage /></ProtectedRoute>} />
       <Route path="/admin/mentor" element={<ProtectedRoute allowedRoles={["admin"]}><MentorPage /></ProtectedRoute>} />
       <Route path="/admin/peserta" element={<ProtectedRoute allowedRoles={["admin"]}><PesertaPage /></ProtectedRoute>} />
@@ -96,6 +97,8 @@ const AppRoutes = () => {
       <Route path="/mentor/peserta" element={<ProtectedRoute allowedRoles={["mentor"]}><DaftarPesertaMentorPage /></ProtectedRoute>} />
       <Route path="/mentor/presensi" element={<ProtectedRoute allowedRoles={["mentor"]}><PresensiBimbinganPage /></ProtectedRoute>} />
       <Route path="/mentor/pengajuan-izin" element={<ProtectedRoute allowedRoles={["mentor"]}><VerifikasiIzinPage /></ProtectedRoute>} />
+      <Route path="/mentor/verifikasi-izin" element={<Navigate to="/mentor/pengajuan-izin" replace />} />
+      <Route path="/mentor/izin" element={<Navigate to="/mentor/pengajuan-izin" replace />} />
       <Route path="/mentor/materi" element={<ProtectedRoute allowedRoles={["mentor"]}><KelolaMateriMentorPage /></ProtectedRoute>} />
       <Route path="/mentor/materi/kategori" element={<Navigate to="/mentor/materi" replace />} />
       <Route path="/mentor/tugas" element={<ProtectedRoute allowedRoles={["mentor"]}><KelolaTugasMentorPage /></ProtectedRoute>} />
@@ -114,6 +117,7 @@ const AppRoutes = () => {
       <Route path="/peserta/riwayat-aktivitas" element={<ProtectedRoute allowedRoles={["peserta"]}><PesertaRiwayatPage /></ProtectedRoute>} />
       <Route path="/peserta/riwayat" element={<Navigate to="/peserta/riwayat-aktivitas" replace />} />
       <Route path="/peserta/logbook" element={<Navigate to="/peserta/riwayat-aktivitas" replace />} />
+      <Route path="/peserta/presensi/logbook" element={<Navigate to="/peserta/presensi" replace />} />
       <Route path="/peserta/pengajuan-izin" element={<ProtectedRoute allowedRoles={["peserta"]}><PengajuanIzinPage /></ProtectedRoute>} />
       <Route path="/peserta/izin" element={<Navigate to="/peserta/pengajuan-izin" replace />} />
       

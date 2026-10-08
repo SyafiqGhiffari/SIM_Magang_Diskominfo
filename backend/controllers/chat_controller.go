@@ -1,3 +1,11 @@
+// ==============================================================================
+// CONTROLLER: Chat & FAQ Controller
+// DESKRIPSI: Mengelola live chat interaktif antara calon peserta dan admin, bot cerdas
+//            penjawab otomatis berbasis FAQ & NLP, analitik statistik bantuan,
+//            pengelolaan bank FAQ, pertanyaan publik, dan pengiriman lampiran berkas.
+// ROLE TERKAIT: [ROLE: PENDAFTAR], [ROLE: ADMIN], & [ROLE: PUBLIK]
+// ==============================================================================
+
 package controllers
 
 import (
@@ -6,6 +14,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -482,11 +492,9 @@ func skorTertinggi(message string) float64 {
 	return k[0].Skor
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PESERTA: Ambil atau buat sesi chat aktif
-// POST /api/pendaftaran/chat/session
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: PENDAFTAR]
+// GetOrCreateChatSession mengambil sesi chat aktif (status: open) atau membuat sesi baru untuk calon peserta.
+// Endpoint: POST /api/pendaftaran/chat/session
 func GetOrCreateChatSession(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -514,11 +522,9 @@ func GetOrCreateChatSession(c *gin.Context) {
 	})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PESERTA: Ambil pesan dalam sesi (polling)
-// GET /api/pendaftaran/chat/messages?session_id=X&after_id=Y
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: PENDAFTAR]
+// GetChatMessages mengambil histori pesan dalam sesi chat aktif dan menandai pesan admin/bot sebagai sudah dibaca.
+// Endpoint: GET /api/pendaftaran/chat/messages
 func GetChatMessages(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -575,11 +581,9 @@ func GetChatMessages(c *gin.Context) {
 	})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PESERTA: Kirim pesan (dengan FAQ auto-reply check)
-// POST /api/pendaftaran/chat/message
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: PENDAFTAR]
+// SendChatMessage mengirimkan pesan chat baru dari pendaftar ke admin, memicu AI/NLP bot untuk mengecek jawaban FAQ otomatis.
+// Endpoint: POST /api/pendaftaran/chat/send
 func SendChatMessage(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -763,11 +767,9 @@ func potongTeks(s string, maks int) string {
 	return string(r[:maks]) + "…"
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PESERTA: Jumlah pesan belum dibaca (dari admin/bot)
-// GET /api/pendaftaran/chat/unread
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: PENDAFTAR]
+// GetChatUnreadCount menghitung jumlah pesan belum dibaca yang dikirimkan oleh admin atau bot ke pendaftar.
+// Endpoint: GET /api/pendaftaran/chat/unread-count
 func GetChatUnreadCount(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 
@@ -784,11 +786,9 @@ func GetChatUnreadCount(c *gin.Context) {
 	})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUBLIK: Cek status online admin (tidak perlu autentikasi)
-// GET /api/chat/admin-status
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: PUBLIK / PENDAFTAR]
+// GetAdminOnlineStatus memeriksa apakah ada akun administrator yang sedang aktif/online.
+// Endpoint: GET /api/chat/admin-status
 func GetAdminOnlineStatus(c *gin.Context) {
 	var count int64
 	config.DB.Model(&models.UserManajemen{}).
@@ -801,11 +801,9 @@ func GetAdminOnlineStatus(c *gin.Context) {
 	})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PESERTA: Ambil daftar FAQ publik (untuk suggested questions)
-// GET /api/pendaftaran/chat/faq
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: PUBLIK]
+// GetPublicFAQ mengambil daftar bank data FAQ publik yang aktif untuk ditampilkan pada widget live chat.
+// Endpoint: GET /api/chat/faq
 func GetPublicFAQ(c *gin.Context) {
 	var entries []models.FaqEntry
 	config.DB.Where("is_active = ?", true).
@@ -942,6 +940,9 @@ type QuickActionResp struct {
 	Icon         string `json:"icon"`          // nama ikon lucide-react
 }
 
+// [ROLE: PENDAFTAR]
+// GetQuickActions mengambil daftar tombol pintasan (quick action) yang relevan sesuai status pendaftaran pengguna saat ini.
+// Endpoint: GET /api/pendaftaran/chat/quick-actions
 func GetQuickActions(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 	statusUser, _ := statusPendaftaranUser(userID)
@@ -991,11 +992,9 @@ func GetQuickActions(c *gin.Context) {
 	})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PESERTA: Gunakan Quick Action — catat ke riwayat chat
-// POST /api/pendaftaran/chat/quick-action/:id
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: PENDAFTAR]
+// UseQuickAction mengeksekusi aksi pintasan cepat (misal cek status/berkas) dan membubuhkannya pada riwayat chat.
+// Endpoint: POST /api/pendaftaran/chat/quick-action/:id
 func UseQuickAction(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 	faqID := c.Param("id")
@@ -1171,11 +1170,9 @@ func rakitJawabanStatus(status string, p *models.PendaftaranMagang, pengantar st
 	return b.String()
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN: Ambil semua sesi chat
-// GET /api/manajemen/admin/chat/sessions
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: ADMIN]
+// AdminGetChatSessions mengambil seluruh sesi chat pendaftar dengan penyortiran sematan (pinned) dan pesan terakhir.
+// Endpoint: GET /api/manajemen/admin/chat/sessions
 func AdminGetChatSessions(c *gin.Context) {
 	var sessions []models.ChatSession
 	config.DB.Preload("UserPendaftaran").
@@ -1334,11 +1331,9 @@ func AdminGetChatSessions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN: Ambil pesan dalam satu sesi
-// GET /api/manajemen/admin/chat/session/:id/messages
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: ADMIN]
+// AdminGetSessionMessages mengambil riwayat pesan dalam satu sesi chat dan menandai pesan user sebagai sudah dibaca admin.
+// Endpoint: GET /api/manajemen/admin/chat/sessions/:id/messages
 func AdminGetSessionMessages(c *gin.Context) {
 	sessionID := c.Param("id")
 
@@ -1377,11 +1372,9 @@ func AdminGetSessionMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": messages})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN: Balas pesan
-// POST /api/manajemen/admin/chat/session/:id/reply
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: ADMIN]
+// AdminReplyChatSession mengirimkan balasan chat dari staf admin ke peserta.
+// Endpoint: POST /api/manajemen/admin/chat/sessions/:id/reply
 func AdminReplyChatSession(c *gin.Context) {
 	sessionID := c.Param("id")
 
@@ -1421,11 +1414,9 @@ func AdminReplyChatSession(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"success": true, "data": msg})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN: Tutup sesi
-// PUT /api/manajemen/admin/chat/session/:id/close
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: ADMIN]
+// AdminCloseChatSession menutup percakapan aktif yang telah tuntas ditangani oleh tim admin.
+// Endpoint: POST /api/manajemen/admin/chat/sessions/:id/close
 func AdminCloseChatSession(c *gin.Context) {
 	sessionID := c.Param("id")
 	if err := config.DB.Model(&models.ChatSession{}).
@@ -1437,14 +1428,9 @@ func AdminCloseChatSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Sesi chat berhasil ditutup"})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PESERTA: Buka jawaban dari chip saran
-// POST /api/pendaftaran/chat/saran/:id
-// ─────────────────────────────────────────────────────────────────────────────
-
-// BukaSaranFAQ dipanggil ketika peserta menekan salah satu chip
-// "Mungkin maksud Anda". Jawaban FAQ dikirim sebagai pesan bot sungguhan
-// supaya tersimpan di riwayat percakapan.
+// [ROLE: PENDAFTAR]
+// BukaSaranFAQ memilih salah satu rekomendasi FAQ (chip saran) dan menampilkannya sebagai pesan bot dalam obrolan aktif.
+// Endpoint: POST /api/pendaftaran/chat/faq/buka
 func BukaSaranFAQ(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 	faqID := c.Param("id")
@@ -1500,11 +1486,9 @@ func BukaSaranFAQ(c *gin.Context) {
 	})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PESERTA: Nilai jawaban bot
-// POST /api/pendaftaran/chat/faq/:id/feedback
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: PENDAFTAR]
+// KirimFeedbackFAQ mengirimkan umpan balik jempol atas kualitas jawaban bot FAQ (membantu / tidak membantu).
+// Endpoint: POST /api/pendaftaran/chat/faq/feedback
 func KirimFeedbackFAQ(c *gin.Context) {
 	userID := uint(c.GetFloat64("user_id"))
 	faqID := c.Param("id")
@@ -1623,9 +1607,9 @@ func KirimFeedbackFAQ(c *gin.Context) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ADMIN: CRUD FAQ
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: ADMIN]
+// AdminGetFAQ mengambil seluruh entri bank data FAQ beserta ringkasan statistik respon penilaian & quick actions.
+// Endpoint: GET /api/manajemen/admin/faq
 func AdminGetFAQ(c *gin.Context) {
 	var entries []models.FaqEntry
 	config.DB.Order("order_index asc, id asc").Find(&entries)
@@ -1664,6 +1648,9 @@ func AdminGetFAQ(c *gin.Context) {
 	})
 }
 
+// [ROLE: ADMIN]
+// AdminCreateFAQ menambahkan entri FAQ baru beserta kata kunci, kategori, dan opsi tombol pintasan (quick action).
+// Endpoint: POST /api/manajemen/admin/faq
 func AdminCreateFAQ(c *gin.Context) {
 	adminID := uint(c.GetFloat64("user_id"))
 
@@ -1787,6 +1774,9 @@ func AdminCreateFAQ(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"success": true, "data": entry})
 }
 
+// [ROLE: ADMIN]
+// AdminUpdateFAQ memperbarui data entri FAQ (pertanyaan, jawaban, kata kunci, kategori, urutan, status quick action).
+// Endpoint: PUT /api/manajemen/admin/faq/:id
 func AdminUpdateFAQ(c *gin.Context) {
 	id := c.Param("id")
 	var entry models.FaqEntry
@@ -1948,6 +1938,9 @@ func AdminUpdateFAQ(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": entry})
 }
 
+// [ROLE: ADMIN]
+// AdminDeleteFAQ menghapus entri FAQ dari database secara permanen.
+// Endpoint: DELETE /api/manajemen/admin/faq/:id
 func AdminDeleteFAQ(c *gin.Context) {
 	id := c.Param("id")
 	if err := config.DB.Delete(&models.FaqEntry{}, id).Error; err != nil {
@@ -1957,8 +1950,9 @@ func AdminDeleteFAQ(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "FAQ berhasil dihapus"})
 }
 
-// ADMIN: Simpan ulang urutan FAQ (drag & drop)
-// PUT /api/manajemen/admin/faq/urutan
+// [ROLE: ADMIN]
+// AdminReorderFAQ menyimpan urutan tampilan FAQ baru hasil penyusunan drag & drop dari admin.
+// Endpoint: PUT /api/manajemen/admin/faq/reorder
 func AdminReorderFAQ(c *gin.Context) {
 	var body struct {
 		Urutan []struct {
@@ -1986,11 +1980,6 @@ func AdminReorderFAQ(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Urutan FAQ berhasil disimpan"})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUBLIK: Daftar FAQ untuk landing page (TANPA autentikasi)
-// GET /api/faq?kategori=&cari=
-// ─────────────────────────────────────────────────────────────────────────────
-
 type FaqPublikResp struct {
 	ID         uint   `json:"id"`
 	Question   string `json:"question"`
@@ -1999,6 +1988,9 @@ type FaqPublikResp struct {
 	OrderIndex int    `json:"order_index"`
 }
 
+// [ROLE: PUBLIK]
+// GetFaqPublik mengambil daftar pertanyaan yang sering diajukan untuk ditampilkan di landing page publik dengan fitur filter kategori dan pencarian kata kunci.
+// Endpoint: GET /api/faq/publik
 func GetFaqPublik(c *gin.Context) {
 	q := config.DB.Model(&models.FaqEntry{}).
 		Where("is_active = ? AND show_on_landing = ?", true, true)
@@ -2086,11 +2078,9 @@ func catatPertanyaanTakTerjawab(nama, email, pertanyaan, sumber string, sessionI
 	return &entri
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUBLIK: Saran FAQ saat pengguna mengetik pertanyaan (tanpa autentikasi)
-// POST /api/faq/saran
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: PUBLIK]
+// SaranFaqPublik memberikan rekomendasi pertanyaan/jawaban FAQ yang relevan secara real-time saat pengguna mengetik pertanyaan.
+// Endpoint: POST /api/faq/saran
 func SaranFaqPublik(c *gin.Context) {
 	var body struct {
 		Pertanyaan string `json:"pertanyaan"`
@@ -2119,11 +2109,6 @@ func SaranFaqPublik(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": saran})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUBLIK: Kirim pertanyaan dari halaman FAQ (tanpa autentikasi)
-// POST /api/faq/ask
-// ─────────────────────────────────────────────────────────────────────────────
-
 // Pembatas laju sederhana berbasis memori: 1 kiriman / 60 detik per IP
 var (
 	kirimTerakhir   = map[string]time.Time{}
@@ -2148,6 +2133,9 @@ func bolehKirim(ip string) bool {
 	return true
 }
 
+// [ROLE: PUBLIK]
+// KirimPertanyaanPublik menerima pertanyaan baru dari formulir bantuan landing page dan mencatatnya ke bank pertanyaan belum terjawab.
+// Endpoint: POST /api/faq/kirim-pertanyaan
 func KirimPertanyaanPublik(c *gin.Context) {
 	var body struct {
 		Nama       string `json:"nama"       binding:"required"`
@@ -2239,9 +2227,9 @@ func KirimPertanyaanPublik(c *gin.Context) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ADMIN: Daftar pertanyaan masuk / belum terjawab
-// GET /api/manajemen/admin/pertanyaan-faq?status=baru&sumber=
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: ADMIN]
+// AdminGetPertanyaanFaq mengambil daftar pertanyaan pengguna dari publik/chat yang belum terjawab otomatis oleh bot.
+// Endpoint: GET /api/manajemen/admin/faq/pertanyaan
 func AdminGetPertanyaanFaq(c *gin.Context) {
 	q := config.DB.Model(&models.FaqPertanyaan{})
 
@@ -2271,8 +2259,9 @@ func AdminGetPertanyaanFaq(c *gin.Context) {
 	})
 }
 
-// ADMIN: Ubah status / catatan pertanyaan
-// PUT /api/manajemen/admin/pertanyaan-faq/:id
+// [ROLE: ADMIN]
+// AdminUpdatePertanyaanFaq memperbarui status (baru/diproses/selesai/diabaikan), catatan, atau menautkan ke ID FAQ baru.
+// Endpoint: PUT /api/manajemen/admin/faq/pertanyaan/:id
 func AdminUpdatePertanyaanFaq(c *gin.Context) {
 	adminID := uint(c.GetFloat64("user_id"))
 	id := c.Param("id")
@@ -2321,8 +2310,9 @@ func AdminUpdatePertanyaanFaq(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": entri})
 }
 
-// ADMIN: Hapus pertanyaan
-// DELETE /api/manajemen/admin/pertanyaan-faq/:id
+// [ROLE: ADMIN]
+// AdminDeletePertanyaanFaq menghapus arsip pertanyaan masuk dari database.
+// Endpoint: DELETE /api/manajemen/admin/faq/pertanyaan/:id
 func AdminDeletePertanyaanFaq(c *gin.Context) {
 	if err := config.DB.Delete(&models.FaqPertanyaan{}, c.Param("id")).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Gagal menghapus pertanyaan"})
@@ -2331,11 +2321,9 @@ func AdminDeletePertanyaanFaq(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Pertanyaan berhasil dihapus"})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN: Pratinjau quick action untuk status pendaftaran tertentu
-// GET /api/manajemen/admin/faq/pratinjau?status=revisi
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: ADMIN]
+// AdminPratinjauQuickAction menguji pratinjau tampilan tombol pintasan interaktif untuk simulasi status pendaftaran tertentu.
+// Endpoint: GET /api/manajemen/admin/faq/pratinjau
 func AdminPratinjauQuickAction(c *gin.Context) {
 	status := strings.TrimSpace(c.DefaultQuery("status", "menunggu"))
 	if !statusPendaftaranSah[status] {
@@ -2441,6 +2429,9 @@ func lengkapiHari(data []barisTren, jumlahHari int) []barisTren {
 	return hasil
 }
 
+// [ROLE: ADMIN]
+// AdminAnalitikFaq menyajikan statistik performa FAQ (tayangan, tren feedback pengguna, celah pertanyaan tak terjawab, per kategori).
+// Endpoint: GET /api/manajemen/admin/faq/analitik
 func AdminAnalitikFaq(c *gin.Context) {
 	// Rentang grafik dipilih admin lewat ?hari=. Hanya nilai pada daftar
 	// putih ini yang diterima; nilai lain jatuh ke 30 hari. Daftar putih
@@ -2577,13 +2568,11 @@ func AdminAnalitikFaq(c *gin.Context) {
 	})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN: Aksi massal pada banyak FAQ sekaligus
-// POST /api/manajemen/admin/faq/massal
-// ─────────────────────────────────────────────────────────────────────────────
-
 const maksBarisMassal = 200
 
+// [ROLE: ADMIN]
+// AdminAksiMassalFAQ melakukan operasi batch serentak (aktifkan, nonaktifkan, ubah kategori, atau hapus) untuk banyak FAQ sekaligus.
+// Endpoint: POST /api/manajemen/admin/faq/aksi-massal
 func AdminAksiMassalFAQ(c *gin.Context) {
 	var body struct {
 		IDs   []uint `json:"ids" binding:"required"`
@@ -2748,7 +2737,9 @@ func boolCSV(teks string, bawaan bool) bool {
 	return bawaan
 }
 
-// GET /api/manajemen/admin/faq/ekspor
+// [ROLE: ADMIN]
+// AdminEksporFaqCSV mengunduh seluruh data FAQ ke dalam format CSV dengan pemisah titik koma (kompatibel Excel Indonesia).
+// Endpoint: GET /api/manajemen/admin/faq/ekspor-csv
 func AdminEksporFaqCSV(c *gin.Context) {
 	var entries []models.FaqEntry
 	config.DB.Order("order_index asc, id asc").Find(&entries)
@@ -2826,11 +2817,9 @@ type rencanaImpor struct {
 	entri models.FaqEntry
 }
 
-// POST /api/manajemen/admin/faq/impor
-//
-// Form-data:
-//   file : berkas CSV
-//   mode : "pratinjau" (bawaan) atau "terapkan"
+// [ROLE: ADMIN]
+// AdminImporFaqCSV mengunggah berkas CSV FAQ dengan mode pratinjau validasi atau langsung terapkan impor ke database.
+// Endpoint: POST /api/manajemen/admin/faq/impor-csv
 func AdminImporFaqCSV(c *gin.Context) {
 	mode := strings.ToLower(strings.TrimSpace(c.PostForm("mode")))
 	if mode == "" {
@@ -3160,7 +3149,9 @@ func AdminImporFaqCSV(c *gin.Context) {
 	})
 }
 
-// GET /api/manajemen/admin/faq/contoh-impor
+// [ROLE: ADMIN]
+// AdminContohImporCSV mengunduh berkas template contoh impor CSV yang valid untuk panduan pengguna admin.
+// Endpoint: GET /api/manajemen/admin/faq/contoh-csv
 func AdminContohImporCSV(c *gin.Context) {
 	var buf bytes.Buffer
 	buf.Write([]byte{0xEF, 0xBB, 0xBF})
@@ -3190,14 +3181,9 @@ func AdminContohImporCSV(c *gin.Context) {
 	c.Data(http.StatusOK, "text/csv; charset=utf-8", buf.Bytes())
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN: Hitungan ringan untuk lencana sidebar
-// GET /api/manajemen/admin/bantuan/hitungan
-//
-// Sengaja dipisah dari endpoint dashboard yang menjalankan belasan query,
-// karena endpoint ini dipanggil berkala setiap 30 detik oleh sidebar.
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: ADMIN]
+// AdminHitunganBantuan mengambil jumlah notifikasi belum dibalas (chat & pertanyaan) untuk lencana sidebar admin secara berkala (polling ringan).
+// Endpoint: GET /api/manajemen/admin/faq/hitungan-bantuan
 func AdminHitunganBantuan(c *gin.Context) {
 	var chatBelumDibalas, pertanyaanBaru int64
 
@@ -3220,11 +3206,9 @@ func AdminHitunganBantuan(c *gin.Context) {
 	})
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN: Balas pertanyaan publik lewat email
-// POST /api/manajemen/admin/pertanyaan-faq/:id/balas
-// ─────────────────────────────────────────────────────────────────────────────
-
+// [ROLE: ADMIN]
+// AdminBalasPertanyaanFaq mengirimkan jawaban admin atas pertanyaan pengunjung publik langsung ke alamat email penanya.
+// Endpoint: POST /api/manajemen/admin/faq/pertanyaan/:id/balas
 func AdminBalasPertanyaanFaq(c *gin.Context) {
 	var entri models.FaqPertanyaan
 	if err := config.DB.First(&entri, c.Param("id")).Error; err != nil {
@@ -3284,4 +3268,268 @@ func AdminBalasPertanyaanFaq(c *gin.Context) {
 		"success": true,
 		"message": "Balasan berhasil dikirim ke " + entri.Email,
 	})
+}
+
+// ==============================================================================
+// ── LAMPIRAN CHAT & TINDAKAN SESI PERCAKAPAN ──────────────────────────────────
+// ==============================================================================
+
+// Batas ukuran & jenis berkas yang boleh dikirim lewat chat.
+const maksUkuranLampiran = 5 * 1024 * 1024 // 5 MB
+
+var extGambar = map[string]bool{
+	".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
+}
+
+// Format video yang bisa diputar langsung di peramban tanpa pemutar tambahan.
+var extVideo = map[string]bool{
+	".mp4": true, ".webm": true, ".mov": true,
+}
+
+var extDokumen = map[string]bool{
+	".pdf": true, ".doc": true, ".docx": true,
+	".xls": true, ".xlsx": true, ".zip": true,
+}
+
+// simpanLampiran menangani bagian yang sama antara pengunggahan oleh admin dan
+// oleh peserta: validasi, penyimpanan berkas, dan penentuan tipe pesan.
+func simpanLampiran(c *gin.Context, sesiID uint) (*models.ChatMessage, error) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return nil, fmt.Errorf("berkas wajib dilampirkan")
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	tipe := ""
+	switch {
+	case extGambar[ext]:
+		tipe = "gambar"
+	case extVideo[ext]:
+		tipe = "video"
+	case extDokumen[ext]:
+		tipe = "berkas"
+	default:
+		return nil, fmt.Errorf("format tidak didukung. Gunakan JPG, PNG, WEBP, MP4, WEBM, MOV, PDF, DOC, DOCX, XLS, XLSX, atau ZIP")
+	}
+
+	// Video diberi kelonggaran karena 5MB terlalu ketat bahkan untuk rekaman
+	// beberapa detik dari ponsel.
+	batas := int64(maksUkuranLampiran)
+	if tipe == "video" {
+		batas = 20 * 1024 * 1024
+	}
+	if file.Size > batas {
+		return nil, fmt.Errorf("ukuran berkas maksimal %dMB", batas/1024/1024)
+	}
+
+	// Validasi signature biner asli file untuk mencegah file berbahaya
+	if err := utils.ValidateFileMagicBytes(file, nil); err != nil {
+		return nil, err
+	}
+
+	uploadDir := filepath.Join("uploads", "chat")
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		return nil, fmt.Errorf("gagal membuat folder unggahan")
+	}
+
+	// Nama berkas diacak agar tidak saling menimpa dan tidak bisa ditebak.
+	namaSimpan := fmt.Sprintf("chat_%d_%d%s", sesiID, time.Now().UnixNano(), ext)
+	fullPath := filepath.Join(uploadDir, namaSimpan)
+	if err := c.SaveUploadedFile(file, fullPath); err != nil {
+		return nil, fmt.Errorf("gagal menyimpan berkas")
+	}
+
+	return &models.ChatMessage{
+		SessionID: sesiID,
+		Tipe:      tipe,
+		Content:   strings.TrimSpace(c.PostForm("content")),
+		FilePath:  strings.ReplaceAll(fullPath, "\\", "/"),
+		FileNama:  file.Filename,
+		FileSize:  file.Size,
+	}, nil
+}
+
+// [ROLE: ADMIN]
+// AdminKirimLampiran mengirimkan berkas lampiran (gambar/dokumen) dari admin ke percakapan peserta.
+// Endpoint: POST /api/manajemen/admin/chat/sessions/:id/lampiran
+func AdminKirimLampiran(c *gin.Context) {
+	var sesi models.ChatSession
+	if err := config.DB.First(&sesi, c.Param("id")).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Sesi chat tidak ditemukan")
+		return
+	}
+
+	pesan, err := simpanLampiran(c, sesi.ID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	pesan.SenderType = "admin"
+	pesan.IsReadAdmin = true
+	if r := c.PostForm("reply_to_id"); r != "" {
+		var id uint
+		if _, e := fmt.Sscan(r, &id); e == nil && id > 0 {
+			pesan.ReplyToID = &id
+		}
+	}
+
+	if err := config.DB.Create(pesan).Error; err != nil {
+		_ = os.Remove(pesan.FilePath)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan pesan")
+		return
+	}
+
+	sekarang := time.Now()
+	config.DB.Model(&sesi).Updates(map[string]interface{}{
+		"last_message_at":   sekarang,
+		"unread_user_count": gorm_expr_tambah(sesi.UnreadUserCount),
+	})
+
+	config.DB.Preload("ReplyTo").First(pesan, pesan.ID)
+	utils.SuccessResponse(c, http.StatusOK, "Lampiran terkirim", pesan)
+}
+
+// gorm_expr_tambah menaikkan penghitung sebesar satu.
+func gorm_expr_tambah(nilai int) int { return nilai + 1 }
+
+// [ROLE: ADMIN]
+// AdminHapusPesan melakukan soft delete pada pesan chat dan menghapus berkas fisik lampiran dari disk.
+// Endpoint: DELETE /api/manajemen/admin/chat/messages/:id
+func AdminHapusPesan(c *gin.Context) {
+	var pesan models.ChatMessage
+	if err := config.DB.First(&pesan, c.Param("id")).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Pesan tidak ditemukan")
+		return
+	}
+	if pesan.DihapusPada != nil {
+		utils.SuccessResponse(c, http.StatusOK, "Pesan sudah dihapus sebelumnya", nil)
+		return
+	}
+
+	sekarang := time.Now()
+
+	// Baris pesan tetap disimpan (hapus lunak) agar jejak percakapan utuh,
+	// tetapi berkas fisiknya dibuang supaya folder unggahan tidak membengkak.
+	// Nama & ukuran berkas dikosongkan sekalian, karena berkasnya sudah tiada.
+	pembaruan := map[string]interface{}{"dihapus_pada": sekarang}
+
+	if pesan.FilePath != "" {
+		jalur := filepath.Clean(pesan.FilePath)
+
+		// Pengaman: hanya berkas di dalam folder unggahan chat yang boleh
+		// dihapus, sehingga jalur yang cacat tidak bisa menyentuh berkas lain.
+		if strings.HasPrefix(jalur, filepath.Join("uploads", "chat")) {
+			if err := os.Remove(jalur); err != nil && !os.IsNotExist(err) {
+				// Kegagalan menghapus berkas tidak membatalkan penghapusan pesan;
+				// yang penting isinya tidak lagi bisa diakses dari antarmuka.
+				fmt.Printf("[chat] gagal menghapus berkas %s: %v\n", jalur, err)
+			}
+		}
+
+		pembaruan["file_path"] = ""
+		pembaruan["file_nama"] = ""
+		pembaruan["file_size"] = 0
+	}
+
+	config.DB.Model(&pesan).Updates(pembaruan)
+	utils.SuccessResponse(c, http.StatusOK, "Pesan dihapus", nil)
+}
+
+// [ROLE: ADMIN]
+// AdminSematkanSesi menyematkan (pin/unpin) percakapan penting ke posisi teratas daftar chat admin.
+// Endpoint: PUT /api/manajemen/admin/chat/sessions/:id/pin
+func AdminSematkanSesi(c *gin.Context) {
+	var sesi models.ChatSession
+	if err := config.DB.First(&sesi, c.Param("id")).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Sesi tidak ditemukan")
+		return
+	}
+	baru := !sesi.IsPinnedAdmin
+	config.DB.Model(&sesi).Update("is_pinned_admin", baru)
+
+	pesan := "Percakapan disematkan"
+	if !baru {
+		pesan = "Sematan dilepas"
+	}
+	utils.SuccessResponse(c, http.StatusOK, pesan, gin.H{"is_pinned_admin": baru})
+}
+
+// [ROLE: ADMIN]
+// AdminTandaiBelumDibaca menandai sesi obrolan secara manual agar tetap berstatus belum dibaca (unread).
+// Endpoint: PUT /api/manajemen/admin/chat/sessions/:id/unread
+func AdminTandaiBelumDibaca(c *gin.Context) {
+	var sesi models.ChatSession
+	if err := config.DB.First(&sesi, c.Param("id")).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Sesi tidak ditemukan")
+		return
+	}
+	config.DB.Model(&sesi).Update("admin_marked_unread", true)
+	utils.SuccessResponse(c, http.StatusOK, "Ditandai belum dibaca", nil)
+}
+
+// [ROLE: PENDAFTAR]
+// PesertaKirimLampiran mengunggah berkas lampiran (foto/dokumen) dari peserta ke dalam obrolan aktif.
+// Endpoint: POST /api/pendaftaran/chat/lampiran
+func PesertaKirimLampiran(c *gin.Context) {
+	userID := uint(c.GetFloat64("user_id"))
+
+	var sesi models.ChatSession
+	if err := config.DB.Where("user_pendaftaran_id = ? AND status = 'open'", userID).
+		First(&sesi).Error; err != nil {
+		// Sesi dibuat otomatis bila peserta langsung mengirim berkas
+		sesi = models.ChatSession{UserPendaftaranID: userID, Status: "open"}
+		if err := config.DB.Create(&sesi).Error; err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat sesi chat")
+			return
+		}
+	}
+
+	pesan, err := simpanLampiran(c, sesi.ID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	pesan.SenderType = "user"
+	pesan.IsReadUser = true
+	if r := c.PostForm("reply_to_id"); r != "" {
+		var id uint
+		if _, e := fmt.Sscan(r, &id); e == nil && id > 0 {
+			pesan.ReplyToID = &id
+		}
+	}
+
+	if err := config.DB.Create(pesan).Error; err != nil {
+		_ = os.Remove(pesan.FilePath)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan pesan")
+		return
+	}
+
+	sekarang := time.Now()
+	config.DB.Model(&sesi).Updates(map[string]interface{}{
+		"last_message_at":    sekarang,
+		"unread_admin_count": sesi.UnreadAdminCount + 1,
+		"admin_marked_unread": false,
+	})
+
+	config.DB.Preload("ReplyTo").First(pesan, pesan.ID)
+	utils.SuccessResponse(c, http.StatusOK, "Lampiran terkirim", pesan)
+}
+
+// [ROLE: PENDAFTAR]
+// PesertaDenyut mencatat timestamp aktivitas kehadiran online (heartbeat) peserta pada sesi pendaftaran.
+// Endpoint: PUT /api/pendaftaran/denyut
+func PesertaDenyut(c *gin.Context) {
+	// Memakai pembantu yang sama dengan controller lain, karena tipe user_id
+	// di context bisa float64, uint, atau int tergantung jalur autentikasinya.
+	userID, ok := getUserIDFromContext(c)
+	if !ok || userID == 0 {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+	config.DB.Model(&models.UserPendaftaran{}).
+		Where("id = ?", userID).
+		Update("last_active_at", time.Now())
+	c.Status(http.StatusNoContent)
 }

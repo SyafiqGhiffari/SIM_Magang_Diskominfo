@@ -4,19 +4,17 @@ import {
   LogOut,
   CheckCircle2,
   Clock,
-  CalendarClock,
-  MessageSquare,
-  FileSignature,
   BookOpen,
+  FileText,
+  FileCheck,
+  CalendarClock,
+  FileSignature,
   GraduationCap,
   Award,
-  FileText,
-  ShieldAlert,
   KeyRound,
   RotateCcw,
   BellRing,
   ChevronDown,
-  Sparkles,
   Check,
 } from "lucide-react";
 import { toastSuccess } from "../../../../../utils/swal";
@@ -79,12 +77,11 @@ const TabNotifikasi = ({ dk, profile }) => {
       checkoutReminder: true,
       izinStatus: true,
 
-      // 2. Logbook & Komunikasi Bimbingan
+      // 2. Logbook Kegiatan Harian
       logbookReminder: true,
-      logbookVerification: true,
-      chatMentor: true,
 
       // 3. Pembelajaran & Penugasan Magang
+      materiBaru: true,
       tugasBaru: true,
       tugasFeedback: true,
       tugasDeadline: true,
@@ -94,8 +91,7 @@ const TabNotifikasi = ({ dk, profile }) => {
       raporNilai: true,
       sertifikatTerbit: true,
 
-      // 5. Keamanan & Akun Peserta
-      loginSecurityAlert: true,
+      // 5. Keamanan Akun Peserta
       passwordEmailChangeAlert: true,
     }),
     []
@@ -105,15 +101,41 @@ const TabNotifikasi = ({ dk, profile }) => {
 
   const [settings, setSettings] = useState(() => {
     try {
-      const saved = localStorage.getItem(storageKey);
+      const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_peserta_notif_settings");
       if (saved) {
-        return { ...defaultSettings, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        const sanitized = {};
+        for (const key of Object.keys(defaultSettings)) {
+          sanitized[key] = parsed[key] !== undefined ? Boolean(parsed[key]) : defaultSettings[key];
+        }
+        return sanitized;
       }
     } catch {
       // Abaikan jika localStorage tidak dapat diakses
     }
     return defaultSettings;
   });
+
+  // Sinkronkan state jika profile baru selesai dimuat atau storageKey berubah (pola resmi React tanpa useEffect cascading render)
+  const [prevStorageKey, setPrevStorageKey] = useState(storageKey);
+  if (prevStorageKey !== storageKey) {
+    setPrevStorageKey(storageKey);
+    let initial = defaultSettings;
+    try {
+      const saved = localStorage.getItem(storageKey) || localStorage.getItem("sim_peserta_notif_settings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const sanitized = {};
+        for (const key of Object.keys(defaultSettings)) {
+          sanitized[key] = parsed[key] !== undefined ? Boolean(parsed[key]) : defaultSettings[key];
+        }
+        initial = sanitized;
+      }
+    } catch {
+      // ignore
+    }
+    setSettings(initial);
+  }
 
   // State untuk animasi button reset default
   const [isResetting, setIsResetting] = useState(false);
@@ -122,7 +144,7 @@ const TabNotifikasi = ({ dk, profile }) => {
   const [openSections, setOpenSections] = useState({
     presensi: true,
     logbook: false,
-    tugas: false,
+    pembelajaran: false,
     evaluasi: false,
     keamanan: false,
   });
@@ -168,19 +190,140 @@ const TabNotifikasi = ({ dk, profile }) => {
     }, 600);
   };
 
-  // Hitung metrik aktif
+  // Hitung metrik aktif (hanya menghitung kunci valid yang ada di defaultSettings)
   const totalItems = Object.keys(defaultSettings).length;
-  const activeItemsCount = Object.values(settings).filter(Boolean).length;
+  const activeItemsCount = Object.keys(defaultSettings).filter((key) => settings[key]).length;
 
-  // Hitung aktif per kategori
-  const presensiActiveCount = [settings.checkinReminder, settings.checkoutReminder, settings.izinStatus].filter(Boolean).length;
-  const logbookActiveCount = [settings.logbookReminder, settings.logbookVerification, settings.chatMentor].filter(Boolean).length;
-  const tugasActiveCount = [settings.tugasBaru, settings.tugasFeedback, settings.tugasDeadline].filter(Boolean).length;
-  const evaluasiActiveCount = [settings.laporanAkhirStatus, settings.raporNilai, settings.sertifikatTerbit].filter(Boolean).length;
-  const keamananActiveCount = [settings.loginSecurityAlert, settings.passwordEmailChangeAlert].filter(Boolean).length;
+  // Daftar Kategori Terstruktur & Bersih
+  const SECTIONS = [
+    {
+      key: "presensi",
+      title: "Presensi & Kehadiran Harian",
+      tag: "Kehadiran",
+      desc: "Peringatan absensi masuk, jam pulang, dan status verifikasi surat izin",
+      items: [
+        {
+          key: "checkinReminder",
+          label: "Pengingat Presensi Masuk Pagi",
+          badge: "07:30 - 08:00 WIB",
+          sub: "Peringatan otomatis presensi pagi hari serta notifikasi penting jika Anda belum presensi hingga malam hari.",
+          icon: LogIn,
+        },
+        {
+          key: "checkoutReminder",
+          label: "Pengingat Presensi Pulang Sore",
+          badge: "16:00 WIB",
+          sub: "Peringatan tepat pukul 16:00 WIB untuk melakukan presensi kepulangan sebelum meninggalkan kantor dinas.",
+          icon: LogOut,
+        },
+        {
+          key: "izinStatus",
+          label: "Status Verifikasi Pengajuan Izin / Sakit",
+          badge: "Realtime Alert",
+          sub: "Pemberitahuan seketika saat surat permohonan izin atau surat keterangan dokter disetujui atau ditolak mentor.",
+          icon: CheckCircle2,
+        },
+      ],
+    },
+    {
+      key: "logbook",
+      title: "Logbook & Jurnal Kegiatan",
+      tag: "Jurnal Harian",
+      desc: "Peringatan pengisian uraian capaian aktivitas dan dokumentasi kerja harian",
+      items: [
+        {
+          key: "logbookReminder",
+          label: "Pengingat Pengisian Catatan Logbook",
+          badge: "16:30 WIB",
+          sub: "Kirim pengingat sore hari pukul 16:30 WIB jika uraian aktivitas kegiatan magang hari ini belum tercatat.",
+          icon: Clock,
+        },
+      ],
+    },
+    {
+      key: "pembelajaran",
+      title: "Pembelajaran & Penugasan Magang",
+      tag: "Penugasan",
+      desc: "Pemberitahuan modul baru, instruksi tugas, feedback review, dan batas waktu pengumpulan",
+      items: [
+        {
+          key: "materiBaru",
+          label: "Modul & Materi Pembelajaran Baru",
+          badge: "Materi Baru",
+          sub: "Pemberitahuan instan saat mentor atau admin mempublikasikan berkas modul atau materi edukasi baru.",
+          icon: BookOpen,
+        },
+        {
+          key: "tugasBaru",
+          label: "Penugasan Tugas Magang Baru",
+          badge: "Tugas Baru",
+          sub: "Pemberitahuan saat mentor merilis instruksi tugas proyek atau penugasan praktikum dinas baru.",
+          icon: FileText,
+        },
+        {
+          key: "tugasFeedback",
+          label: "Ulasan, Catatan Revisi & Nilai Tugas",
+          badge: "Feedback Mentor",
+          sub: "Pemberitahuan ketika tugas yang dikumpulkan telah dinilai atau memperoleh catatan ulasan dari pembimbing.",
+          icon: FileCheck,
+        },
+        {
+          key: "tugasDeadline",
+          label: "Pengingat Tenggat Waktu Pengumpulan Tugas",
+          badge: "H-1 Deadline",
+          sub: "Peringatan pengingat 24 jam sebelum batas akhir pengumpulan berkas atau tautan tugas berakhir.",
+          icon: CalendarClock,
+        },
+      ],
+    },
+    {
+      key: "evaluasi",
+      title: "Evaluasi Akhir, Rapor & Sertifikat",
+      tag: "Kelulusan",
+      desc: "Pemberitahuan pemeriksaan naskah laporan, publikasi nilai akhir, dan e-sertifikat resmi",
+      items: [
+        {
+          key: "laporanAkhirStatus",
+          label: "Status Verifikasi Laporan Akhir Magang",
+          badge: "Laporan Akhir",
+          sub: "Pemberitahuan ketika naskah laporan akhir disetujui atau memerlukan revisi penyempurnaan dari mentor.",
+          icon: FileSignature,
+        },
+        {
+          key: "raporNilai",
+          label: "Penerbitan Rapor & Nilai Akhir Magang",
+          badge: "Rapor Nilai",
+          sub: "Pemberitahuan saat penilaian kompetensi 4 pilar telah difinalisasi dan lembar rapor resmi telah terbit.",
+          icon: GraduationCap,
+        },
+        {
+          key: "sertifikatTerbit",
+          label: "Penerbitan E-Sertifikat Resmi",
+          badge: "E-Sertifikat",
+          sub: "Pemberitahuan resmi bahwa sertifikat tanda kelulusan magang telah diterbitkan dan siap diunduh.",
+          icon: Award,
+        },
+      ],
+    },
+    {
+      key: "keamanan",
+      title: "Keamanan Akun Peserta",
+      tag: "Keamanan",
+      desc: "Pemberitahuan pergantian kata sandi login dan proteksi kredensial akun",
+      items: [
+        {
+          key: "passwordEmailChangeAlert",
+          label: "Pembaruan Kata Sandi Akun",
+          badge: "Kredensial Akun",
+          sub: "Konfirmasi keamanan instan saat kata sandi login akun peserta berhasil diperbarui melalui sistem.",
+          icon: KeyRound,
+        },
+      ],
+    },
+  ];
 
   return (
-    <div className="animate-[fadeslide_0.3s_ease-out]">
+    <div className="space-y-4 sm:space-y-6 animate-[fadeslide_0.3s_ease-out]">
       {/* ══════════════════════════════════════════════════════════════════════
           SINGLE MAIN CARD ARCHITECTURE (MODERN, BERSIH, & INTERAKTIF)
       ══════════════════════════════════════════════════════════════════════ */}
@@ -190,7 +333,7 @@ const TabNotifikasi = ({ dk, profile }) => {
         }`}
       >
         {/* ──────────────────────────────────────────────────────────────────
-            1. HEADER UTAMA: JUDUL, RESET & BADGE AKTIF (TANPA GARIS PEMISAH)
+            1. HEADER UTAMA: JUDUL, RESET & BADGE AKTIF
         ────────────────────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3.5">
           <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
@@ -208,7 +351,7 @@ const TabNotifikasi = ({ dk, profile }) => {
             </div>
           </div>
 
-          {/* Header Right Actions: Reset Default dengan Animasi & Badge Aktif (Pojok Kanan Horizontal) */}
+          {/* Header Right Actions: Reset Default & Badge Aktif */}
           <div className="flex items-center gap-1.5 sm:gap-2 justify-end shrink-0">
             <button
               type="button"
@@ -240,925 +383,120 @@ const TabNotifikasi = ({ dk, profile }) => {
             2. ACCORDION KATEGORI AKTIVITAS DENGAN ANIMASI DROPDOWN HALUS
         ────────────────────────────────────────────────────────────────── */}
         <div className="space-y-2.5 sm:space-y-4">
-          {/* ══════════════ ACCORDION 1: PRESENSI & KEHADIRAN ══════════════ */}
-          <div
-            className={`rounded-xl sm:rounded-2xl border transition-all duration-300 overflow-hidden ${
-              openSections.presensi
-                ? dk
-                  ? "bg-white/[0.03] border-white/15 shadow-xs"
-                  : "bg-slate-50/70 border-slate-200/90 shadow-xs"
-                : dk
-                ? "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
-                : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50"
-            }`}
-          >
-            {/* Header Accordion */}
-            <button
-              type="button"
-              onClick={() => toggleSection("presensi")}
-              className="w-full flex items-center justify-between p-2.5 sm:p-4.5 text-left cursor-pointer transition-colors"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="text-[11.5px] sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                    Presensi &amp; Kehadiran Harian
-                  </span>
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
-                    Kehadiran
-                  </span>
-                </div>
-                <p className="text-[9.5px] sm:text-[11.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 truncate">
-                  <span className="sm:hidden">Pengingat absensi masuk, pulang &amp; izin</span>
-                  <span className="hidden sm:inline">Peringatan absensi masuk, jam pulang, dan status verifikasi izin</span>
-                </p>
-              </div>
+          {SECTIONS.map((sec) => {
+            const isOpen = Boolean(openSections[sec.key]);
+            const activeCount = sec.items.filter((item) => settings[item.key]).length;
 
-              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-2 sm:ml-3">
-                <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/10">
-                  {presensiActiveCount}/3 Aktif
-                </span>
-                <span
-                  className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition-transform duration-300 ${
-                    openSections.presensi ? "rotate-180 text-blue-600 dark:text-sky-400" : ""
+            return (
+              <div
+                key={sec.key}
+                className={`rounded-xl sm:rounded-2xl border transition-all duration-300 overflow-hidden ${
+                  isOpen
+                    ? dk
+                      ? "bg-white/[0.03] border-white/15 shadow-xs"
+                      : "bg-slate-50/70 border-slate-200/90 shadow-xs"
+                    : dk
+                    ? "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
+                    : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50"
+                }`}
+              >
+                {/* Accordion Header */}
+                <button
+                  type="button"
+                  onClick={() => toggleSection(sec.key)}
+                  className="w-full flex items-center justify-between p-2.5 sm:p-4.5 text-left cursor-pointer transition-colors"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <span className="text-[11.5px] sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                        {sec.title}
+                      </span>
+                      <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+                        {sec.tag}
+                      </span>
+                    </div>
+                    <p className="text-[9.5px] sm:text-[11.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 truncate">
+                      {sec.desc}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-2 sm:ml-3">
+                    <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/10">
+                      {activeCount}/{sec.items.length} Aktif
+                    </span>
+                    <span
+                      className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition-transform duration-300 ${
+                        isOpen ? "rotate-180 text-blue-600 dark:text-sky-400" : ""
+                      }`}
+                    >
+                      <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </span>
+                  </div>
+                </button>
+
+                {/* Content Accordion */}
+                <div
+                  className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                    isOpen
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0"
                   }`}
                 >
-                  <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </span>
-              </div>
-            </button>
+                  <div className="overflow-hidden">
+                    <div className="px-2.5 pb-2.5 sm:px-4.5 sm:pb-4.5 pt-1 space-y-2 sm:space-y-3 border-t border-slate-200/60 dark:border-white/10">
+                      {sec.items.map((item) => {
+                        const checked = Boolean(settings[item.key]);
+                        const ItemIcon = item.icon;
 
-            {/* Content Accordion dengan Animasi Dropdown Halus */}
-            <div
-              className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                openSections.presensi
-                  ? "grid-rows-[1fr] opacity-100"
-                  : "grid-rows-[0fr] opacity-0"
-              }`}
-            >
-              <div className="overflow-hidden">
-                <div className="px-2.5 pb-2.5 sm:px-4.5 sm:pb-4.5 pt-1 space-y-2 sm:space-y-3 border-t border-slate-200/60 dark:border-white/10">
-                  {/* 1. Check-in Pagi */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Pengingat Presensi Masuk Pagi
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            07:30 - 08:00 WIB
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Pukul 07:30 - 08:00 WIB untuk presensi masuk dinas.</span>
-                          <span className="hidden sm:inline">Peringatan otomatis pukul 07:30 - 08:00 WIB untuk presensi selfie &amp; geotagging di Gedung Diskominfo.</span>
-                        </p>
-                      </div>
-                    </div>
+                        return (
+                          <div
+                            key={item.key}
+                            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
+                              dk
+                                ? "bg-white/[0.03] border-white/10 hover:border-white/20"
+                                : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
+                            }`}
+                          >
+                            <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+                              <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
+                                <ItemIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                  <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+                                    {item.label}
+                                  </span>
+                                  <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
+                                    {item.badge}
+                                  </span>
+                                </div>
+                                <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
+                                  {item.sub}
+                                </p>
+                              </div>
+                            </div>
 
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        07:30 - 08:00 WIB
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.checkinReminder}
-                        onChange={() => handleToggle("checkinReminder")}
-                        label="Toggle Presensi Masuk"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 2. Check-out Sore */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Pengingat Presensi Pulang Sore
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            16:00 WIB
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Pukul 16:00 WIB untuk presensi kepulangan dinas.</span>
-                          <span className="hidden sm:inline">Peringatan tepat pukul 16:00 WIB untuk melakukan presensi kepulangan sebelum meninggalkan kantor dinas.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        16:00 WIB
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.checkoutReminder}
-                        onChange={() => handleToggle("checkoutReminder")}
-                        label="Toggle Presensi Pulang"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 3. Status Verifikasi Izin / Sakit */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Status Verifikasi Pengajuan Izin / Sakit
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            Realtime Alert
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Notifikasi persetujuan / penolakan izin &amp; surat sakit.</span>
-                          <span className="hidden sm:inline">Pemberitahuan seketika saat surat izin atau keterangan dokter disetujui atau ditolak admin/mentor.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        Realtime Alert
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.izinStatus}
-                        onChange={() => handleToggle("izinStatus")}
-                        label="Toggle Status Izin"
-                        dk={dk}
-                      />
+                            {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
+                            <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
+                              <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
+                                {item.badge}
+                              </span>
+                              <ToggleSwitch
+                                checked={checked}
+                                onChange={() => handleToggle(item.key)}
+                                label={item.label}
+                                dk={dk}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* ══════════════ ACCORDION 2: LOGBOOK & BIMBINGAN ══════════════ */}
-          <div
-            className={`rounded-xl sm:rounded-2xl border transition-all duration-300 overflow-hidden ${
-              openSections.logbook
-                ? dk
-                  ? "bg-white/[0.03] border-white/15 shadow-xs"
-                  : "bg-slate-50/70 border-slate-200/90 shadow-xs"
-                : dk
-                ? "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
-                : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50"
-            }`}
-          >
-            {/* Header Accordion */}
-            <button
-              type="button"
-              onClick={() => toggleSection("logbook")}
-              className="w-full flex items-center justify-between p-2.5 sm:p-4.5 text-left cursor-pointer transition-colors"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="text-[11.5px] sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                    Logbook &amp; Bimbingan Mentor
-                  </span>
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
-                    Bimbingan
-                  </span>
-                </div>
-                <p className="text-[9.5px] sm:text-[11.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 truncate">
-                  <span className="sm:hidden">Jurnal harian, validasi &amp; pesan mentor</span>
-                  <span className="hidden sm:inline">Peringatan pengisian jurnal harian, validasi pembimbing, dan koordinasi pesan</span>
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-2 sm:ml-3">
-                <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/10">
-                  {logbookActiveCount}/3 Aktif
-                </span>
-                <span
-                  className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition-transform duration-300 ${
-                    openSections.logbook ? "rotate-180 text-blue-600 dark:text-sky-400" : ""
-                  }`}
-                >
-                  <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </span>
-              </div>
-            </button>
-
-            {/* Content Accordion dengan Animasi Dropdown Halus */}
-            <div
-              className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                openSections.logbook
-                  ? "grid-rows-[1fr] opacity-100"
-                  : "grid-rows-[0fr] opacity-0"
-              }`}
-            >
-              <div className="overflow-hidden">
-                <div className="px-2.5 pb-2.5 sm:px-4.5 sm:pb-4.5 pt-1 space-y-2 sm:space-y-3 border-t border-slate-200/60 dark:border-white/10">
-                  {/* 1. Pengingat Logbook */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Pengingat Pengisian Logbook Harian
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            16:30 WIB
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Pukul 16:30 WIB jika uraian aktivitas harian belum diisi.</span>
-                          <span className="hidden sm:inline">Kirim pengingat sore hari pukul 16:30 WIB jika uraian aktivitas &amp; dokumentasi belum diisi.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        16:30 WIB
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.logbookReminder}
-                        onChange={() => handleToggle("logbookReminder")}
-                        label="Toggle Pengingat Logbook"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 2. Verifikasi & Catatan Revisi */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <FileSignature className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Verifikasi &amp; Catatan Revisi Logbook
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            Review Mentor
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Pemberitahuan saat mentor memvalidasi logbook.</span>
-                          <span className="hidden sm:inline">Pemberitahuan instan saat mentor memvalidasi logbook atau menyematkan catatan arahan bimbingan.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        Review Mentor
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.logbookVerification}
-                        onChange={() => handleToggle("logbookVerification")}
-                        label="Toggle Verifikasi Logbook"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 3. Chat Mentor */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Pesan Masuk dari Mentor (Modul Chat)
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            Pesan Langsung
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Notifikasi pesan koordinasi langsung dari pembimbing.</span>
-                          <span className="hidden sm:inline">Notifikasi saat mentor mengirim pesan koordinasi atau instruksi teknis langsung di modul percakapan.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        Pesan Langsung
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.chatMentor}
-                        onChange={() => handleToggle("chatMentor")}
-                        label="Toggle Chat Mentor"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ══════════════ ACCORDION 3: PEMBELAJARAN & TUGAS ══════════════ */}
-          <div
-            className={`rounded-xl sm:rounded-2xl border transition-all duration-300 overflow-hidden ${
-              openSections.tugas
-                ? dk
-                  ? "bg-white/[0.03] border-white/15 shadow-xs"
-                  : "bg-slate-50/70 border-slate-200/90 shadow-xs"
-                : dk
-                ? "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
-                : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50"
-            }`}
-          >
-            {/* Header Accordion */}
-            <button
-              type="button"
-              onClick={() => toggleSection("tugas")}
-              className="w-full flex items-center justify-between p-2.5 sm:p-4.5 text-left cursor-pointer transition-colors"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="text-[11.5px] sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                    Pembelajaran &amp; Penugasan Magang
-                  </span>
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
-                    Penugasan
-                  </span>
-                </div>
-                <p className="text-[9.5px] sm:text-[11.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 truncate">
-                  <span className="sm:hidden">Penugasan materi, evaluasi &amp; deadline</span>
-                  <span className="hidden sm:inline">Instruksi tugas materi, evaluasi review nilai, dan peringatan batas waktu</span>
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-2 sm:ml-3">
-                <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/10">
-                  {tugasActiveCount}/3 Aktif
-                </span>
-                <span
-                  className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition-transform duration-300 ${
-                    openSections.tugas ? "rotate-180 text-blue-600 dark:text-sky-400" : ""
-                  }`}
-                >
-                  <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </span>
-              </div>
-            </button>
-
-            {/* Content Accordion dengan Animasi Dropdown Halus */}
-            <div
-              className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                openSections.tugas
-                  ? "grid-rows-[1fr] opacity-100"
-                  : "grid-rows-[0fr] opacity-0"
-              }`}
-            >
-              <div className="overflow-hidden">
-                <div className="px-2.5 pb-2.5 sm:px-4.5 sm:pb-4.5 pt-1 space-y-2 sm:space-y-3 border-t border-slate-200/60 dark:border-white/10">
-                  {/* 1. Tugas Baru */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Penugasan Tugas Baru dari Mentor
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            Materi &amp; Praktik
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Pemberitahuan materi dan tugas praktik baru.</span>
-                          <span className="hidden sm:inline">Pemberitahuan saat mentor mempublikasikan materi atau instruksi tugas praktik baru.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        Materi &amp; Praktik
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.tugasBaru}
-                        onChange={() => handleToggle("tugasBaru")}
-                        label="Toggle Tugas Baru"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 2. Review Nilai & Feedback */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Review &amp; Feedback Nilai Tugas
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            Evaluasi Nilai
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Pemberitahuan nilai evaluasi dan review dari mentor.</span>
-                          <span className="hidden sm:inline">Pemberitahuan saat hasil pengerjaan tugas Anda telah diperiksa dan diberi nilai evaluasi oleh mentor.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        Evaluasi Nilai
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.tugasFeedback}
-                        onChange={() => handleToggle("tugasFeedback")}
-                        label="Toggle Feedback Tugas"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 3. Deadline Tugas */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <CalendarClock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Peringatan Batas Waktu Tugas (Deadline)
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            H-24 Jam &amp; H-3 Jam
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Peringatan H-24 jam &amp; H-3 jam batas waktu pengumpulan tugas.</span>
-                          <span className="hidden sm:inline">Peringatan 24 jam dan 3 jam sebelum batas akhir pengumpulan dokumen / proyek tugas berakhir.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        H-24 Jam &amp; H-3 Jam
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.tugasDeadline}
-                        onChange={() => handleToggle("tugasDeadline")}
-                        label="Toggle Deadline Tugas"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ══════════════ ACCORDION 4: EVALUASI, RAPOR & SERTIFIKAT ══════════════ */}
-          <div
-            className={`rounded-xl sm:rounded-2xl border transition-all duration-300 overflow-hidden ${
-              openSections.evaluasi
-                ? dk
-                  ? "bg-white/[0.03] border-white/15 shadow-xs"
-                  : "bg-slate-50/70 border-slate-200/90 shadow-xs"
-                : dk
-                ? "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
-                : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50"
-            }`}
-          >
-            {/* Header Accordion */}
-            <button
-              type="button"
-              onClick={() => toggleSection("evaluasi")}
-              className="w-full flex items-center justify-between p-2.5 sm:p-4.5 text-left cursor-pointer transition-colors"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="text-[11.5px] sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                    Evaluasi Akhir, Rapor &amp; Sertifikat
-                  </span>
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
-                    Kelulusan
-                  </span>
-                </div>
-                <p className="text-[9.5px] sm:text-[11.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 truncate">
-                  <span className="sm:hidden">Laporan akhir, nilai rapor &amp; e-sertifikat</span>
-                  <span className="hidden sm:inline">Status naskah laporan akhir, transkrip nilai 4 pilar, dan penerbitan e-sertifikat TTE</span>
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-2 sm:ml-3">
-                <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/10">
-                  {evaluasiActiveCount}/3 Aktif
-                </span>
-                <span
-                  className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition-transform duration-300 ${
-                    openSections.evaluasi ? "rotate-180 text-blue-600 dark:text-sky-400" : ""
-                  }`}
-                >
-                  <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </span>
-              </div>
-            </button>
-
-            {/* Content Accordion dengan Animasi Dropdown Halus */}
-            <div
-              className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                openSections.evaluasi
-                  ? "grid-rows-[1fr] opacity-100"
-                  : "grid-rows-[0fr] opacity-0"
-              }`}
-            >
-              <div className="overflow-hidden">
-                <div className="px-2.5 pb-2.5 sm:px-4.5 sm:pb-4.5 pt-1 space-y-2 sm:space-y-3 border-t border-slate-200/60 dark:border-white/10">
-                  {/* 1. Status Laporan Akhir */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Status Verifikasi Laporan Akhir Magang
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            Naskah Akhir
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Status persetujuan naskah atau catatan revisi laporan akhir.</span>
-                          <span className="hidden sm:inline">Pemberitahuan persetujuan naskah atau catatan perbaikan laporan akhir dari pembimbing lapangan.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        Naskah Akhir
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.laporanAkhirStatus}
-                        onChange={() => handleToggle("laporanAkhirStatus")}
-                        label="Toggle Laporan Akhir"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 2. Rapor Nilai */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Transkrip Rapor Magang Diterbitkan
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            4 Pilar Kompetensi
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Pemberitahuan saat transkrip nilai 4 pilar kompetensi terbit.</span>
-                          <span className="hidden sm:inline">Pemberitahuan saat pembimbing merampungkan penilaian 4 pilar kompetensi dan predikat kelulusan.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        4 Pilar Kompetensi
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.raporNilai}
-                        onChange={() => handleToggle("raporNilai")}
-                        label="Toggle Rapor Nilai"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 3. E-Sertifikat TTE */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Penerbitan E-Sertifikat Resmi (TTE)
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            TTE Kepala Dinas
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Pemberitahuan saat e-sertifikat TTE Kepala Dinas siap diunduh.</span>
-                          <span className="hidden sm:inline">Pemberitahuan saat sertifikat magang resmi ber-TTE Kepala Dinas Kominfo telah terbit dan siap diunduh.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        TTE Kepala Dinas
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.sertifikatTerbit}
-                        onChange={() => handleToggle("sertifikatTerbit")}
-                        label="Toggle Sertifikat Terbit"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ══════════════ ACCORDION 5: KEAMANAN & AKUN ══════════════ */}
-          <div
-            className={`rounded-xl sm:rounded-2xl border transition-all duration-300 overflow-hidden ${
-              openSections.keamanan
-                ? dk
-                  ? "bg-white/[0.03] border-white/15 shadow-xs"
-                  : "bg-slate-50/70 border-slate-200/90 shadow-xs"
-                : dk
-                ? "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
-                : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50"
-            }`}
-          >
-            {/* Header Accordion */}
-            <button
-              type="button"
-              onClick={() => toggleSection("keamanan")}
-              className="w-full flex items-center justify-between p-2.5 sm:p-4.5 text-left cursor-pointer transition-colors"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="text-[11.5px] sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                    Keamanan &amp; Akun Peserta
-                  </span>
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
-                    Keamanan
-                  </span>
-                </div>
-                <p className="text-[9.5px] sm:text-[11.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 truncate">
-                  <span className="sm:hidden">Alert login perangkat baru &amp; kode OTP</span>
-                  <span className="hidden sm:inline">Peringatan sesi masuk perangkat baru dan konfirmasi kode OTP kredensial</span>
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-2 sm:ml-3">
-                <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/10">
-                  {keamananActiveCount}/2 Aktif
-                </span>
-                <span
-                  className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition-transform duration-300 ${
-                    openSections.keamanan ? "rotate-180 text-blue-600 dark:text-sky-400" : ""
-                  }`}
-                >
-                  <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </span>
-              </div>
-            </button>
-
-            {/* Content Accordion dengan Animasi Dropdown Halus */}
-            <div
-              className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                openSections.keamanan
-                  ? "grid-rows-[1fr] opacity-100"
-                  : "grid-rows-[0fr] opacity-0"
-              }`}
-            >
-              <div className="overflow-hidden">
-                <div className="px-2.5 pb-2.5 sm:px-4.5 sm:pb-4.5 pt-1 space-y-2 sm:space-y-3 border-t border-slate-200/60 dark:border-white/10">
-                  {/* 1. Login Perangkat Baru */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Peringatan Sesi &amp; Login Perangkat Baru
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            IP &amp; Browser
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Peringatan saat akun diakses di perangkat baru.</span>
-                          <span className="hidden sm:inline">Pemberitahuan keamanan via email ketika akun Anda diakses dari alamat IP atau peramban yang tidak dikenali.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        IP &amp; Browser
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.loginSecurityAlert}
-                        onChange={() => handleToggle("loginSecurityAlert")}
-                        label="Toggle Login Baru"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 2. Ganti Sandi & OTP */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border transition-all duration-200 ${
-                      dk
-                        ? "bg-white/[0.03] border-white/10 hover:border-white/20"
-                        : "bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shrink-0 mt-0.5">
-                        <KeyRound className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[11.5px] sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Konfirmasi Perubahan Sandi &amp; Email (OTP)
-                          </span>
-                          {/* Badge Desktop */}
-                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                            Kode OTP Instan
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-snug sm:leading-relaxed mt-0.5">
-                          <span className="sm:hidden">Kode OTP instan saat pembaharuan sandi / email.</span>
-                          <span className="hidden sm:inline">Pengiriman kode OTP instan serta bukti audit saat terjadi pembaharuan kata sandi atau email login.</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mobile Bottom Row: Badge di kiri, Toggle di kanan; Desktop: Toggle saja */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/5 sm:border-0 shrink-0">
-                      <span className="inline-flex sm:hidden px-2 py-0.5 rounded-md text-[8.5px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
-                        Kode OTP Instan
-                      </span>
-                      <ToggleSwitch
-                        checked={settings.passwordEmailChangeAlert}
-                        onChange={() => handleToggle("passwordEmailChangeAlert")}
-                        label="Toggle OTP Sandi"
-                        dk={dk}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ──────────────────────────────────────────────────────────────────
-            3. FOOTER AKSI: STATUS AUTO-SAVE REALTIME
-        ────────────────────────────────────────────────────────────────── */}
-        <div className="pt-1 flex items-center justify-between text-[9.5px] sm:text-[11px] text-slate-400 dark:text-slate-500">
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-            <span>
-              <span className="sm:hidden">Perubahan otomatis tersimpan realtime.</span>
-              <span className="hidden sm:inline">Perubahan otomatis tersimpan dan disinkronkan langsung ke lonceng web.</span>
-            </span>
-          </div>
+            );
+          })}
         </div>
       </div>
     </div>

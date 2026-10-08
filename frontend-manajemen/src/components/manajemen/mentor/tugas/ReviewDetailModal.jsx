@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { reviewPengumpulanTugasMentor } from "../../../../services/pembelajaranService";
 import { getFileUrl } from "../../../../utils/fileUrl";
-import { toastSuccess, toastError } from "../../../../utils/swal";
+import { confirmDialog, toastSuccess, toastError } from "../../../../utils/swal";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -465,10 +465,12 @@ const ReviewDetailModalContent = ({
   onSuccess,
   isDark = false,
 }) => {
-  const [submitting, setSubmitting] = useState(false);
   const [catatanMentor, setCatatanMentor] = useState(
-    submission?.pengumpulan?.catatan_mentor || ""
+    submission?.pengumpulan?.status === "menunggu"
+      ? ""
+      : submission?.pengumpulan?.catatan_mentor || ""
   );
+  const [submitting, setSubmitting] = useState(false);
   // State Lightbox untuk Zoom Gambar Soal
   const [previewImage, setPreviewImage] = useState(null);
   // State Filter Jenis Soal di Kolom Kiri ("semua" | "esai" | "pilihan_ganda")
@@ -656,6 +658,15 @@ const ReviewDetailModalContent = ({
 
   // Submit Penilaian Kuis
   const handleSimpanPenilaianKuis = async () => {
+    const isConfirmed = await confirmDialog({
+      title: "Simpan Penilaian Kuis?",
+      text: `Nilai kuis peserta ${submission?.nama || "ini"} akan disimpan dengan total ${kalkulasiSkorKuis} poin (${isTuntas ? "Tuntas" : "Perlu Remidi"}).`,
+      confirmText: "Ya, Simpan Nilai",
+      cancelText: "Batal",
+      icon: "question",
+    });
+    if (!isConfirmed) return;
+
     setSubmitting(true);
     try {
       const updatedDetailPerSoal = {
@@ -717,9 +728,25 @@ const ReviewDetailModalContent = ({
 
   // Submit Penilaian Tugas Berkas / Proyek
   const handleReviewBerkas = async (action) => {
+    const isRevisi = action === "revisi";
+    if (isRevisi && !catatanMentor.trim()) {
+      toastError("Harap masukkan catatan revisi agar peserta memahami perbaikan yang perlu dilakukan.");
+      return;
+    }
+
+    const isConfirmed = await confirmDialog({
+      title: isRevisi ? "Minta Revisi Tugas Proyek?" : "Setujui Tugas Proyek (ACC)?",
+      text: isRevisi
+        ? `Kirim permintaan revisi tugas ke ${submission?.nama || "peserta"} beserta catatan mentor?`
+        : `Setujui pengumpulan tugas proyek ${submission?.nama || "peserta"} dengan nilai ${nilaiOtomatisProyek} poin?`,
+      confirmText: isRevisi ? "Ya, Minta Revisi" : "Ya, Setujui (ACC)",
+      cancelText: "Batal",
+      icon: isRevisi ? "warning" : "question",
+    });
+    if (!isConfirmed) return;
+
     setSubmitting(true);
     try {
-      const isRevisi = action === "revisi";
       const nilaiFinal = isRevisi ? null : nilaiOtomatisProyek;
 
       await reviewPengumpulanTugasMentor(pengumpulan.id, {

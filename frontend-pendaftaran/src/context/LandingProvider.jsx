@@ -99,10 +99,7 @@ export const LandingProvider = ({ children }) => {
     pasangMeta("name", "twitter:description", seo.description);
     pasangMeta("name", "twitter:image", seo.og_image);
   }, [
-    config.seo?.title,
-    config.seo?.description,
-    config.seo?.keywords,
-    config.seo?.og_image,
+    config.seo,
     config.identitas?.nama_situs,
   ]);
 

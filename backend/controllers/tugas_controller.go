@@ -1,12 +1,22 @@
+// ==============================================================================
+// CONTROLLER: TUGAS CONTROLLER
+// DESKRIPSI : Pengelolaan penugasan magang dan kuis interaktif bagi peserta bimbingan.
+//             Mencakup pembuatan tugas/kuis, penilaian & revisi oleh mentor,
+//             pengumpulan berkas/jawaban kuis oleh peserta, serta kalkulasi remidi.
+// ROLE TERKAIT: [ROLE: MENTOR], [ROLE: PESERTA]
+// ==============================================================================
+
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -14,12 +24,17 @@ import (
 	"sim-magang-backend/config"
 	"sim-magang-backend/models"
 	"sim-magang-backend/services"
+	emailtemplates "sim-magang-backend/services/email_templates"
 	"sim-magang-backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
-// simpanFileLampiranTugas menyimpan berkas lampiran instruksi/soal tugas ke uploads/tugas-magang/YYYY-MM
+// ==============================================================================
+// ── HELPER & PENYIMPANAN BERKAS TUGAS ─────────────────────────────────────────
+// ==============================================================================
+
+// simpanFileLampiranTugas menyimpan berkas lampiran instruksi/soal tugas dari mentor ke uploads/tugas-magang/YYYY-MM
 func simpanFileLampiranTugas(c *gin.Context, file *multipart.FileHeader, mentorID uint) (string, error) {
 	if file == nil {
 		return "", nil
@@ -63,7 +78,109 @@ func simpanFileLampiranTugas(c *gin.Context, file *multipart.FileHeader, mentorI
 	return strings.ReplaceAll(filePath, "\\", "/"), nil
 }
 
+// simpanFileTugas menyimpan berkas pengumpulan tugas peserta ke uploads/tugas-peserta/YYYY-MM
+func simpanFileTugas(c *gin.Context, file *multipart.FileHeader, pesertaID uint, tugasID uint) (string, error) {
+	if file == nil {
+		return "", nil
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	allowed := map[string]bool{
+		".pdf":  true,
+		".zip":  true,
+		".rar":  true,
+		".7z":   true,
+		".docx": true,
+		".doc":  true,
+		".pptx": true,
+		".png":  true,
+		".jpg":  true,
+		".jpeg": true,
+	}
+
+	if !allowed[ext] {
+		return "", errors.New("format berkas tidak didukung (harus PDF, ZIP, RAR, DOCX, PPTX, atau Gambar)")
+	}
+
+	if file.Size > 25*1024*1024 {
+		return "", errors.New("ukuran berkas tugas maksimal 25 MB")
+	}
+
+	uploadDir := filepath.Join("uploads", "tugas-peserta", utils.SekarangWIB().Format("2006-01"))
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		return "", errors.New("gagal membuat folder penyimpanan tugas")
+	}
+
+	fileName := fmt.Sprintf("tugas_%d_peserta_%d_%d%s", tugasID, pesertaID, time.Now().Unix(), ext)
+	filePath := filepath.Join(uploadDir, fileName)
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		return "", errors.New("gagal menyimpan berkas tugas")
+	}
+	return strings.ReplaceAll(filePath, "\\", "/"), nil
+}
+
+// pastikanTugasBawaan membuat tugas orientasi awal jika basis data tugas masih kosong
+func pastikanTugasBawaan(mentorID *uint) {
+	var count int64
+	config.DB.Model(&models.TugasMagang{}).Count(&count)
+	if count > 0 {
+		return
+	}
+
+	deadline := time.Now().AddDate(0, 0, 7) // 7 hari ke depan
+	tugasAwal := []models.TugasMagang{
+		{
+			Judul:        "Penyusunan Rencana Kerja & Analisis Kebutuhan Magang",
+			Deskripsi:    "Susunlah dokumen rencana kerja magang mandiri (Work Plan) yang memuat target capaian kompetensi, modul sistem yang akan dikembangkan/dianalisis, serta jadwal pengerjaan mingguan selama periode magang.",
+			PosisiBidang: "semua",
+			MentorID:     mentorID,
+			TenggatWaktu: &deadline,
+			BobotNilai:   100,
+		},
+	}
+
+	for _, t := range tugasAwal {
+		config.DB.Create(&t)
+	}
+}
+
+// parseTenggatWaktu mem-parsing string tenggat waktu dari berbagai format umum
+func parseTenggatWaktu(twStr string) (*time.Time, error) {
+	twStr = strings.TrimSpace(twStr)
+	if twStr == "" {
+		return nil, nil
+	}
+
+	formats := []string{
+		"2006-01-02T15:04:05",
+		"2006-01-02T15:04",
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
+		time.RFC3339,
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02",
+	}
+
+	for _, f := range formats {
+		if parsed, err := time.ParseInLocation(f, twStr, utils.WIB()); err == nil {
+			if f == "2006-01-02" {
+				parsed = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 23, 59, 59, 0, utils.WIB())
+			}
+			return &parsed, nil
+		}
+	}
+
+	return nil, fmt.Errorf("format tenggat waktu '%s' tidak dikenali", twStr)
+}
+
+// ==============================================================================
+// ── BAGIAN MENTOR: KELOLA PENUGASAN MAGANG ────────────────────────────────────
+// ==============================================================================
+
 // ── 1. GET DAFTAR TUGAS MENTOR ────────────────────────────────────────────────
+// [ROLE: MENTOR]
+// GetTugasMentor mengambil seluruh daftar tugas dan kuis yang telah dibuat oleh mentor login beserta ringkasan status pengumpulan (menunggu review, dinilai, revisi).
+// Endpoint: GET /api/manajemen/mentor/tugas
 func GetTugasMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -87,11 +204,69 @@ func GetTugasMentor(c *gin.Context) {
 		return
 	}
 
+	// Pastikan foto profil peserta akses dan peserta spesifik terisi (fallback ke pas foto pendaftaran jika kosong)
+	var allUserIDs []uint
+	for _, t := range tugasList {
+		if t.PesertaID != nil {
+			allUserIDs = append(allUserIDs, *t.PesertaID)
+		}
+		for _, u := range t.PesertaAkses {
+			allUserIDs = append(allUserIDs, u.ID)
+		}
+	}
+	if len(allUserIDs) > 0 {
+		var pendaftaransFoto []struct {
+			AkunPesertaID uint   `gorm:"column:akun_peserta_id"`
+			FilePasFoto   string `gorm:"column:file_pas_foto"`
+		}
+		config.DB.Model(&models.PendaftaranMagang{}).
+			Select("akun_peserta_id, file_pas_foto").
+			Where("akun_peserta_id IN ? AND file_pas_foto != ''", allUserIDs).
+			Scan(&pendaftaransFoto)
+
+		fotoMap := make(map[uint]string)
+		for _, pf := range pendaftaransFoto {
+			fotoMap[pf.AkunPesertaID] = pf.FilePasFoto
+		}
+
+		for i := range tugasList {
+			if tugasList[i].Peserta != nil && tugasList[i].Peserta.FotoProfil == "" {
+				if f, ok := fotoMap[tugasList[i].Peserta.ID]; ok {
+					tugasList[i].Peserta.FotoProfil = f
+				}
+			}
+			for j := range tugasList[i].PesertaAkses {
+				if tugasList[i].PesertaAkses[j].FotoProfil == "" {
+					if f, ok := fotoMap[tugasList[i].PesertaAkses[j].ID]; ok {
+						tugasList[i].PesertaAkses[j].FotoProfil = f
+					}
+				}
+			}
+		}
+	}
+
 	// Ambil daftar peserta bimbingan aktif mentor ini untuk menghitung total target
-	var mentees []models.PendaftaranMagang
+	var menteesRaw []models.PendaftaranMagang
 	config.DB.Preload("AkunPeserta").
 		Where("mentor_id = ? AND status_pendaftaran = 'diterima' AND akun_peserta_id IS NOT NULL", mentorID).
-		Find(&mentees)
+		Find(&menteesRaw)
+
+	todayTrunc := time.Now().Truncate(24 * time.Hour)
+	var mentees []models.PendaftaranMagang
+	for _, m := range menteesRaw {
+		if m.AkunPeserta != nil && (m.AkunPeserta.StatusMagang == "selesai" || m.AkunPeserta.StatusAkun != "aktif") {
+			continue
+		}
+		if m.TanggalSelesai != "" {
+			datePart := strings.Split(m.TanggalSelesai, "T")[0]
+			if tSelesai, err := time.Parse("2006-01-02", datePart); err == nil {
+				if todayTrunc.After(tSelesai) {
+					continue
+				}
+			}
+		}
+		mentees = append(mentees, m)
+	}
 
 	totalPesertaBimbingan := len(mentees)
 
@@ -275,17 +450,20 @@ func GetTugasMentor(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Daftar penugasan berhasil dimuat", gin.H{
-		"tugas":             hasil,
-		"total_tugas":       len(tugasList),
-		"tugas_aktif":       totalTugasAktif,
-		"menunggu_review":   totalMenungguGlobal,
-		"perlu_revisi":      totalRevisiGlobal,
-		"selesai_dinilai":   totalDinilaiGlobal,
-		"total_bimbingan":   totalPesertaBimbingan,
+		"tugas":           hasil,
+		"total_tugas":     len(tugasList),
+		"tugas_aktif":     totalTugasAktif,
+		"menunggu_review": totalMenungguGlobal,
+		"perlu_revisi":    totalRevisiGlobal,
+		"selesai_dinilai": totalDinilaiGlobal,
+		"total_bimbingan": totalPesertaBimbingan,
 	})
 }
 
 // ── 2. GET PESERTA BIMBINGAN UNTUK FORM PENUGASAN ─────────────────────────────
+// [ROLE: MENTOR]
+// GetPesertaBimbinganUntukTugas mengambil daftar peserta bimbingan aktif untuk opsi target penugasan spesifik.
+// Endpoint: GET /api/manajemen/mentor/tugas/peserta-bimbingan
 func GetPesertaBimbinganUntukTugas(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -316,11 +494,28 @@ func GetPesertaBimbinganUntukTugas(c *gin.Context) {
 
 	var hasil []PesertaItem
 	sudahAda := make(map[uint]bool)
+	now := time.Now().Truncate(24 * time.Hour)
 
 	for _, p := range pendaftaranList {
 		if p.AkunPesertaID == nil || sudahAda[*p.AkunPesertaID] {
 			continue
 		}
+
+		// Jangan tampilkan peserta yang sudah selesai magang atau akun nonaktif
+		if p.AkunPeserta != nil {
+			if p.AkunPeserta.StatusMagang == "selesai" || p.AkunPeserta.StatusAkun != "aktif" {
+				continue
+			}
+		}
+		if p.TanggalSelesai != "" {
+			datePart := strings.Split(p.TanggalSelesai, "T")[0]
+			if tSelesai, err := time.Parse("2006-01-02", datePart); err == nil {
+				if now.After(tSelesai) {
+					continue
+				}
+			}
+		}
+
 		sudahAda[*p.AkunPesertaID] = true
 
 		foto := ""
@@ -350,36 +545,10 @@ func GetPesertaBimbinganUntukTugas(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Peserta bimbingan berhasil dimuat", hasil)
 }
 
-// parseTenggatWaktu mem-parsing string tenggat waktu dari berbagai format umum
-func parseTenggatWaktu(twStr string) (*time.Time, error) {
-	twStr = strings.TrimSpace(twStr)
-	if twStr == "" {
-		return nil, nil
-	}
-
-	formats := []string{
-		"2006-01-02T15:04:05",
-		"2006-01-02T15:04",
-		"2006-01-02 15:04:05",
-		"2006-01-02 15:04",
-		time.RFC3339,
-		"2006-01-02T15:04:05Z07:00",
-		"2006-01-02",
-	}
-
-	for _, f := range formats {
-		if parsed, err := time.ParseInLocation(f, twStr, utils.WIB()); err == nil {
-			if f == "2006-01-02" {
-				parsed = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 23, 59, 59, 0, utils.WIB())
-			}
-			return &parsed, nil
-		}
-	}
-
-	return nil, fmt.Errorf("format tenggat waktu '%s' tidak dikenali", twStr)
-}
-
 // ── 3. CREATE TUGAS MENTOR ────────────────────────────────────────────────────
+// [ROLE: MENTOR]
+// CreateTugasMentor membuat tugas baru atau kuis interaktif pilihan ganda, menetapkan tenggat waktu, dan mengirimkan notifikasi in-app ke peserta sasaran.
+// Endpoint: POST /api/manajemen/mentor/tugas
 func CreateTugasMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -515,23 +684,42 @@ func CreateTugasMentor(c *gin.Context) {
 	// Preload relasi
 	config.DB.Preload("Peserta").Preload("PesertaAkses").Preload("Mentor").First(&tugasBaru, tugasBaru.ID)
 
-	// Kirim notifikasi in-app ke peserta bimbingan yang bersangkutan
-	go func(tugasID uint, judulTugas, targetP, targetJ string, specificIDs []uint, mID uint) {
+	// Kirim notifikasi in-app & email ke peserta bimbingan yang bersangkutan
+	go func(tugasID uint, judulTugas, targetP, targetJ string, specificIDs []uint, mID uint, tenggat *time.Time) {
 		var recipientUserIDs []uint
 		if targetP == "spesifik" && len(specificIDs) > 0 {
 			recipientUserIDs = specificIDs
 		} else {
+			// Hanya kirim notifikasi & email ke peserta yang masih aktif magang (bukan alumni)
+			hariIni := utils.TanggalHariIni()
 			var mentees []models.PendaftaranMagang
-			q := config.DB.Where("mentor_id = ? AND status_pendaftaran = 'diterima' AND akun_peserta_id IS NOT NULL", mID)
+			q := config.DB.
+				Joins("JOIN user_manajemens u ON u.id = pendaftaran_magangs.akun_peserta_id").
+				Where("pendaftaran_magangs.mentor_id = ? AND pendaftaran_magangs.status_pendaftaran = 'diterima' AND pendaftaran_magangs.akun_peserta_id IS NOT NULL", mID).
+				Where("u.status_magang = 'aktif' AND u.status_akun = 'aktif'").
+				Where("pendaftaran_magangs.tanggal_selesai IS NULL OR DATE(pendaftaran_magangs.tanggal_selesai) >= ?", hariIni)
+
 			if targetJ != "" && targetJ != "semua" {
-				q = q.Where("kategori_pendaftar = ?", targetJ)
+				q = q.Where("LOWER(pendaftaran_magangs.kategori_pendaftar) = ?", strings.ToLower(targetJ))
 			}
-			q.Find(&mentees)
+			q.Select("pendaftaran_magangs.akun_peserta_id").Find(&mentees)
 			for _, m := range mentees {
 				if m.AkunPesertaID != nil {
 					recipientUserIDs = append(recipientUserIDs, *m.AkunPesertaID)
 				}
 			}
+		}
+
+		deadlineStr := "Tidak ditentukan"
+		if tenggat != nil {
+			deadlineStr = tenggat.Format("02 January 2006 15:04 WIB")
+		}
+
+		var mentor models.UserManajemen
+		config.DB.Select("id, nama").First(&mentor, mID)
+		namaMentor := mentor.Nama
+		if namaMentor == "" {
+			namaMentor = "Mentor Pembimbing"
 		}
 
 		for _, pid := range recipientUserIDs {
@@ -547,13 +735,22 @@ func CreateTugasMentor(c *gin.Context) {
 				RefID:        &tugasID,
 				UrlTujuan:    "/peserta/pembelajaran/tugas",
 			})
+
+			var peserta models.UserManajemen
+			if err := config.DB.Select("id, nama, email").First(&peserta, pid).Error; err == nil && peserta.Email != "" {
+				bodyEmail := emailtemplates.TemplateTugasBaru(peserta.Nama, judulTugas, namaMentor, deadlineStr)
+				_ = services.SendEmail(peserta.Email, "Penugasan Magang Baru: "+judulTugas, bodyEmail)
+			}
 		}
-	}(tugasBaru.ID, tugasBaru.Judul, tugasBaru.TargetPeserta, tugasBaru.TargetJenjang, targetUserIDs, mentorID)
+	}(tugasBaru.ID, tugasBaru.Judul, tugasBaru.TargetPeserta, tugasBaru.TargetJenjang, targetUserIDs, mentorID, tugasBaru.TenggatWaktu)
 
 	utils.SuccessResponse(c, http.StatusCreated, "Tugas berhasil diterbitkan untuk peserta bimbingan", tugasBaru)
 }
 
 // ── 4. UPDATE TUGAS MENTOR ────────────────────────────────────────────────────
+// [ROLE: MENTOR]
+// UpdateTugasMentor memperbarui data penugasan magang/kuis seperti judul, deskripsi, tenggat waktu, file lampiran, atau butir soal kuis.
+// Endpoint: PUT /api/manajemen/mentor/tugas/:id
 func UpdateTugasMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -726,6 +923,9 @@ func UpdateTugasMentor(c *gin.Context) {
 }
 
 // ── 5. DELETE TUGAS MENTOR ────────────────────────────────────────────────────
+// [ROLE: MENTOR]
+// DeleteTugasMentor menghapus tugas magang beserta seluruh pengumpulan dan file lampirannya dari sistem.
+// Endpoint: DELETE /api/manajemen/mentor/tugas/:id
 func DeleteTugasMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -750,6 +950,18 @@ func DeleteTugasMentor(c *gin.Context) {
 		os.Remove(tugas.FileLampiran)
 	}
 
+	// Hapus berkas fisik pengumpulan tugas peserta jika ada
+	var pengumpulanList []models.PengumpulanTugas
+	config.DB.Where("tugas_id = ?", tugas.ID).Find(&pengumpulanList)
+	for _, p := range pengumpulanList {
+		if p.FilePengumpulan != "" {
+			cleanP := strings.TrimPrefix(strings.ReplaceAll(p.FilePengumpulan, "\\", "/"), "/")
+			if strings.HasPrefix(cleanP, "uploads/") && !strings.Contains(cleanP, "..") {
+				_ = os.Remove(cleanP)
+			}
+		}
+	}
+
 	// Hapus relasi many2many
 	_ = config.DB.Model(&tugas).Association("PesertaAkses").Clear()
 
@@ -771,6 +983,9 @@ func DeleteTugasMentor(c *gin.Context) {
 }
 
 // ── 6. GET DETAIL PENGUMPULAN TUGAS OLEH PESERTA ──────────────────────────────
+// [ROLE: MENTOR]
+// GetPengumpulanTugasMentor mengambil rincian pengumpulan tugas atau hasil pengerjaan kuis dari seluruh peserta target pada satu tugas tertentu.
+// Endpoint: GET /api/manajemen/mentor/tugas/:id/pengumpulan
 func GetPengumpulanTugasMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -870,9 +1085,31 @@ func GetPengumpulanTugasMentor(c *gin.Context) {
 		}
 
 		if sub, ada := mapKumpul[pID]; ada {
+			// Jika pengumpulan masih berstatus menunggu (sedang menunggu koreksi esai atau review ulang),
+			// pastikan catatan mentor kosong agar catatan dari pengerjaan sebelumnya tidak muncul lagi.
+			if sub.Status == "menunggu" {
+				sub.CatatanMentor = ""
+			}
 			item.Pengumpulan = &sub
 			item.StatusPengumpulan = sub.Status
 		} else {
+			// Jika peserta sudah selesai magang dan tidak mengumpulkan tugas ini, jangan tampilkan di daftar belum kumpul
+			isSelesai := false
+			if m.AkunPeserta != nil && (m.AkunPeserta.StatusMagang == "selesai" || m.AkunPeserta.StatusAkun != "aktif") {
+				isSelesai = true
+			}
+			if m.TanggalSelesai != "" {
+				datePart := strings.Split(m.TanggalSelesai, "T")[0]
+				if tSelesai, err := time.Parse("2006-01-02", datePart); err == nil {
+					if now.Truncate(24 * time.Hour).After(tSelesai) {
+						isSelesai = true
+					}
+				}
+			}
+			if isSelesai {
+				continue
+			}
+
 			item.Pengumpulan = nil
 			if tugas.TenggatWaktu != nil && now.After(*tugas.TenggatWaktu) {
 				item.StatusPengumpulan = "terlambat_belum_kumpul"
@@ -885,18 +1122,14 @@ func GetPengumpulanTugasMentor(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Detail tugas dan pengumpulan berhasil dimuat", gin.H{
-		"tugas":       tugas,
-		"submissions": hasilPeserta,
-		"total_target": len(mentees),
+		"tugas":        tugas,
+		"submissions":  hasilPeserta,
+		"total_target": len(hasilPeserta),
 		"total_kumpul": len(pengumpulanList),
 	})
 }
 
-// ── 7. REVIEW / ACC PENGUMPULAN TUGAS OLEH MENTOR (SISTEM NILAI OTOMATIS) ──
-// Aturan Penilaian Otomatis (Opsi 1):
-// - ACC Tepat Waktu = 100 poin
-// - ACC Terlambat = 80 poin
-// - Revisi = Status berubah menjadi 'revisi' dengan instruksi perbaikan
+// ── 7. REVIEW / ACC PENGUMPULAN TUGAS OLEH MENTOR ─────────────────────────────
 type ReviewTugasInput struct {
 	Action        string   `json:"action" binding:"required"` // "acc" | "revisi" | "nilai_manual" | "nilai_kuis"
 	Nilai         *float64 `json:"nilai"`
@@ -905,6 +1138,9 @@ type ReviewTugasInput struct {
 	StatusRemidi  string   `json:"status_remidi"` // "tuntas" | "perlu_remidi" | "tidak"
 }
 
+// [ROLE: MENTOR]
+// ReviewPengumpulanTugasMentor memberikan nilai angka, catatan evaluasi, atau meminta revisi pengumpulan tugas peserta bimbingan.
+// Endpoint: POST /api/manajemen/mentor/tugas/pengumpulan/:pengumpulan_id/review
 func ReviewPengumpulanTugasMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -986,8 +1222,11 @@ func ReviewPengumpulanTugasMentor(c *gin.Context) {
 		return
 	}
 
-	// Kirim notifikasi hasil evaluasi tugas ke peserta
+	// Kirim notifikasi hasil evaluasi tugas ke peserta (in-app & email)
 	go func(pid uint, jdl, act, ctt string, n *float64, qID uint) {
+		var peserta models.UserManajemen
+		_ = config.DB.Select("id, nama, email").First(&peserta, pid)
+
 		if strings.ToLower(act) == "revisi" {
 			pesanNotif := fmt.Sprintf("Mentor meminta revisi untuk tugas '%s'. Silakan periksa catatan evaluasi.", jdl)
 			if ctt != "" {
@@ -1004,6 +1243,11 @@ func ReviewPengumpulanTugasMentor(c *gin.Context) {
 				RefID:        &qID,
 				UrlTujuan:    "/peserta/pembelajaran/tugas",
 			})
+
+			if peserta.Email != "" {
+				bodyEmail := emailtemplates.TemplateTugasRevisi(peserta.Nama, jdl, ctt)
+				_ = services.SendEmail(peserta.Email, "Permintaan Revisi Tugas: "+jdl, bodyEmail)
+			}
 		} else {
 			skor := 0.0
 			if n != nil {
@@ -1024,6 +1268,12 @@ func ReviewPengumpulanTugasMentor(c *gin.Context) {
 				RefID:        &qID,
 				UrlTujuan:    "/peserta/pembelajaran/tugas",
 			})
+
+			if peserta.Email != "" {
+				skorStr := fmt.Sprintf("%.0f", skor)
+				bodyEmail := emailtemplates.TemplateTugasDinilai(peserta.Nama, jdl, skorStr, ctt)
+				_ = services.SendEmail(peserta.Email, "Tugas Telah Dinilai: "+jdl, bodyEmail)
+			}
 		}
 	}(pengumpulan.PesertaID, pengumpulan.Tugas.Judul, req.Action, pengumpulan.CatatanMentor, pengumpulan.Nilai, pengumpulan.ID)
 
@@ -1041,13 +1291,16 @@ func ReviewPengumpulanTugasMentor(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, pesan, pengumpulan)
 }
 
-// ── 8. SET NILAI 0 UNTUK PESERTA YANG TIDAK MENGUMPULKAN TUGAS ──
+// ── 8. SET NILAI 0 UNTUK PESERTA YANG TIDAK MENGUMPULKAN TUGAS ────────────────
 type BeriNilaiNolInput struct {
 	TugasID   uint   `json:"tugas_id" binding:"required"`
 	PesertaID uint   `json:"peserta_id" binding:"required"`
 	Catatan   string `json:"catatan"`
 }
 
+// [ROLE: MENTOR]
+// SetNilaiNolTugasMentor menetapkan nilai 0 secara otomatis bagi peserta bimbingan yang melewati batas tenggat waktu dan tidak mengumpulkan tugas.
+// Endpoint: POST /api/manajemen/mentor/tugas/nilai-nol
 func SetNilaiNolTugasMentor(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
 	if !ok {
@@ -1128,3 +1381,607 @@ func SetNilaiNolTugasMentor(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Nilai 0 poin berhasil ditetapkan untuk peserta", pengumpulan)
 }
 
+// ==============================================================================
+// ── BAGIAN PESERTA: LIHAT, KERJAKAN & KUMPULKAN TUGAS ─────────────────────────
+// ==============================================================================
+
+// ── 9. GET TUGAS MAGANG PESERTA ───────────────────────────────────────────────
+// [ROLE: PESERTA]
+// GetTugasPeserta mengambil daftar seluruh penugasan magang dan kuis yang ditugaskan mentor kepada peserta yang login, beserta status pengerjaannya.
+// Endpoint: GET /api/manajemen/peserta/tugas
+func GetTugasPeserta(c *gin.Context) {
+	pesertaID, ok := pesertaIDDariToken(c)
+	if !ok {
+		return
+	}
+
+	var pendaftaran models.PendaftaranMagang
+	config.DB.Where("akun_peserta_id = ?", pesertaID).Order("id desc").First(&pendaftaran)
+
+	pastikanTugasBawaan(pendaftaran.MentorID)
+
+	bidang := pendaftaran.PosisiBidang
+	jenjang := strings.ToLower(pendaftaran.KategoriPendaftar) // "mahasiswa" atau "siswa"
+
+	// Query tugas yang relevan untuk peserta ini
+	var tugasList []models.TugasMagang
+	q := config.DB.Model(&models.TugasMagang{}).Preload("Mentor")
+	if pendaftaran.MentorID != nil {
+		q = q.Where(
+			"(mentor_id IS NULL OR mentor_id = ?) AND ("+
+				"(target_peserta = 'semua_bimbingan' AND (target_jenjang = 'semua' OR target_jenjang = ? OR target_jenjang IS NULL OR target_jenjang = '')) OR "+
+				"(target_peserta = 'mahasiswa' AND ? = 'mahasiswa') OR "+
+				"(target_peserta = 'siswa' AND ? = 'siswa') OR "+
+				"id IN (SELECT tugas_id FROM tugas_peserta_akses WHERE peserta_id = ?) OR "+
+				"peserta_id = ? OR "+
+				"(peserta_id IS NULL AND (target_peserta = '' OR target_peserta IS NULL))"+
+				")",
+			*pendaftaran.MentorID, jenjang, jenjang, jenjang, pesertaID, pesertaID,
+		)
+	} else if bidang != "" {
+		q = q.Where("(posisi_bidang = 'semua' OR posisi_bidang = ?) AND (peserta_id IS NULL OR peserta_id = ?)", bidang, pesertaID)
+	} else {
+		q = q.Where("peserta_id IS NULL OR peserta_id = ?", pesertaID)
+	}
+	q.Order("id desc").Find(&tugasList)
+
+	// Ambil semua pengumpulan tugas milik peserta ini
+	var pengumpulanList []models.PengumpulanTugas
+	config.DB.Where("peserta_id = ?", pesertaID).Find(&pengumpulanList)
+
+	mapPengumpulan := make(map[uint]models.PengumpulanTugas)
+	for _, p := range pengumpulanList {
+		mapPengumpulan[p.TugasID] = p
+	}
+
+	type TugasPesertaItem struct {
+		models.TugasMagang
+		Pengumpulan *models.PengumpulanTugas `json:"pengumpulan"`
+		StatusTugas string                   `json:"status_tugas"` // "belum_kumpul" | "menunggu" | "revisi" | "dinilai" | "terlambat"
+	}
+
+	var hasil []TugasPesertaItem
+	totalSelesai := 0
+	totalMenunggu := 0
+	totalBelum := 0
+	var totalNilai float64 = 0
+	jumlahDinilai := 0
+
+	now := time.Now()
+
+	for _, t := range tugasList {
+		var item TugasPesertaItem
+		item.TugasMagang = t
+
+		if p, ada := mapPengumpulan[t.ID]; ada {
+			// Jika status tugas masih menunggu koreksi/review, kosongkan catatan mentor agar tidak menampilkan catatan percobaan sebelumnya
+			if p.Status == "menunggu" {
+				p.CatatanMentor = ""
+			}
+			item.Pengumpulan = &p
+			item.StatusTugas = p.Status
+			switch p.Status {
+			case "dinilai":
+				totalSelesai++
+				if p.Nilai != nil {
+					totalNilai += *p.Nilai
+					jumlahDinilai++
+				}
+			case "menunggu":
+				totalMenunggu++
+			}
+		} else {
+			item.Pengumpulan = nil
+			if t.TenggatWaktu != nil && now.After(*t.TenggatWaktu) {
+				item.StatusTugas = "terlambat"
+			} else {
+				item.StatusTugas = "belum_kumpul"
+			}
+			totalBelum++
+		}
+
+		// Sanitasi kunci jawaban kuis jika belum selesai dinilai
+		if t.TipeTugas == "kuis" && t.KuisData != "" {
+			sudahSelesai := item.Pengumpulan != nil && item.Pengumpulan.Status == "dinilai"
+			item.TugasMagang.KuisData = sanitizeKuisDataUntukPeserta(t.KuisData, sudahSelesai)
+		}
+
+		hasil = append(hasil, item)
+	}
+
+	rataNilai := 0.0
+	if jumlahDinilai > 0 {
+		rataNilai = totalNilai / float64(jumlahDinilai)
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Daftar tugas magang berhasil dimuat", gin.H{
+		"statistik": gin.H{
+			"total_tugas":      len(tugasList),
+			"belum_dikerjakan": totalBelum,
+			"menunggu_review":  totalMenunggu,
+			"telah_dinilai":    totalSelesai,
+			"rata_rata_nilai":  rataNilai,
+		},
+		"tugas": hasil,
+	})
+}
+
+// ── 10. KUMPUL / SERAHKAN TUGAS BERKAS PESERTA ────────────────────────────────
+// [ROLE: PESERTA]
+// KumpulTugasPeserta mengumpulkan berkas tugas (PDF/ZIP/dokumen) dan/atau tautan eksternal (GitHub, Google Drive) beserta catatan pengantar peserta.
+// Endpoint: POST /api/manajemen/peserta/tugas/:id/kumpul
+func KumpulTugasPeserta(c *gin.Context) {
+	pesertaID, ok := pesertaIDDariToken(c)
+	if !ok {
+		return
+	}
+
+	tugasIDParam := c.Param("id")
+	tugasIDUint, err := strconv.ParseUint(tugasIDParam, 10, 32)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "ID tugas tidak valid")
+		return
+	}
+	tugasID := uint(tugasIDUint)
+
+	var tugas models.TugasMagang
+	if err := config.DB.First(&tugas, tugasID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Tugas magang tidak ditemukan")
+		return
+	}
+
+	var pengumpulan models.PengumpulanTugas
+	adaPengumpulan := config.DB.Where("tugas_id = ? AND peserta_id = ?", tugasID, pesertaID).First(&pengumpulan).Error == nil
+
+	linkTugas, hasLink := c.GetPostForm("link_tugas")
+	linkTugas = strings.TrimSpace(linkTugas)
+	catatanPeserta, hasCatatan := c.GetPostForm("catatan_peserta")
+	catatanPeserta = strings.TrimSpace(catatanPeserta)
+	fileHeader, _ := c.FormFile("file_tugas")
+
+	var filePath string
+	if fileHeader != nil {
+		path, errSave := simpanFileTugas(c, fileHeader, pesertaID, tugasID)
+		if errSave != nil {
+			utils.ErrorResponse(c, http.StatusBadRequest, errSave.Error())
+			return
+		}
+		filePath = path
+	}
+
+	// Tentukan status berkas, tautan, dan catatan efektif
+	fileEfektif := filePath
+	if fileEfektif == "" && adaPengumpulan {
+		fileEfektif = pengumpulan.FilePengumpulan
+	}
+
+	linkEfektif := linkTugas
+	if !hasLink && adaPengumpulan {
+		linkEfektif = pengumpulan.LinkTugas
+	}
+
+	catatanEfektif := catatanPeserta
+	if !hasCatatan && adaPengumpulan {
+		catatanEfektif = pengumpulan.CatatanPeserta
+	}
+
+	// Validasi: minimal harus ada berkas ATAU tautan ATAU catatan penyelesaian
+	if fileEfektif == "" && linkEfektif == "" && catatanEfektif == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Harap sertakan berkas tugas, tautan hasil karya, atau catatan penyelesaian.")
+		return
+	}
+
+	now := time.Now()
+	if adaPengumpulan {
+		updates := map[string]interface{}{
+			"waktu_kumpul":   now,
+			"status":         "menunggu", // reset ke status menunggu review saat peserta memperbarui jawaban
+			"catatan_mentor": "",         // reset catatan mentor lama saat peserta mengunggah perbaikan baru
+			"dinilai_pada":   nil,
+		}
+		var oldFile string
+		if filePath != "" {
+			oldFile = pengumpulan.FilePengumpulan
+			pengumpulan.FilePengumpulan = filePath
+			updates["file_pengumpulan"] = filePath
+		}
+		if hasLink {
+			pengumpulan.LinkTugas = linkTugas
+			updates["link_tugas"] = linkTugas
+		}
+		if hasCatatan {
+			pengumpulan.CatatanPeserta = catatanPeserta
+			updates["catatan_peserta"] = catatanPeserta
+		}
+		pengumpulan.WaktuKumpul = now
+		pengumpulan.Status = "menunggu"
+		pengumpulan.CatatanMentor = ""
+		pengumpulan.DinilaiPada = nil
+
+		if err := config.DB.Model(&pengumpulan).Updates(updates).Error; err != nil {
+			if filePath != "" {
+				_ = os.Remove(filePath)
+			}
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui pengumpulan tugas")
+			return
+		}
+
+		// Hapus file tugas lama jika peserta mengunggah berkas pengganti yang baru
+		if oldFile != "" && oldFile != filePath {
+			cleanOld := strings.TrimPrefix(strings.ReplaceAll(oldFile, "\\", "/"), "/")
+			if strings.HasPrefix(cleanOld, "uploads/") && !strings.Contains(cleanOld, "..") {
+				_ = os.Remove(cleanOld)
+			}
+		}
+	} else {
+		pengumpulan = models.PengumpulanTugas{
+			TugasID:         tugasID,
+			PesertaID:       pesertaID,
+			FilePengumpulan: filePath,
+			LinkTugas:       linkTugas,
+			CatatanPeserta:  catatanPeserta,
+			WaktuKumpul:     now,
+			Status:          "menunggu",
+		}
+		if err := config.DB.Create(&pengumpulan).Error; err != nil {
+			if filePath != "" {
+				_ = os.Remove(filePath)
+			}
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengumpulkan tugas")
+			return
+		}
+	}
+
+	// Notifikasi in-app & email ke mentor jika ada
+	if tugas.MentorID != nil {
+		mentorID := *tugas.MentorID
+		var userPeserta models.UserManajemen
+		config.DB.First(&userPeserta, pesertaID)
+
+		go func(mID uint, namaPeserta string, t models.TugasMagang, p models.PengumpulanTugas) {
+			services.KirimNotifikasi(services.NotifikasiInput{
+				TargetRole:   "mentor",
+				TargetUserID: &mID,
+				Tipe:         "tugas_dikumpulkan",
+				Prioritas:    "normal",
+				Judul:        "Tugas Magang Dikumpulkan",
+				Pesan:        fmt.Sprintf("Peserta %s telah mengumpulkan tugas: %s", namaPeserta, t.Judul),
+				RefTabel:     "pengumpulan_tugas",
+				RefID:        &p.ID,
+				UrlTujuan:    fmt.Sprintf("/mentor/tugas/review?tugas_id=%d", t.ID),
+				Gabungkan:    false,
+			})
+
+			var mentor models.UserManajemen
+			if err := config.DB.Select("id, nama, email").First(&mentor, mID).Error; err == nil && mentor.Email != "" {
+				subject := fmt.Sprintf("Tugas Magang Dikumpulkan: %s (%s)", t.Judul, namaPeserta)
+				body := emailtemplates.TemplateTugasDikumpulkanMentor(mentor.Nama, namaPeserta, t.Judul, p.CatatanPeserta, t.ID)
+				_ = services.SendEmail(mentor.Email, subject, body)
+			}
+		}(mentorID, userPeserta.Nama, tugas, pengumpulan)
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Tugas berhasil dikumpulkan", pengumpulan)
+}
+
+// ==============================================================================
+// ── STRUKTUR & HANDLER KUIS INTERAKTIF PESERTA ────────────────────────────────
+// ==============================================================================
+
+type KuisSoalOpsi struct {
+	Key  string `json:"key"`
+	Teks string `json:"teks"`
+}
+
+type KuisSoalItem struct {
+	ID                string         `json:"id"`
+	Pertanyaan        string         `json:"pertanyaan"`
+	Tipe              string         `json:"tipe"` // "pilihan_ganda" | "pilihan_ganda_kompleks" | "esai"
+	Poin              int            `json:"poin"`
+	Gambar            string         `json:"gambar,omitempty"`
+	Opsi              []KuisSoalOpsi `json:"opsi"`
+	KunciJawaban      string         `json:"kunci_jawaban,omitempty"`
+	Pembahasan        string         `json:"pembahasan,omitempty"`
+	PetunjukPenilaian string         `json:"petunjuk_penilaian,omitempty"`
+}
+
+type KuisConfig struct {
+	DurasiMenit         int            `json:"durasi_menit"`
+	KKM                 int            `json:"kkm"`
+	IzinkanRemidi       bool           `json:"izinkan_remidi"`
+	MaksPercobaan       int            `json:"maks_percobaan"`
+	AcakSoal            bool           `json:"acak_soal"`
+	TampilkanPembahasan bool           `json:"tampilkan_pembahasan"`
+	DaftarSoal          []KuisSoalItem `json:"daftar_soal"`
+}
+
+type KumpulKuisInput struct {
+	Jawaban map[string]string `json:"jawaban"` // map id_soal -> jawaban (key opsi atau teks esai)
+}
+
+type DetailNilaiSoal struct {
+	Tipe           string `json:"tipe"`
+	PoinMaksimal   int    `json:"poin_maksimal"`
+	PoinDiperoleh  int    `json:"poin_diperoleh"`
+	Benar          bool   `json:"benar"`
+	JawabanPeserta string `json:"jawaban_peserta"`
+	KunciJawaban   string `json:"kunci_jawaban,omitempty"`
+	Pembahasan     string `json:"pembahasan,omitempty"`
+}
+
+type PayloadJawabanKuis struct {
+	JawabanPeserta   map[string]string          `json:"jawaban_peserta"`
+	SkorPilihanGanda int                        `json:"skor_pilihan_ganda"`
+	SkorEsai         int                        `json:"skor_esai"`
+	TotalSkor        float64                    `json:"total_skor"`
+	KKM              int                        `json:"kkm"`
+	AdaEsai          bool                       `json:"ada_esai"`
+	DetailPerSoal    map[string]DetailNilaiSoal `json:"detail_per_soal"`
+}
+
+// sanitizeKuisDataUntukPeserta menyembunyikan kunci jawaban dan pembahasan sebelum kuis selesai dievaluasi
+func sanitizeKuisDataUntukPeserta(rawJSON string, sudahSelesai bool) string {
+	var cfg KuisConfig
+	if err := json.Unmarshal([]byte(rawJSON), &cfg); err != nil {
+		return rawJSON
+	}
+
+	if !sudahSelesai {
+		for i := range cfg.DaftarSoal {
+			cfg.DaftarSoal[i].KunciJawaban = ""
+			cfg.DaftarSoal[i].Pembahasan = ""
+			cfg.DaftarSoal[i].PetunjukPenilaian = ""
+		}
+	}
+
+	sanitized, err := json.Marshal(cfg)
+	if err != nil {
+		return rawJSON
+	}
+	return string(sanitized)
+}
+
+// ── 11. KERJAKAN & KUMPULKAN KUIS PESERTA ─────────────────────────────────────
+// [ROLE: PESERTA]
+// KumpulKuisPeserta mengirimkan jawaban kuis pilihan ganda peserta dan otomatis menghitung skor nilai kelulusan / tuntas remidi.
+// Endpoint: POST /api/manajemen/peserta/tugas/:id/kumpul-kuis
+func KumpulKuisPeserta(c *gin.Context) {
+	pesertaID, ok := pesertaIDDariToken(c)
+	if !ok {
+		return
+	}
+
+	tugasIDParam := c.Param("id")
+	tugasIDUint, err := strconv.ParseUint(tugasIDParam, 10, 32)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "ID tugas tidak valid")
+		return
+	}
+	tugasID := uint(tugasIDUint)
+
+	var tugas models.TugasMagang
+	if err := config.DB.First(&tugas, tugasID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Tugas magang tidak ditemukan")
+		return
+	}
+
+	if tugas.TipeTugas != "kuis" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Penugasan ini bukan berupa kuis interaktif")
+		return
+	}
+
+	var req KumpulKuisInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Format jawaban kuis tidak valid")
+		return
+	}
+
+	if req.Jawaban == nil {
+		req.Jawaban = make(map[string]string)
+	}
+
+	var cfg KuisConfig
+	if err := json.Unmarshal([]byte(tugas.KuisData), &cfg); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memproses data konfigurasi soal kuis")
+		return
+	}
+
+	var pengumpulan models.PengumpulanTugas
+	adaPengumpulan := config.DB.Where("tugas_id = ? AND peserta_id = ?", tugasID, pesertaID).First(&pengumpulan).Error == nil
+
+	percobaanKe := 1
+	if adaPengumpulan {
+		if !cfg.IzinkanRemidi {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Kuis ini tidak mengizinkan pengulangan (remidi)")
+			return
+		}
+		if cfg.MaksPercobaan > 0 && pengumpulan.PercobaanKe >= cfg.MaksPercobaan {
+			utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("Batas maksimal pengerjaan (%d kali) telah tercapai", cfg.MaksPercobaan))
+			return
+		}
+		percobaanKe = pengumpulan.PercobaanKe + 1
+	}
+
+	detailPerSoal := make(map[string]DetailNilaiSoal)
+	totalPoinMC := 0
+	totalPoinMaksimal := 0
+	adaEsai := false
+
+	for _, s := range cfg.DaftarSoal {
+		totalPoinMaksimal += s.Poin
+		ans := strings.TrimSpace(req.Jawaban[s.ID])
+
+		if s.Tipe == "pilihan_ganda" || s.Tipe == "pilihan_ganda_kompleks" {
+			isBenar := false
+			if s.Tipe == "pilihan_ganda_kompleks" {
+				kunciParts := strings.Split(s.KunciJawaban, ",")
+				ansParts := strings.Split(ans, ",")
+				for i := range kunciParts {
+					kunciParts[i] = strings.ToUpper(strings.TrimSpace(kunciParts[i]))
+				}
+				for i := range ansParts {
+					ansParts[i] = strings.ToUpper(strings.TrimSpace(ansParts[i]))
+				}
+				sort.Strings(kunciParts)
+				sort.Strings(ansParts)
+				isBenar = strings.Join(kunciParts, ",") == strings.Join(ansParts, ",") && len(kunciParts) > 0 && len(ansParts) > 0
+			} else {
+				isBenar = strings.EqualFold(ans, strings.TrimSpace(s.KunciJawaban))
+			}
+
+			poin := 0
+			if isBenar {
+				poin = s.Poin
+				totalPoinMC += s.Poin
+			}
+			detailPerSoal[s.ID] = DetailNilaiSoal{
+				Tipe:           s.Tipe,
+				PoinMaksimal:   s.Poin,
+				PoinDiperoleh:  poin,
+				Benar:          isBenar,
+				JawabanPeserta: ans,
+				KunciJawaban:   s.KunciJawaban,
+				Pembahasan:     s.Pembahasan,
+			}
+		} else {
+			adaEsai = true
+			detailPerSoal[s.ID] = DetailNilaiSoal{
+				Tipe:           s.Tipe,
+				PoinMaksimal:   s.Poin,
+				PoinDiperoleh:  0,
+				Benar:          false,
+				JawabanPeserta: ans,
+			}
+		}
+	}
+
+	var nilaiAkhir float64 = float64(totalPoinMC)
+	if totalPoinMaksimal > 0 && totalPoinMaksimal != 100 {
+		nilaiAkhir = float64(int((float64(totalPoinMC) / float64(totalPoinMaksimal) * 100.0) + 0.5))
+	}
+
+	kkm := cfg.KKM
+	if kkm <= 0 {
+		kkm = 75
+	}
+
+	statusPengumpulan := "dinilai"
+	statusRemidi := "tuntas"
+
+	if adaEsai {
+		statusPengumpulan = "menunggu" // menunggu koreksi esai oleh mentor
+		statusRemidi = "menunggu_review"
+	} else {
+		if int(nilaiAkhir) < kkm {
+			if cfg.IzinkanRemidi && (cfg.MaksPercobaan == 0 || percobaanKe < cfg.MaksPercobaan) {
+				statusRemidi = "perlu_remidi"
+			} else {
+				statusRemidi = "tidak_tuntas"
+			}
+		} else {
+			statusRemidi = "tuntas"
+		}
+	}
+
+	payloadJawaban := PayloadJawabanKuis{
+		JawabanPeserta:   req.Jawaban,
+		SkorPilihanGanda: totalPoinMC,
+		SkorEsai:         0,
+		TotalSkor:        nilaiAkhir,
+		KKM:              kkm,
+		AdaEsai:          adaEsai,
+		DetailPerSoal:    detailPerSoal,
+	}
+
+	jawabanBytes, _ := json.Marshal(payloadJawaban)
+	now := time.Now()
+
+	if adaPengumpulan {
+		pengumpulan.JawabanKuis = string(jawabanBytes)
+		pengumpulan.PercobaanKe = percobaanKe
+		pengumpulan.StatusRemidi = statusRemidi
+		pengumpulan.WaktuKumpul = now
+		pengumpulan.Status = statusPengumpulan
+		pengumpulan.CatatanMentor = "" // Reset catatan mentor dari pengerjaan sebelumnya saat mengulang kuis
+		if !adaEsai {
+			pengumpulan.Nilai = &nilaiAkhir
+			pengumpulan.DinilaiPada = &now
+		} else {
+			pengumpulan.Nilai = nil
+			pengumpulan.DinilaiPada = nil
+		}
+
+		if err := config.DB.Save(&pengumpulan).Error; err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui jawaban kuis")
+			return
+		}
+	} else {
+		var nilaiPtr *float64
+		var dinilaiPadaPtr *time.Time
+		if !adaEsai {
+			nilaiPtr = &nilaiAkhir
+			dinilaiPadaPtr = &now
+		}
+
+		pengumpulan = models.PengumpulanTugas{
+			TugasID:      tugasID,
+			PesertaID:    pesertaID,
+			JawabanKuis:  string(jawabanBytes),
+			PercobaanKe:  percobaanKe,
+			StatusRemidi: statusRemidi,
+			WaktuKumpul:  now,
+			Status:       statusPengumpulan,
+			Nilai:        nilaiPtr,
+			DinilaiPada:  dinilaiPadaPtr,
+		}
+
+		if err := config.DB.Create(&pengumpulan).Error; err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan jawaban kuis")
+			return
+		}
+	}
+
+	// Notifikasi in-app & email ke mentor
+	if tugas.MentorID != nil {
+		mentorID := *tugas.MentorID
+		var userPeserta models.UserManajemen
+		config.DB.First(&userPeserta, pesertaID)
+
+		pesanNotif := fmt.Sprintf("Peserta %s telah menyelesaikan kuis '%s' (Percobaan ke-%d) dengan skor %.0f", userPeserta.Nama, tugas.Judul, percobaanKe, nilaiAkhir)
+		if adaEsai {
+			pesanNotif = fmt.Sprintf("Peserta %s telah mengumpulkan kuis '%s' (ada soal isian/esai yang perlu dikoreksi)", userPeserta.Nama, tugas.Judul)
+		}
+
+		go func(mID uint, namaPeserta string, t models.TugasMagang, p models.PengumpulanTugas, msg string, skor float64) {
+			services.KirimNotifikasi(services.NotifikasiInput{
+				TargetRole:   "mentor",
+				TargetUserID: &mID,
+				Tipe:         "tugas_dikumpulkan",
+				Prioritas:    "normal",
+				Judul:        "Jawaban Kuis Dikumpulkan",
+				Pesan:        msg,
+				RefTabel:     "pengumpulan_tugas",
+				RefID:        &p.ID,
+				UrlTujuan:    fmt.Sprintf("/mentor/tugas/review?tugas_id=%d", t.ID),
+				Gabungkan:    false,
+			})
+
+			var mentor models.UserManajemen
+			if err := config.DB.Select("id, nama, email").First(&mentor, mID).Error; err == nil && mentor.Email != "" {
+				subject := fmt.Sprintf("Kuis Magang Selesai: %s (%s)", t.Judul, namaPeserta)
+				skorStr := fmt.Sprintf("%.0f", skor)
+				body := emailtemplates.TemplateKuisSelesaiMentor(mentor.Nama, namaPeserta, t.Judul, skorStr, t.ID)
+				_ = services.SendEmail(mentor.Email, subject, body)
+			}
+		}(mentorID, userPeserta.Nama, tugas, pengumpulan, pesanNotif, nilaiAkhir)
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Jawaban kuis berhasil dikumpulkan", gin.H{
+		"pengumpulan":    pengumpulan,
+		"hasil_evaluasi": payloadJawaban,
+		"status_remidi":  statusRemidi,
+		"nilai_akhir":    nilaiAkhir,
+		"kkm":            kkm,
+		"percobaan_ke":   percobaanKe,
+	})
+}

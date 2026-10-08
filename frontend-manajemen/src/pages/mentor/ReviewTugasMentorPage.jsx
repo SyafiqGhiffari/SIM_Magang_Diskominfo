@@ -1777,7 +1777,7 @@ const ReviewTugasMentorPage = () => {
 
                         {/* 5. Catatan Mentor Snippet */}
                         <td className="py-4 px-4 max-w-[200px]">
-                          {p?.catatan_mentor ? (
+                          {p?.catatan_mentor && p?.status !== "menunggu" ? (
                             <div className="p-2 rounded-xl border border-slate-200/70 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.02]">
                               <p
                                 className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 italic"
@@ -1788,7 +1788,7 @@ const ReviewTugasMentorPage = () => {
                             </div>
                           ) : (
                             <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">
-                              Tidak ada catatan
+                              {p?.status === "menunggu" ? "Menunggu koreksi" : "Tidak ada catatan"}
                             </span>
                           )}
                         </td>
@@ -2041,7 +2041,7 @@ const ReviewTugasMentorPage = () => {
                           )}
                         </div>
 
-                        {p?.catatan_mentor && (
+                        {p?.catatan_mentor && p?.status !== "menunggu" && (
                           <div className="pt-2 border-t border-slate-200/60 dark:border-white/5">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                               Catatan Mentor:

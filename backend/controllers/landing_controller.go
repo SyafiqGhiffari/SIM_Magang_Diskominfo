@@ -1,3 +1,11 @@
+// ==============================================================================
+// CONTROLLER: Landing Controller
+// DESKRIPSI: Mengelola seluruh konten dan konfigurasi halaman depan (landing page),
+//            termasuk identitas instansi, banner carousel hero slide, butir-butir konten
+//            (alur, syarat, dokumen, manfaat), menu navbar, serta jadwal pendaftaran.
+// ROLE TERKAIT: [ROLE: PUBLIK] & [ROLE: ADMIN]
+// ==============================================================================
+
 package controllers
 
 import (
@@ -5,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -136,8 +145,9 @@ func PendaftaranSedangDibuka() (bool, string) {
 
 // ==================== ENDPOINT PUBLIK ====================
 
-// GetLandingPublik: satu endpoint untuk seluruh kebutuhan landing page,
-// supaya frontend cukup sekali fetch. Tanpa autentikasi.
+// [ROLE: PUBLIK]
+// GetLandingPublik mengembalikan seluruh data landing page dalam satu response terpadu (menu, hero slide, konten, bidang, identitas, kontak, dan jadwal pendaftaran).
+// Endpoint: GET /api/landing
 func GetLandingPublik(c *gin.Context) {
 	p, err := getOrSeedPengaturanLanding()
 	if err != nil {
@@ -253,6 +263,9 @@ func GetLandingPublik(c *gin.Context) {
 
 // ==================== ENDPOINT ADMIN ====================
 
+// [ROLE: ADMIN]
+// GetPengaturanLanding mengambil konfigurasi umum landing page (identitas instansi, kontak, status buka/tutup pendaftaran, tanggal periode).
+// Endpoint: GET /api/manajemen/admin/pengaturan-landing
 func GetPengaturanLanding(c *gin.Context) {
 	p, err := getOrSeedPengaturanLanding()
 	if err != nil {
@@ -338,6 +351,9 @@ func parseTanggalLanding(s string) (*time.Time, error) {
 	return &t, nil
 }
 
+// [ROLE: ADMIN]
+// UpdatePengaturanLanding memperbarui teks identitas, hero banner, kontak, SEO, dan periode jadwal buka pendaftaran.
+// Endpoint: PUT /api/manajemen/admin/pengaturan-landing
 func UpdatePengaturanLanding(c *gin.Context) {
 	var req updateLandingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -453,8 +469,9 @@ func UpdatePengaturanLanding(c *gin.Context) {
 
 // ==================== UPLOAD LOGO / FAVICON ====================
 
-// UploadFilePengaturanLanding menerima :jenis = "logo" atau "favicon".
-// File lama otomatis dihapus memakai helper gantiFile().
+// [ROLE: ADMIN]
+// UploadFilePengaturanLanding mengunggah berkas gambar aset landing page (logo, favicon, foto kantor, atau og-image) dan otomatis menghapus berkas lama.
+// Endpoint: POST /api/manajemen/admin/pengaturan-landing/upload/:jenis
 func UploadFilePengaturanLanding(c *gin.Context) {
 	jenis := c.Param("jenis")
 	if jenis != "logo" && jenis != "favicon" && jenis != "foto-kantor" && jenis != "og-image" {
@@ -546,6 +563,9 @@ func UploadFilePengaturanLanding(c *gin.Context) {
 	})
 }
 
+// [ROLE: ADMIN]
+// DeleteFilePengaturanLanding menghapus berkas media aset landing page (logo, favicon, foto kantor, og-image) dan mengosongkan path di database.
+// Endpoint: DELETE /api/manajemen/admin/pengaturan-landing/upload/:jenis
 func DeleteFilePengaturanLanding(c *gin.Context) {
 	jenis := c.Param("jenis")
 	if jenis != "logo" && jenis != "favicon" && jenis != "foto-kantor" && jenis != "og-image" {
@@ -593,4 +613,710 @@ func DeleteFilePengaturanLanding(c *gin.Context) {
 	hapusFileLama(fileLama)
 
 	utils.SuccessResponse(c, http.StatusOK, "File berhasil dihapus", nil)
+}
+
+// ==============================================================================
+// ── HERO SLIDES (BANNER UTAMA) ───────────────────────────────────────────────
+// ==============================================================================
+
+const maxSlideSize = 5 << 20 // 5 MB
+
+// Diisi dengan gambar bawaan supaya tampilan landing page langsung aktif
+func seedHeroSlideJikaKosong() {
+	var jumlah int64
+	config.DB.Model(&models.LandingHeroSlide{}).Count(&jumlah)
+	if jumlah > 0 {
+		return
+	}
+
+	bawaan := []models.LandingHeroSlide{
+		{Judul: "Ruang Kerja Digital", Urutan: 1, IsActive: true,
+			UrlGambar: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1920&q=80"},
+		{Judul: "Kolaborasi Tim", Urutan: 2, IsActive: true,
+			UrlGambar: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1920&q=80"},
+		{Judul: "Suasana Kantor", Urutan: 3, IsActive: true,
+			UrlGambar: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1920&q=80"},
+	}
+	for i := range bawaan {
+		config.DB.Create(&bawaan[i])
+	}
+}
+
+func simpanGambarSlide(c *gin.Context) (string, error, bool) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return "", nil, false // tidak ada file diunggah — bukan error
+	}
+
+	if file.Size > maxSlideSize {
+		return "", fmt.Errorf("Ukuran gambar maksimal 5 MB"), true
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if !landingImageExt[ext] {
+		return "", fmt.Errorf("Gambar harus berformat JPG, PNG, WEBP, atau SVG"), true
+	}
+
+	folder := "uploads/landing"
+	if err := os.MkdirAll(folder, os.ModePerm); err != nil {
+		return "", fmt.Errorf("Gagal menyiapkan folder penyimpanan"), true
+	}
+
+	namaFile := fmt.Sprintf("hero-%d%s", time.Now().UnixNano(), ext)
+	savePath := filepath.ToSlash(filepath.Join(folder, namaFile))
+
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		return "", fmt.Errorf("Gagal menyimpan gambar"), true
+	}
+	return savePath, nil, true
+}
+
+func slideResponse(s models.LandingHeroSlide) gin.H {
+	url := s.UrlGambar
+	if s.FileGambar != "" {
+		url = urlPublikBerkas(s.FileGambar)
+	}
+	return gin.H{
+		"id":          s.ID,
+		"judul":       s.Judul,
+		"file_gambar": s.FileGambar,
+		"url_gambar":  s.UrlGambar,
+		"pratinjau":   url,
+		"urutan":      s.Urutan,
+		"is_active":   s.IsActive,
+	}
+}
+
+// [ROLE: ADMIN]
+// GetHeroSlides mengambil daftar semua banner carousel gambar hero pada landing page.
+// Endpoint: GET /api/manajemen/admin/hero-slide
+func GetHeroSlides(c *gin.Context) {
+	seedHeroSlideJikaKosong()
+
+	var slides []models.LandingHeroSlide
+	if err := config.DB.Order("urutan asc, id asc").Find(&slides).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data slide")
+		return
+	}
+
+	result := make([]gin.H, 0, len(slides))
+	for _, s := range slides {
+		result = append(result, slideResponse(s))
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Data slide berhasil diambil", result)
+}
+
+// [ROLE: ADMIN]
+// CreateHeroSlide membuat slide banner carousel baru dengan judul, subjudul, dan berkas gambar atau URL gambar.
+// Endpoint: POST /api/manajemen/admin/hero-slide
+func CreateHeroSlide(c *gin.Context) {
+	savePath, errFile, adaFile := simpanGambarSlide(c)
+	if errFile != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, errFile.Error())
+		return
+	}
+
+	urlLuar := strings.TrimSpace(c.PostForm("url_gambar"))
+	if !adaFile && urlLuar == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Unggah gambar atau isi tautan gambar terlebih dahulu")
+		return
+	}
+
+	urutan, _ := strconv.Atoi(c.PostForm("urutan"))
+
+	slide := models.LandingHeroSlide{
+		Judul:      strings.TrimSpace(c.PostForm("judul")),
+		FileGambar: savePath,
+		UrlGambar:  urlLuar,
+		Urutan:     urutan,
+		IsActive:   c.PostForm("is_active") != "false",
+	}
+
+	if err := config.DB.Create(&slide).Error; err != nil {
+		if savePath != "" {
+			os.Remove(savePath) // rollback file agar tidak jadi sampah
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menambahkan slide")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusCreated, "Slide berhasil ditambahkan", slideResponse(slide))
+}
+
+// [ROLE: ADMIN]
+// UpdateHeroSlide memperbarui konten teks, gambar, status aktif, atau urutan banner hero slide.
+// Endpoint: PUT /api/manajemen/admin/hero-slide/:id
+func UpdateHeroSlide(c *gin.Context) {
+	var slide models.LandingHeroSlide
+	if err := config.DB.First(&slide, c.Param("id")).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Slide tidak ditemukan")
+		return
+	}
+
+	savePath, errFile, adaFile := simpanGambarSlide(c)
+	if errFile != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, errFile.Error())
+		return
+	}
+
+	fileLama := slide.FileGambar
+
+	if adaFile {
+		slide.FileGambar = savePath
+		slide.UrlGambar = "" // file unggahan menggantikan tautan luar
+	} else if v, ok := c.GetPostForm("url_gambar"); ok {
+		urlLuar := strings.TrimSpace(v)
+		if urlLuar != "" {
+			slide.UrlGambar = urlLuar
+			slide.FileGambar = "" // tautan luar menggantikan file unggahan
+		}
+	}
+
+	if v, ok := c.GetPostForm("judul"); ok {
+		slide.Judul = strings.TrimSpace(v)
+	}
+	if v, ok := c.GetPostForm("urutan"); ok {
+		n, _ := strconv.Atoi(v)
+		slide.Urutan = n
+	}
+	if v, ok := c.GetPostForm("is_active"); ok {
+		slide.IsActive = v != "false"
+	}
+
+	if slide.FileGambar == "" && slide.UrlGambar == "" {
+		if savePath != "" {
+			os.Remove(savePath)
+		}
+		utils.ErrorResponse(c, http.StatusBadRequest, "Slide harus memiliki gambar atau tautan gambar")
+		return
+	}
+
+	if err := config.DB.Save(&slide).Error; err != nil {
+		if savePath != "" {
+			os.Remove(savePath)
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui slide")
+		return
+	}
+
+	// Hapus file lama HANYA setelah DB berhasil tersimpan.
+	if fileLama != "" && fileLama != slide.FileGambar {
+		gantiFile(fileLama, slide.FileGambar)
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Slide berhasil diperbarui", slideResponse(slide))
+}
+
+// [ROLE: ADMIN]
+// DeleteHeroSlide menghapus banner slide carousel hero beserta file gambar fisiknya.
+// Endpoint: DELETE /api/manajemen/admin/hero-slide/:id
+func DeleteHeroSlide(c *gin.Context) {
+	var slide models.LandingHeroSlide
+	if err := config.DB.First(&slide, c.Param("id")).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Slide tidak ditemukan")
+		return
+	}
+
+	fileLama := slide.FileGambar
+
+	if err := config.DB.Delete(&slide).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menghapus slide")
+		return
+	}
+
+	hapusFileLama(fileLama)
+
+	utils.SuccessResponse(c, http.StatusOK, "Slide berhasil dihapus", nil)
+}
+
+// ==============================================================================
+// ── KONTEN DINAMIS LANDING PAGE ──────────────────────────────────────────────
+// ==============================================================================
+
+// JenisKontenLanding = daftar jenis yang diizinkan, sekaligus urutan render di frontend.
+var JenisKontenLanding = []string{
+	"persyaratan", "dokumen", "alur", "benefit", "misi", "tujuan", "keunggulan",
+}
+
+func jenisKontenValid(j string) bool {
+	for _, v := range JenisKontenLanding {
+		if v == j {
+			return true
+		}
+	}
+	return false
+}
+
+// Diisi dengan teks bawaan bila tabel masih kosong.
+func seedKontenLandingJikaKosong() {
+	var jumlah int64
+	config.DB.Model(&models.LandingKonten{}).Count(&jumlah)
+	if jumlah > 0 {
+		return
+	}
+
+	bawaan := []models.LandingKonten{
+		// ---------- Persyaratan Umum ----------
+		{Jenis: "persyaratan", Kategori: "umum", Urutan: 1, IsActive: true,
+			Judul: "Terdaftar sebagai mahasiswa aktif (D3/D4/S1) atau siswa aktif SMA/SMK/MA sederajat."},
+		{Jenis: "persyaratan", Kategori: "umum", Urutan: 2, IsActive: true,
+			Judul: "Membawa Surat Pengantar/Permohonan Magang resmi dari institusi pendidikan asal."},
+		{Jenis: "persyaratan", Kategori: "umum", Urutan: 3, IsActive: true,
+			Judul: "Mengisi formulir pendaftaran secara online melalui portal SIM Magang."},
+		{Jenis: "persyaratan", Kategori: "umum", Urutan: 4, IsActive: true,
+			Judul: "Melampirkan Curriculum Vitae (CV) dan dokumen pendukung lainnya."},
+		{Jenis: "persyaratan", Kategori: "umum", Urutan: 5, IsActive: true,
+			Judul: "Bersedia mematuhi peraturan tata tertib serta jam kerja operasional dinas."},
+
+		// ---------- Dokumen Wajib ----------
+		{Jenis: "dokumen", Kategori: "umum", Urutan: 1, IsActive: true,
+			Judul: "Surat Pengantar Permohonan Magang resmi dari kampus atau sekolah (PDF)"},
+		{Jenis: "dokumen", Kategori: "umum", Urutan: 2, IsActive: true,
+			Judul: "Kartu Tanda Mahasiswa (KTM) atau Kartu Pelajar aktif"},
+		{Jenis: "dokumen", Kategori: "umum", Urutan: 3, IsActive: true,
+			Judul: "Curriculum Vitae (CV) terbaru yang memuat riwayat studi & keahlian"},
+		{Jenis: "dokumen", Kategori: "umum", Urutan: 4, IsActive: true,
+			Judul: "Pas Foto berwarna terbaru (latar belakang merah)"},
+		{Jenis: "dokumen", Kategori: "umum", Urutan: 5, IsActive: true,
+			Judul: "Proposal Rencana Kegiatan Magang (jika dipersyaratkan oleh institusi asal)"},
+
+		// ---------- Alur Pendaftaran ----------
+		{Jenis: "alur", Urutan: 1, IsActive: true, Icon: "01", Judul: "Registrasi Online",
+			Deskripsi: "Buat akun baru dan lengkapi data profil pendaftar di portal kami."},
+		{Jenis: "alur", Urutan: 2, IsActive: true, Icon: "02", Judul: "Isi Formulir & Dokumen",
+			Deskripsi: "Isi form pendaftaran magang dan unggah surat pengantar resmi (PDF)."},
+		{Jenis: "alur", Urutan: 3, IsActive: true, Icon: "03", Judul: "Verifikasi Berkas",
+			Deskripsi: "Tim administrasi memvalidasi dokumen dan kesesuaian kuota divisi."},
+		{Jenis: "alur", Urutan: 4, IsActive: true, Icon: "04", Judul: "Pengumuman Hasil",
+			Deskripsi: "Status kelulusan dikirim via portal dan email resmi peserta."},
+
+		// ---------- Benefit (WhyChooseUs) ----------
+		{Jenis: "benefit", Urutan: 1, IsActive: true, Icon: "🎓", Judul: "Sertifikat Resmi",
+			Deskripsi: "Sebagai bukti kompetensi dan pengalaman berharga untuk portofolio karier Anda."},
+		{Jenis: "benefit", Urutan: 2, IsActive: true, Icon: "🚀", Judul: "Pengalaman Proyek",
+			Deskripsi: "Keterlibatan langsung dalam proyek strategis digitalisasi pemerintah daerah."},
+		{Jenis: "benefit", Urutan: 3, IsActive: true, Icon: "🤝", Judul: "Bimbingan Mentor",
+			Deskripsi: "Didampingi oleh mentor profesional ahli di setiap bidang spesialisasi."},
+		{Jenis: "benefit", Urutan: 4, IsActive: true, Icon: "📈", Judul: "Penilaian Kinerja",
+			Deskripsi: "Evaluasi obyektif untuk membantu merefleksikan kompetensi magang Anda."},
+
+		// ---------- Misi Instansi ----------
+		{Jenis: "misi", Urutan: 1, IsActive: true,
+			Judul: "Membangun infrastruktur jaringan internet dan digitalisasi yang terintegrasi di seluruh pelosok daerah."},
+		{Jenis: "misi", Urutan: 2, IsActive: true,
+			Judul: "Mendorong akuntabilitas SPBE guna efisiensi pelayanan administrasi publik terpadu."},
+		{Jenis: "misi", Urutan: 3, IsActive: true,
+			Judul: "Mengoptimalkan penyebaran berita positif, edukasi publik, dan pengelolaan aduan warga."},
+
+		// ---------- Tujuan Program ----------
+		{Jenis: "tujuan", Urutan: 1, IsActive: true, Icon: "🌱", Judul: "Pengembangan Kompetensi",
+			Deskripsi: "Membantu peserta menyelaraskan teori akademis dengan praktik kerja nyata di instansi pemerintah."},
+		{Jenis: "tujuan", Urutan: 2, IsActive: true, Icon: "🤝", Judul: "Kolaborasi Profesional",
+			Deskripsi: "Membangun budaya kolaborasi antarsiswa/mahasiswa dengan mentor ahli bimbingan Diskominfotik."},
+		{Jenis: "tujuan", Urutan: 3, IsActive: true, Icon: "💡", Judul: "Transformasi SPBE",
+			Deskripsi: "Melibatkan talenta muda secara aktif dalam memecahkan masalah IT, data, serta kehumasan pemda."},
+
+		// ---------- Keunggulan Program ----------
+		{Jenis: "keunggulan", Urutan: 1, IsActive: true, Icon: "🏆", Judul: "Sertifikat Resmi",
+			Deskripsi: "Diterbitkan instansi pemerintah resmi sebagai bukti kredibilitas portofolio."},
+		{Jenis: "keunggulan", Urutan: 2, IsActive: true, Icon: "🧑‍🏫", Judul: "Mentor Berpengalaman",
+			Deskripsi: "Pendampingan penuh oleh pranata komputer, humas, dan statistisi ahli."},
+		{Jenis: "keunggulan", Urutan: 3, IsActive: true, Icon: "💻", Judul: "Proyek Nyata SPBE",
+			Deskripsi: "Keterlibatan langsung mengelola kode aplikasi, infografis, dan data riil."},
+		{Jenis: "keunggulan", Urutan: 4, IsActive: true, Icon: "🏛️", Judul: "Link Kerja Pemerintah",
+			Deskripsi: "Memahami alur kerja birokrasi pemerintahan berbasis digital sejak dini."},
+	}
+
+	for i := range bawaan {
+		config.DB.Create(&bawaan[i])
+	}
+}
+
+// kontenLandingPublik mengembalikan seluruh konten aktif, dikelompokkan per jenis.
+func kontenLandingPublik() gin.H {
+	seedKontenLandingJikaKosong()
+
+	var semua []models.LandingKonten
+	config.DB.Where("is_active = ?", true).
+		Order("urutan asc, id asc").Find(&semua)
+
+	hasil := gin.H{}
+	for _, jenis := range JenisKontenLanding {
+		daftar := make([]gin.H, 0)
+		for _, k := range semua {
+			if k.Jenis != jenis {
+				continue
+			}
+			daftar = append(daftar, gin.H{
+				"id":        k.ID,
+				"kategori":  k.Kategori,
+				"judul":     k.Judul,
+				"deskripsi": k.Deskripsi,
+				"icon":      k.Icon,
+			})
+		}
+		hasil[jenis] = daftar
+	}
+	return hasil
+}
+
+// [ROLE: ADMIN]
+// GetKontenLanding mengambil daftar konten landing page berdasarkan jenis (misal: faq, testimoni, alur, benefit, dll).
+// Endpoint: GET /api/manajemen/admin/landing-konten/:jenis
+func GetKontenLanding(c *gin.Context) {
+	jenis := c.Param("jenis")
+	if !jenisKontenValid(jenis) {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Jenis konten tidak dikenali")
+		return
+	}
+
+	seedKontenLandingJikaKosong()
+
+	var daftar []models.LandingKonten
+	if err := config.DB.Where("jenis = ?", jenis).
+		Order("urutan asc, id asc").Find(&daftar).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil konten")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Konten berhasil diambil", daftar)
+}
+
+type kontenInput struct {
+	Kategori  *string `json:"kategori"`
+	Judul     *string `json:"judul"`
+	Deskripsi *string `json:"deskripsi"`
+	Icon      *string `json:"icon"`
+	Urutan    *int    `json:"urutan"`
+	IsActive  *bool   `json:"is_active"`
+}
+
+// [ROLE: ADMIN]
+// CreateKontenLanding menambahkan item konten baru pada landing page berdasarkan jenis yang ditentukan.
+// Endpoint: POST /api/manajemen/admin/landing-konten/:jenis
+func CreateKontenLanding(c *gin.Context) {
+	jenis := c.Param("jenis")
+	if !jenisKontenValid(jenis) {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Jenis konten tidak dikenali")
+		return
+	}
+
+	var input kontenInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Format data tidak valid")
+		return
+	}
+	if input.Judul == nil || strings.TrimSpace(*input.Judul) == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Judul/teks tidak boleh kosong")
+		return
+	}
+
+	// Urutan otomatis di posisi terakhir bila tidak diisi.
+	urutan := 0
+	if input.Urutan != nil {
+		urutan = *input.Urutan
+	} else {
+		var terakhir models.LandingKonten
+		if err := config.DB.Where("jenis = ?", jenis).Order("urutan desc").First(&terakhir).Error; err == nil {
+			urutan = terakhir.Urutan + 1
+		} else {
+			urutan = 1
+		}
+	}
+
+	konten := models.LandingKonten{
+		Jenis:    jenis,
+		Kategori: "umum",
+		Judul:    strings.TrimSpace(*input.Judul),
+		Urutan:   urutan,
+		IsActive: true,
+	}
+	if input.Kategori != nil && strings.TrimSpace(*input.Kategori) != "" {
+		konten.Kategori = strings.TrimSpace(*input.Kategori)
+	}
+	if input.Deskripsi != nil {
+		konten.Deskripsi = strings.TrimSpace(*input.Deskripsi)
+	}
+	if input.Icon != nil {
+		konten.Icon = strings.TrimSpace(*input.Icon)
+	}
+	if input.IsActive != nil {
+		konten.IsActive = *input.IsActive
+	}
+
+	if err := config.DB.Create(&konten).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menambahkan konten")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusCreated, "Konten berhasil ditambahkan", konten)
+}
+
+// [ROLE: ADMIN]
+// UpdateKontenLanding memperbarui item konten landing page berdasarkan ID.
+// Endpoint: PUT /api/manajemen/admin/landing-konten-item/:id
+func UpdateKontenLanding(c *gin.Context) {
+	var konten models.LandingKonten
+	if err := config.DB.First(&konten, c.Param("id")).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Konten tidak ditemukan")
+		return
+	}
+
+	var input kontenInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Format data tidak valid")
+		return
+	}
+
+	if input.Judul != nil {
+		judul := strings.TrimSpace(*input.Judul)
+		if judul == "" {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Judul/teks tidak boleh kosong")
+			return
+		}
+		konten.Judul = judul
+	}
+	if input.Kategori != nil {
+		konten.Kategori = strings.TrimSpace(*input.Kategori)
+	}
+	if input.Deskripsi != nil {
+		konten.Deskripsi = strings.TrimSpace(*input.Deskripsi)
+	}
+	if input.Icon != nil {
+		konten.Icon = strings.TrimSpace(*input.Icon)
+	}
+	if input.Urutan != nil {
+		konten.Urutan = *input.Urutan
+	}
+	if input.IsActive != nil {
+		konten.IsActive = *input.IsActive
+	}
+
+	if err := config.DB.Save(&konten).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan konten")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Konten berhasil disimpan", konten)
+}
+
+// [ROLE: ADMIN]
+// DeleteKontenLanding menghapus item konten landing page berdasarkan ID.
+// Endpoint: DELETE /api/manajemen/admin/landing-konten-item/:id
+func DeleteKontenLanding(c *gin.Context) {
+	var konten models.LandingKonten
+	if err := config.DB.First(&konten, c.Param("id")).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Konten tidak ditemukan")
+		return
+	}
+
+	if err := config.DB.Delete(&konten).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menghapus konten")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Konten berhasil dihapus", nil)
+}
+
+// [ROLE: ADMIN]
+// UrutkanKontenLanding memperbarui urutan tampilan item konten landing page untuk jenis tertentu (menerima array ID urutan baru).
+// Endpoint: PUT /api/manajemen/admin/landing-konten/:jenis/urutan
+func UrutkanKontenLanding(c *gin.Context) {
+	jenis := c.Param("jenis")
+	if !jenisKontenValid(jenis) {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Jenis konten tidak dikenali")
+		return
+	}
+
+	var body struct {
+		Urutan []uint `json:"urutan"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Format data tidak valid")
+		return
+	}
+
+	for i, id := range body.Urutan {
+		config.DB.Model(&models.LandingKonten{}).
+			Where("id = ? AND jenis = ?", id, jenis).
+			Update("urutan", i+1)
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Urutan berhasil disimpan", nil)
+}
+
+// ==============================================================================
+// ── MENU NAVIGASI LANDING PAGE ───────────────────────────────────────────────
+// ==============================================================================
+
+// pathMenuLanding = WHITELIST route yang boleh muncul di menu.
+var pathMenuLanding = map[string]string{
+	"beranda":        "/",
+	"tentang":        "/tentang",
+	"program-magang": "/program-magang",
+	"persyaratan":    "/persyaratan",
+	"faq":            "/faq",
+	"kontak":         "/kontak",
+}
+
+// seedMenuLandingJikaKosong mengisi menu bawaan
+func seedMenuLandingJikaKosong() {
+	var jumlah int64
+	config.DB.Model(&models.LandingMenu{}).Count(&jumlah)
+	if jumlah > 0 {
+		return
+	}
+
+	bawaan := []models.LandingMenu{
+		{Kode: "beranda", Label: "Beranda", LabelFooter: "Beranda Portal", Urutan: 1, TampilNavbar: true, TampilFooter: true},
+		{Kode: "tentang", Label: "Tentang", LabelFooter: "Tentang Program", Urutan: 2, TampilNavbar: true, TampilFooter: true},
+		{Kode: "program-magang", Label: "Program Magang", LabelFooter: "Pilihan Bidang Magang", Urutan: 3, TampilNavbar: true, TampilFooter: true},
+		{Kode: "persyaratan", Label: "Persyaratan", LabelFooter: "Ketentuan & Syarat", Urutan: 4, TampilNavbar: true, TampilFooter: true},
+		{Kode: "faq", Label: "FAQ", LabelFooter: "Pertanyaan Populer (FAQ)", Urutan: 5, TampilNavbar: true, TampilFooter: true},
+		{Kode: "kontak", Label: "Kontak", LabelFooter: "Hubungi Kami", Urutan: 6, TampilNavbar: true, TampilFooter: false},
+	}
+
+	for i := range bawaan {
+		config.DB.Create(&bawaan[i])
+	}
+}
+
+// menuLandingPublik mengembalikan dua daftar siap pakai untuk Navbar & Footer.
+func menuLandingPublik() gin.H {
+	seedMenuLandingJikaKosong()
+
+	var semua []models.LandingMenu
+	config.DB.Order("urutan asc, id asc").Find(&semua)
+
+	navbar := make([]gin.H, 0)
+	footer := make([]gin.H, 0)
+
+	for _, m := range semua {
+		path, ok := pathMenuLanding[m.Kode]
+		if !ok {
+			// Kode tidak dikenali (misal sisa data lama) → abaikan, jangan render.
+			continue
+		}
+
+		if m.TampilNavbar && strings.TrimSpace(m.Label) != "" {
+			navbar = append(navbar, gin.H{
+				"kode":  m.Kode,
+				"label": m.Label,
+				"path":  path,
+			})
+		}
+
+		if m.TampilFooter {
+			label := strings.TrimSpace(m.LabelFooter)
+			if label == "" {
+				label = m.Label
+			}
+			if label != "" {
+				footer = append(footer, gin.H{
+					"kode":  m.Kode,
+					"label": label,
+					"path":  path,
+				})
+			}
+		}
+	}
+
+	return gin.H{"navbar": navbar, "footer": footer}
+}
+
+// [ROLE: ADMIN]
+// GetMenuLanding mengambil seluruh konfigurasi menu navigasi (navbar dan footer) landing page.
+// Endpoint: GET /api/manajemen/admin/landing-menu
+func GetMenuLanding(c *gin.Context) {
+	seedMenuLandingJikaKosong()
+
+	var semua []models.LandingMenu
+	if err := config.DB.Order("urutan asc, id asc").Find(&semua).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil menu navigasi")
+		return
+	}
+
+	hasil := make([]gin.H, 0, len(semua))
+	for _, m := range semua {
+		hasil = append(hasil, gin.H{
+			"id":            m.ID,
+			"kode":          m.Kode,
+			"path":          pathMenuLanding[m.Kode], // hanya untuk ditampilkan, read-only
+			"label":         m.Label,
+			"label_footer":  m.LabelFooter,
+			"urutan":        m.Urutan,
+			"tampil_navbar": m.TampilNavbar,
+			"tampil_footer": m.TampilFooter,
+		})
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Menu navigasi berhasil diambil", hasil)
+}
+
+type menuLandingInput struct {
+	Label        *string `json:"label"`
+	LabelFooter  *string `json:"label_footer"`
+	TampilNavbar *bool   `json:"tampil_navbar"`
+	TampilFooter *bool   `json:"tampil_footer"`
+}
+
+// [ROLE: ADMIN]
+// UpdateMenuLanding memperbarui label dan visibilitas item menu navigasi landing page. Sengaja tidak menerima perubahan kode/path.
+// Endpoint: PUT /api/manajemen/admin/landing-menu/:id
+func UpdateMenuLanding(c *gin.Context) {
+	var menu models.LandingMenu
+	if err := config.DB.First(&menu, c.Param("id")).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Menu tidak ditemukan")
+		return
+	}
+
+	var input menuLandingInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Format data tidak valid")
+		return
+	}
+
+	if input.Label != nil {
+		label := strings.TrimSpace(*input.Label)
+		if label == "" {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Label menu tidak boleh kosong")
+			return
+		}
+		menu.Label = label
+	}
+	if input.LabelFooter != nil {
+		menu.LabelFooter = strings.TrimSpace(*input.LabelFooter)
+	}
+	if input.TampilNavbar != nil {
+		menu.TampilNavbar = *input.TampilNavbar
+	}
+	if input.TampilFooter != nil {
+		menu.TampilFooter = *input.TampilFooter
+	}
+
+	if err := config.DB.Save(&menu).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan menu")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Menu berhasil disimpan", menu)
+}
+
+// [ROLE: ADMIN]
+// UrutkanMenuLanding memperbarui urutan posisi item menu navigasi landing page (menerima array ID urutan baru).
+// Endpoint: PUT /api/manajemen/admin/landing-menu/urutan
+func UrutkanMenuLanding(c *gin.Context) {
+	var body struct {
+		Urutan []uint `json:"urutan"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Format data tidak valid")
+		return
+	}
+
+	for i, id := range body.Urutan {
+		config.DB.Model(&models.LandingMenu{}).Where("id = ?", id).Update("urutan", i+1)
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Urutan menu berhasil disimpan", nil)
 }

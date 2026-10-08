@@ -9,6 +9,7 @@ import {
   getNotifikasi, bacaNotifikasi, bacaSemuaNotifikasi,
   hapusNotifikasi, hapusSemuaNotifikasi,
 } from "../../../../services/notifikasiService";
+import { confirmDialog, toastSuccess, toastError } from "../../../../utils/swal";
 
 const NOTIF_META = {
   pendaftaran_baru:        { icon: UserPlus,        color: "text-emerald-500", bg: "bg-emerald-500/10" },
@@ -16,22 +17,30 @@ const NOTIF_META = {
   chat_baru:               { icon: MessageSquare,   color: "text-sky-500",     bg: "bg-sky-500/10" },
   akun_belum_dibuat:       { icon: UserCog,         color: "text-violet-500",  bg: "bg-violet-500/10" },
   mentor_belum_ditugaskan: { icon: UserCog,         color: "text-rose-500",    bg: "bg-rose-500/10" },
+  penugasan_peserta_baru:  { icon: UserPlus,        color: "text-indigo-500",  bg: "bg-indigo-500/10" },
   sertifikat_pending:      { icon: Award,           color: "text-yellow-500",  bg: "bg-yellow-500/10" },
   sertifikat_terbit:       { icon: Award,           color: "text-emerald-500", bg: "bg-emerald-500/10" },
   pendaftaran_tertunda:    { icon: Clock,           color: "text-orange-500",  bg: "bg-orange-500/10" },
   surat_belum_terbit:      { icon: FileSignature,   color: "text-amber-600",   bg: "bg-amber-500/10" },
   presensi_masuk:          { icon: LogIn,           color: "text-emerald-500", bg: "bg-emerald-500/10" },
   presensi_pulang:         { icon: LogOut,          color: "text-amber-500",   bg: "bg-amber-500/10" },
+  peringatan_belum_presensi:{ icon: Clock,          color: "text-rose-500",    bg: "bg-rose-500/10" },
+  presensi_alfa:           { icon: ShieldAlert,     color: "text-rose-500",    bg: "bg-rose-500/10" },
   izin_status:             { icon: CheckCircle2,    color: "text-blue-500",    bg: "bg-blue-500/10" },
   pengajuan_izin:          { icon: MailCheck,       color: "text-amber-500",   bg: "bg-amber-500/10" },
   logbook_reminder:        { icon: Clock,           color: "text-amber-500",   bg: "bg-amber-500/10" },
   logbook_verifikasi:      { icon: FileSignature,   color: "text-indigo-500",  bg: "bg-indigo-500/10" },
   logbook_revisi:          { icon: FileEdit,        color: "text-amber-500",   bg: "bg-amber-500/10" },
+  materi_baru:             { icon: BookOpen,        color: "text-sky-500",     bg: "bg-sky-500/10" },
+  materi:                  { icon: BookOpen,        color: "text-sky-500",     bg: "bg-sky-500/10" },
   tugas_baru:              { icon: BookOpen,        color: "text-purple-500",  bg: "bg-purple-500/10" },
   tugas_dikumpulkan:       { icon: CheckCircle2,    color: "text-blue-500",    bg: "bg-blue-500/10" },
   tugas_nilai:             { icon: Award,           color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  tugas_feedback:          { icon: FileText,        color: "text-emerald-500", bg: "bg-emerald-500/10" },
   tugas_deadline:          { icon: Clock,           color: "text-rose-500",    bg: "bg-rose-500/10" },
   laporan_akhir:           { icon: FileText,        color: "text-blue-500",    bg: "bg-blue-500/10" },
+  pengingat_evaluasi_akhir:{ icon: Award,           color: "text-amber-500",   bg: "bg-amber-500/10" },
+  penilaian_mentor:        { icon: Award,           color: "text-emerald-500", bg: "bg-emerald-500/10" },
   rapor_nilai:             { icon: Award,           color: "text-amber-500",   bg: "bg-amber-500/10" },
   keamanan_login:          { icon: ShieldAlert,     color: "text-amber-500",   bg: "bg-amber-500/10" },
   keamanan_password:       { icon: ShieldAlert,     color: "text-rose-500",    bg: "bg-rose-500/10" },
@@ -122,47 +131,37 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
           if (isAdmin) {
             // Filter preferensi role Administrator
             if ((tipe === "pendaftaran_baru" || tipe === "pendaftaran_tertunda") && userSettings.notifPendaftaranBaru === false) return false;
-            if ((tipe === "revisi_dokumen" || tipe === "surat_belum_terbit" || tipe === "akun_belum_dibuat" || tipe === "mentor_belum_ditugaskan") && userSettings.notifVerifikasiDokumen === false) return false;
-            if ((tipe === "kuota_penuh" || tipe === "kuota_bidang") && userSettings.notifKuotaBidangPenuh === false) return false;
-            if ((tipe === "presensi_masuk" || tipe === "presensi_pulang" || tipe === "presensi_harian") && userSettings.notifPresensiHarian === false) return false;
-            if ((tipe === "izin_status" || tipe === "pengajuan_izin") && userSettings.notifPengajuanIzinPeserta === false) return false;
-            if ((tipe === "keterlambatan" || tipe === "presensi_alfa") && userSettings.notifKeterlambatanPeserta === false) return false;
-            if ((tipe === "laporan_akhir" || tipe === "logbook_verifikasi" || tipe === "logbook_revisi") && userSettings.notifPengumpulanLaporan === false) return false;
+            if ((tipe === "revisi_dokumen" || tipe === "surat_belum_terbit" || tipe === "akun_belum_dibuat" || tipe === "mentor_belum_ditugaskan") && (userSettings.notifTindakanAdministrasi === false || userSettings.notifVerifikasiDokumen === false)) return false;
             if ((tipe === "rapor_nilai" || tipe === "tugas_nilai" || tipe === "penilaian_mentor") && userSettings.notifPenilaianMentor === false) return false;
             if ((tipe === "sertifikat_pending" || tipe === "sertifikat_terbit") && userSettings.notifSertifikatSiapTerbit === false) return false;
-            if (tipe === "keamanan_login" && userSettings.notifLoginKeamanan === false) return false;
+            if (tipe === "chat_baru" && userSettings.notifChatBantuan === false) return false;
             if (tipe === "keamanan_password" && userSettings.notifPerubahanKredensial === false) return false;
             return true;
           }
 
           if (isMentor) {
             // Filter preferensi role Mentor
-            if ((tipe === "presensi_masuk" || tipe === "presensi_pulang" || tipe === "presensi_harian") && userSettings.notifPresensiBimbingan === false) return false;
             if ((tipe === "izin_status" || tipe === "pengajuan_izin") && userSettings.notifPengajuanIzinBimbingan === false) return false;
-            if ((tipe === "keterlambatan" || tipe === "presensi_alfa") && userSettings.notifKeterlambatanBimbingan === false) return false;
+            if (tipe === "penugasan_peserta_baru" && userSettings.notifPenugasanPesertaBaru === false) return false;
             if (tipe === "tugas_dikumpulkan" && userSettings.notifTugasDikumpulkan === false) return false;
-            if ((tipe === "tugas_baru" || tipe === "tugas_deadline") && userSettings.notifReviewTugasMenunggu === false) return false;
-            if ((tipe === "laporan_akhir" || tipe === "logbook_verifikasi" || tipe === "logbook_revisi") && userSettings.notifLaporanAkhirMasuk === false) return false;
-            if ((tipe === "rapor_nilai" || tipe === "tugas_nilai" || tipe === "penilaian_mentor") && userSettings.notifBatasPenilaianAkhir === false) return false;
-            if (tipe === "keamanan_login" && userSettings.notifLoginKeamanan === false) return false;
+            if (tipe === "laporan_akhir" && userSettings.notifLaporanAkhirMasuk === false) return false;
+            if ((tipe === "pengingat_evaluasi_akhir" || tipe === "penilaian_mentor" || tipe === "rapor_nilai") && userSettings.notifBatasPenilaianAkhir === false) return false;
             if (tipe === "keamanan_password" && userSettings.notifPerubahanKredensial === false) return false;
             return true;
           }
 
           // Filter preferensi role Peserta
-          if (tipe === "chat_baru" && userSettings.chatMentor === false) return false;
-          if (tipe === "presensi_masuk" && userSettings.checkinReminder === false) return false;
+          if ((tipe === "presensi_masuk" || tipe === "peringatan_belum_presensi" || tipe === "presensi_alfa") && userSettings.checkinReminder === false) return false;
           if (tipe === "presensi_pulang" && userSettings.checkoutReminder === false) return false;
           if (tipe === "izin_status" && userSettings.izinStatus === false) return false;
           if (tipe === "logbook_reminder" && userSettings.logbookReminder === false) return false;
-          if ((tipe === "revisi_dokumen" || tipe === "logbook_revisi" || tipe === "logbook_verifikasi") && userSettings.logbookVerification === false) return false;
+          if ((tipe === "materi_baru" || tipe === "materi") && userSettings.materiBaru === false) return false;
           if (tipe === "tugas_baru" && userSettings.tugasBaru === false) return false;
           if ((tipe === "tugas_nilai" || tipe === "tugas_feedback") && userSettings.tugasFeedback === false) return false;
           if (tipe === "tugas_deadline" && userSettings.tugasDeadline === false) return false;
           if (tipe === "laporan_akhir" && userSettings.laporanAkhirStatus === false) return false;
           if (tipe === "rapor_nilai" && userSettings.raporNilai === false) return false;
           if ((tipe === "sertifikat_pending" || tipe === "sertifikat_terbit") && userSettings.sertifikatTerbit === false) return false;
-          if (tipe === "keamanan_login" && userSettings.loginSecurityAlert === false) return false;
           if (tipe === "keamanan_password" && userSettings.passwordEmailChangeAlert === false) return false;
           return true;
         });
@@ -268,9 +267,25 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
   };
 
   const handleHapusSemua = async () => {
-    setNotifList([]);
-    setUnreadCount(0);
-    try { await hapusSemuaNotifikasi(); } catch { muatNotifikasi(); }
+    if (!notifList.length) return;
+    const isConfirmed = await confirmDialog({
+      title: "Hapus Semua Notifikasi?",
+      text: "Seluruh daftar riwayat notifikasi Anda akan dibersihkan secara permanen.",
+      confirmText: "Ya, Hapus Semua",
+      cancelText: "Batal",
+      icon: "warning",
+    });
+    if (!isConfirmed) return;
+
+    try {
+      await hapusSemuaNotifikasi();
+      setNotifList([]);
+      setUnreadCount(0);
+      toastSuccess("Semua notifikasi berhasil dibersihkan.");
+    } catch {
+      muatNotifikasi();
+      toastError("Gagal membersihkan notifikasi.");
+    }
     window.dispatchEvent(new CustomEvent("sim_notifikasi_updated"));
   };
 
@@ -436,7 +451,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
           </button>
 
           {notifOpen && (
-            <div className={`fixed left-3 right-3 top-[72px] md:absolute md:left-auto md:right-0 md:top-12 md:w-72 z-50 rounded-2xl border shadow-2xl overflow-hidden animate-[fadeslide_0.2s_ease-out] ${isDark ? "bg-[#1c2128] border-white/10 shadow-black/40" : "bg-white border-slate-200 shadow-slate-200/70"}`}>
+            <div className={`fixed left-3 right-3 top-[72px] sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[340px] md:w-[350px] z-50 rounded-2xl border shadow-2xl overflow-hidden animate-[fadeslide_0.2s_ease-out] ${isDark ? "bg-[#1c2128] border-white/10 shadow-black/40" : "bg-white border-slate-200 shadow-slate-200/70"}`}>
               <div className="relative overflow-hidden border-b border-white/10 bg-gradient-to-br from-[#0B1442] via-[#123072] to-[#004F9F] px-4 py-3">
                 <span className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-[#00A5EC]/25 blur-2xl" />
                 <div className="relative flex items-center justify-between gap-2">
@@ -488,7 +503,15 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
                     Anda menonaktifkan saluran Web Portal pada pengaturan notifikasi akun.
                   </p>
                   <button
-                    onClick={() => { setNotifOpen(false); navigate("/peserta/akun"); }}
+                    onClick={() => {
+                      setNotifOpen(false);
+                      const storedUser = sessionStorage.getItem("user") || localStorage.getItem("user");
+                      const user = storedUser ? JSON.parse(storedUser) : null;
+                      const role = user?.role;
+                      if (role === "admin" || role === "super_admin") navigate("/admin/akun");
+                      else if (role === "mentor") navigate("/mentor/akun");
+                      else navigate("/peserta/akun");
+                    }}
                     className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10.5px] font-bold bg-blue-50 dark:bg-blue-950/40 text-[#004F9F] dark:text-sky-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
                   >
                     Buka Pengaturan Notifikasi
@@ -503,7 +526,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
                   <p className={`mt-0.5 text-[10.5px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>Semua pekerjaan Anda sudah tertangani.</p>
                 </div>
               ) : (
-                <div className="max-h-[45vh] md:max-h-80 overflow-y-auto">
+                <div className="max-h-[42vh] md:max-h-[300px] overflow-y-auto">
                   {notifList.map((n) => {
                     const meta = NOTIF_META[n.tipe] ?? NOTIF_META.sistem;
                     const Icon = meta.icon;
@@ -523,22 +546,22 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
 
                         <button
                           onClick={() => handleKlikNotif(n)}
-                          className="flex min-w-0 flex-1 items-start gap-3 px-3.5 py-3 pr-1 text-left cursor-pointer"
+                          className="flex min-w-0 flex-1 items-start gap-3 px-3.5 py-3 pr-2 text-left cursor-pointer"
                         >
                           <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover/notif:scale-105 ${meta.bg}`}>
                             <Icon className={`w-4 h-4 ${meta.color}`} />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="flex items-center gap-1.5">
-                              <span className={`truncate text-[11px] font-extrabold ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
+                            <span className="flex items-start justify-between gap-1.5">
+                              <span className={`text-[12px] font-extrabold leading-snug break-words ${isDark ? "text-slate-100" : "text-[#0B1442]"}`}>
                                 {n.judul}
                               </span>
-                              {belumDibaca && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" />}
+                              {belumDibaca && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-sky-500 shadow-xs ring-2 ring-white dark:ring-[#1c2128]" />}
                             </span>
-                            <span className={`mt-0.5 block text-[10.5px] leading-snug line-clamp-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                            <span className={`mt-1 block text-[11px] leading-relaxed break-words ${isDark ? "text-slate-400" : "text-slate-600"}`}>
                               {bersihkanTeksPesanNotif(n.pesan)}
                             </span>
-                            <span className={`mt-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
+                            <span className={`mt-2 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9.5px] font-bold ${
                               isDark ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-500"
                             }`}>
                               <Clock className="w-2.5 h-2.5" />
@@ -547,7 +570,7 @@ const ManajemenTopbar = ({ currentTab, searchValue, onSearchChange, isDark, setI
                           </span>
                         </button>
 
-                        <div className="mr-2.5 mt-2.5 flex items-center gap-1 shrink-0">
+                        <div className="mr-3 mt-3 flex items-center gap-1 shrink-0">
                           {belumDibaca && (
                             <button
                               onClick={(e) => handleTandaiDibaca(e, n)}

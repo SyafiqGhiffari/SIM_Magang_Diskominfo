@@ -199,7 +199,7 @@ const RekapNilaiAdminPage = () => {
         : "0.00";
 
     const predikatSangatBaik = rekapList.filter(
-      (r) => r.status_penilaian === "final" && (r.indeks_nilai_akhir === "A" || r.indeks_nilai_akhir === "A-")
+      (r) => r.status_penilaian === "final" && r.indeks_nilai_akhir === "A"
     ).length;
 
     return { total, diterbitkan, draf, belum, rataRata, predikatSangatBaik };

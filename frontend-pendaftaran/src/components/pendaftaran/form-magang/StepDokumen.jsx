@@ -202,7 +202,7 @@ const DocCard = ({ dk, sub, txt, docKey, title, desc, wajib, file, onChange, acc
   );
 };
 
-const StepDokumen = ({ dk, surface, txt, sub, kategori, files, onFileChange, onSubmit, onBack, error, loading }) => {
+const StepDokumen = ({ dk, surface, txt, sub, kategori, files, onFileChange, onSubmit, onBack, error, loading, hasRegistered, onKembaliDashboard }) => {
   const isMahasiswa = kategori === "mahasiswa";
   const isValid = files.surat_pengantar && files.pas_foto && (!isMahasiswa || files.proposal_magang);
   const [previewKey, setPreviewKey] = useState(null);
@@ -385,7 +385,7 @@ const StepDokumen = ({ dk, surface, txt, sub, kategori, files, onFileChange, onS
         </div>
       )}
 
-       {!isValid && !loading && (
+       {!hasRegistered && !isValid && !loading && (
           <div className={`mt-6 rounded-xl border p-3.5 text-xs flex items-center gap-2 ${dk ? "bg-white/5 border-white/10 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-500"}`}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0">
               <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
@@ -405,26 +405,39 @@ const StepDokumen = ({ dk, surface, txt, sub, kategori, files, onFileChange, onS
           </svg>
           Kembali
         </button>
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={!isValid || loading}
-          className="group flex-[2] flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] py-3 text-xs font-bold text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all duration-200 hover:shadow-xl hover:brightness-110 hover:-translate-y-0.5 active:scale-95 active:translate-y-0 disabled:hover:shadow-lg disabled:hover:translate-y-0 disabled:hover:brightness-100"
-        >
-          {loading ? (
-            <>
-              <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Mengirim...
-            </>
-          ) : (
-            <>
-              Ajukan Magang Sekarang
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-              </svg>
-            </>
-          )}
-        </button>
+        {hasRegistered ? (
+          <button
+            type="button"
+            onClick={onKembaliDashboard}
+            className="group flex-[2] flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 py-3 text-xs font-bold text-white shadow-lg cursor-pointer transition-all duration-200 hover:shadow-xl hover:brightness-110 hover:-translate-y-0.5 active:scale-95 active:translate-y-0"
+          >
+            <span>Kembali ke Dashboard</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+            </svg>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={!isValid || loading}
+            className="group flex-[2] flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] py-3 text-xs font-bold text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all duration-200 hover:shadow-xl hover:brightness-110 hover:-translate-y-0.5 active:scale-95 active:translate-y-0 disabled:hover:shadow-lg disabled:hover:translate-y-0 disabled:hover:brightness-100"
+          >
+            {loading ? (
+              <>
+                <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Mengirim...
+              </>
+            ) : (
+              <>
+                Ajukan Magang Sekarang
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {previewDoc && (

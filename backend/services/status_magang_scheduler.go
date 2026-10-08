@@ -27,8 +27,7 @@ func SinkronStatusMagang() {
 		SET u.status_magang = 'selesai'
 		WHERE u.role = 'peserta'
 			AND u.status_magang = 'aktif'
-			AND p.tanggal_selesai IS NOT NULL
-			AND DATE(p.tanggal_selesai) < ?
+			AND (p.tanggal_selesai IS NOT NULL AND DATE(p.tanggal_selesai) < ?)
 	`, hariIni).Error; err != nil {
 		log.Println("[status-magang] gagal menandai selesai:", err)
 	}
@@ -47,29 +46,6 @@ func SinkronStatusMagang() {
 			AND (p.tanggal_selesai IS NULL OR DATE(p.tanggal_selesai) >= ?)
 	`, hariIni).Error; err != nil {
 		log.Println("[status-magang] gagal mengaktifkan kembali:", err)
-	}
-
-	// 3. Buat draf sertifikat otomatis bagi peserta selesai yang belum memiliki sertifikat
-	var alumniTanpaSertifikat []struct {
-		ID uint
-	}
-	if err := config.DB.Raw(`
-		SELECT u.id
-		FROM user_manajemens u
-		WHERE u.role = 'peserta' AND u.status_magang = 'selesai'
-		  AND NOT EXISTS (
-			SELECT 1 FROM sertifikats s WHERE s.akun_peserta_id = u.id
-		  )
-	`).Scan(&alumniTanpaSertifikat).Error; err == nil {
-		for _, a := range alumniTanpaSertifikat {
-			draf := models.Sertifikat{
-				AkunPesertaID:   a.ID,
-				NomorSertifikat: "-",
-				TanggalTerbit:   time.Now().Format("2006-01-02"),
-				Status:          "draft",
-			}
-			_ = config.DB.Create(&draf)
-		}
 	}
 }
 

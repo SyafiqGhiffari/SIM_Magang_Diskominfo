@@ -1,3 +1,10 @@
+// ==============================================================================
+// CONTROLLER: Bidang Controller
+// DESKRIPSI: Mengelola master data bidang/divisi magang, kuota penerimaan,
+//            pemetaan mentor, serta kustomisasi tampilan kartu bidang pada landing page.
+// ROLE TERKAIT: [ROLE: ADMIN] & [ROLE: PUBLIK]
+// ==============================================================================
+
 package controllers
 
 import (
@@ -19,6 +26,9 @@ type BidangInput struct {
 	IsActive  *bool  `json:"is_active"`
 }
 
+// [ROLE: ADMIN]
+// GetAllBidang mengambil seluruh data master bidang magang beserta kalkulasi jumlah mentor yang bertugas.
+// Endpoint: GET /api/manajemen/admin/bidang
 func GetAllBidang(c *gin.Context) {
 	var bidangList []models.BidangMagang
 	if err := config.DB.Order("nama asc").Find(&bidangList).Error; err != nil {
@@ -42,6 +52,9 @@ func GetAllBidang(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Data bidang berhasil diambil", result)
 }
 
+// [ROLE: ADMIN]
+// CreateBidang membuat data master bidang magang baru dengan kuota dan status aktif.
+// Endpoint: POST /api/manajemen/admin/bidang
 func CreateBidang(c *gin.Context) {
 	var input BidangInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -74,6 +87,9 @@ func CreateBidang(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusCreated, "Bidang berhasil ditambahkan", bidang)
 }
 
+// [ROLE: ADMIN]
+// UpdateBidang memperbarui informasi nama, deskripsi, kuota, atau status keaktifan bidang magang.
+// Endpoint: PUT /api/manajemen/admin/bidang/:id
 func UpdateBidang(c *gin.Context) {
 	id := c.Param("id")
 
@@ -104,6 +120,9 @@ func UpdateBidang(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Bidang berhasil diperbarui", bidang)
 }
 
+// [ROLE: ADMIN]
+// ToggleStatusBidang mengubah status aktif/nonaktif bidang magang secara instan.
+// Endpoint: PATCH /api/manajemen/admin/bidang/:id/toggle-status
 func ToggleStatusBidang(c *gin.Context) {
 	id := c.Param("id")
 
@@ -122,8 +141,9 @@ func ToggleStatusBidang(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Status bidang berhasil diperbarui", bidang)
 }
 
-// CekBidangBisaDihapus — dipanggil frontend SEBELUM menampilkan dialog konfirmasi hapus,
-// supaya admin bisa diberi tahu alasannya lebih dulu tanpa perlu mencoba hapus dan gagal.
+// [ROLE: ADMIN]
+// CekBidangBisaDihapus memeriksa apakah bidang magang masih memiliki peserta diterima atau mentor yang bertugas sebelum penghapusan.
+// Endpoint: GET /api/manajemen/admin/bidang/:id/cek-hapus
 func CekBidangBisaDihapus(c *gin.Context) {
 	id := c.Param("id")
 
@@ -157,6 +177,9 @@ func CekBidangBisaDihapus(c *gin.Context) {
 	})
 }
 
+// [ROLE: ADMIN]
+// DeleteBidang menghapus data bidang magang jika tidak ada peserta aktif ataupun mentor yang terikat.
+// Endpoint: DELETE /api/manajemen/admin/bidang/:id
 func DeleteBidang(c *gin.Context) {
 	id := c.Param("id")
 
@@ -201,6 +224,9 @@ func DeleteBidang(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Bidang berhasil dihapus", nil)
 }
 
+// [ROLE: PUBLIK]
+// GetPublicBidang mengambil daftar bidang magang aktif dan sisa kuota yang tersedia untuk halaman beranda / pendaftaran.
+// Endpoint: GET /api/bidang
 func GetPublicBidang(c *gin.Context) {
 	var bidangList []models.BidangMagang
 	if err := config.DB.Where("is_active = ?", true).Order("nama asc").Find(&bidangList).Error; err != nil {
@@ -314,7 +340,9 @@ func seedTampilanBidangJikaKosong() {
 	}
 }
 
-// GetTampilanBidang — daftar bidang khusus untuk form pengaturan tampilan landing.
+// [ROLE: ADMIN]
+// GetTampilanBidang mengambil daftar bidang khusus untuk form pengaturan konten tampilan landing page.
+// Endpoint: GET /api/manajemen/admin/bidang-tampilan
 func GetTampilanBidang(c *gin.Context) {
 	seedTampilanBidangJikaKosong()
 
@@ -336,8 +364,9 @@ type tampilanBidangInput struct {
 	TampilkanDiLanding *bool   `json:"tampilkan_di_landing"`
 }
 
-// UpdateTampilanBidang hanya mengubah kolom tampilan — nama, kuota, dan status
-// bidang tetap dikelola melalui menu Kelola Bidang agar tidak bentrok.
+// [ROLE: ADMIN]
+// UpdateTampilanBidang memperbarui atribut kartu bidang pada landing page (ikon, badge, deskripsi, kompetensi, urutan, visibilitas).
+// Endpoint: PUT /api/manajemen/admin/bidang-tampilan/:id
 func UpdateTampilanBidang(c *gin.Context) {
 	var bidang models.BidangMagang
 	if err := config.DB.First(&bidang, c.Param("id")).Error; err != nil {

@@ -155,7 +155,14 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
     };
     ambil();
     const t = setInterval(ambil, 30000);
-    return () => clearInterval(t);
+    const handleUpdate = () => ambil();
+    window.addEventListener("sim_notifikasi_updated", handleUpdate);
+    window.addEventListener("focus", handleUpdate);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("sim_notifikasi_updated", handleUpdate);
+      window.removeEventListener("focus", handleUpdate);
+    };
   }, []);
 
   // Lencana disuntikkan ke salinan navItems agar daftar menu tetap statis
@@ -215,6 +222,17 @@ const AdminLayout = ({ children, searchValue = "", onSearchChange }) => {
       }
     };
     fetchProfile();
+
+    const handleProfileSync = () => {
+      const u = getUser();
+      if (u) setProfile((prev) => ({ ...prev, ...u }));
+    };
+    window.addEventListener("sim_auth_user_updated", handleProfileSync);
+    window.addEventListener("storage", handleProfileSync);
+    return () => {
+      window.removeEventListener("sim_auth_user_updated", handleProfileSync);
+      window.removeEventListener("storage", handleProfileSync);
+    };
   }, [navigate]);
 
   const handleLogout = async () => {

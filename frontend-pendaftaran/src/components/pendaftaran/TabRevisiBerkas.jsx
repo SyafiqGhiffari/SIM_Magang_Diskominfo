@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import {
   Lock, FileText, AlertTriangle, CheckCircle2,
-  Eye, RefreshCw, Trash2, ChevronDown, Info,
-  ArrowLeft, ArrowRight,
+  Eye, RefreshCw, Trash2, ChevronDown, ClipboardCheck,
+  ArrowRight, Info,
 } from "lucide-react";
 import PreviewModal from "./form-magang/PreviewModal";
 
@@ -13,7 +13,7 @@ const CloudIcon = () => (
 );
 
 // ─── Satu card per dokumen revisi, bisa dibuka/ditutup ─────────────────────
-const DocRevisiCard = ({ dk, surface, txt, sub, doc, file, note, onFileChange, onRemoveFile, onNoteChange, isOpen, onToggle }) => {
+const DocRevisiCard = ({ dk, txt, sub, doc, file, note, onFileChange, onRemoveFile, onNoteChange, isOpen, onToggle }) => {
   const inputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -35,11 +35,11 @@ const DocRevisiCard = ({ dk, surface, txt, sub, doc, file, note, onFileChange, o
   };
 
   return (
-    <div className={`group/card rounded-2xl border shadow-xl overflow-hidden transition-all duration-300 ${
+    <div className={`group/card rounded-2xl border shadow-sm hover:shadow-md overflow-hidden transition-all duration-300 ${
       file
-        ? dk ? "border-emerald-500/30" : "border-emerald-200"
-        : surface
-    } ${surface}`}>
+        ? dk ? "border-emerald-500/30 bg-emerald-500/[0.02]" : "border-emerald-200 bg-emerald-50/20"
+        : dk ? "border-white/10 bg-white/[0.02]" : "border-slate-200/80 bg-slate-50/40"
+    }`}>
       {/* Header — selalu terlihat, klik untuk buka/tutup */}
       <button
         type="button"
@@ -190,14 +190,6 @@ const TabRevisiBerkas = ({
   handleSubmitRevisi,
   errorRevisi, loadingRevisi, handleTabChange,
 }) => {
-  const forceRevisiForTesting = false; // set true untuk demo/testing, abaikan catatan admin dan paksa tampilkan 3 dokumen revisi contoh
-
-  // Contoh 3 dokumen revisi untuk keperluan demo/testing
-  const demoDocs = [
-    { key: "surat_pengantar", field: "file_surat_pengantar", isImage: false, label: "Surat Pengantar", catatan: "Tanda tangan kepala sekolah belum distempel basah. Mohon unggah ulang dengan dokumen yang sudah dilegalisir." },
-    { key: "pas_foto", field: "file_pas_foto", isImage: true, label: "Pas Foto", catatan: "Foto tidak menggunakan latar belakang merah sesuai ketentuan pendaftaran. Mohon unggah ulang." },
-    { key: "cv", field: "file_cv", isImage: false, label: "CV", catatan: "Format CV yang diunggah tidak sesuai template yang disarankan. Mohon perbaiki dan unggah ulang." },
-  ];
 
   // ==== PERUBAHAN: prioritaskan detail_verifikasi (data terstruktur per-berkas) ====
   // Ini jauh lebih akurat dibanding menebak dari catatan_admin (teks gabungan) via regex,
@@ -221,12 +213,10 @@ const TabRevisiBerkas = ({
   const matchedDocs = (docOptions || []).filter((d) => d.pattern.test(status?.catatan_admin || ""));
 
   const [manualDocKey, setManualDocKey] = useState("");
-  const needsManualSelection = !forceRevisiForTesting && docsFromDetail.length === 0 && matchedDocs.length === 0;
+  const needsManualSelection = docsFromDetail.length === 0 && matchedDocs.length === 0;
 
   let docsToRender;
-  if (forceRevisiForTesting) {
-    docsToRender = demoDocs;
-  } else if (docsFromDetail.length > 0) {
+  if (docsFromDetail.length > 0) {
     docsToRender = docsFromDetail;
   } else if (matchedDocs.length > 0) {
     docsToRender = matchedDocs.map((d) => ({ ...d, catatan: status?.catatan_admin }));
@@ -273,61 +263,108 @@ const TabRevisiBerkas = ({
 
   return (
     <div className="space-y-6">
-      {/* ==== PERUBAHAN: progres kini menyatu di header, bukan card terpisah ==== */}
+      {/* Judul Halaman */}
       <div>
-        <div className="flex items-end justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className="text-2xl font-black tracking-tight text-amber-500">Revisi Berkas Pendaftaran</h2>
-            <p className={`mt-1.5 text-xs ${sub}`}>Unggah ulang dokumen sesuai instruksi koreksi dari admin reviewer.</p>
-          </div>
-          {totalCount > 0 && (
-            <div className="flex items-center gap-2.5 shrink-0">
-              <span className={`text-[11px] font-bold ${sub}`}>
-                {uploadedCount === totalCount ? "Semua dokumen terunggah" : `${uploadedCount} dari ${totalCount} dokumen terunggah`}
-              </span>
-              <span className={`text-xs font-black tabular-nums ${uploadedCount === totalCount ? "text-emerald-500" : "text-amber-500"}`}>
-                {uploadedCount}/{totalCount}
-              </span>
-            </div>
-          )}
-        </div>
-        {totalCount > 0 && (
-          <div className={`mt-3 h-1.5 w-full rounded-full overflow-hidden ${dk ? "bg-white/10" : "bg-slate-200"}`}>
-            <div
-              className={`h-full rounded-full transition-all duration-500 ease-out ${uploadedCount === totalCount ? "bg-emerald-500" : "bg-amber-500"}`}
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-        )}
+        <h2 className={`text-2xl font-black tracking-tight ${dk ? "text-white" : "text-black"}`}>
+          Revisi Berkas Pendaftaran
+        </h2>
+        <p className={`mt-1 text-xs sm:text-sm font-medium ${sub}`}>
+          Unggah ulang dokumen sesuai instruksi koreksi dari admin reviewer.
+        </p>
       </div>
-      {/* ==== AKHIR PERUBAHAN ==== */}
 
-      {!forceRevisiForTesting && !isRevisi ? (
-        <div className={`rounded-2xl border p-8 text-center shadow-sm ${surface} flex flex-col items-center justify-center`}>
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 mb-4 dark:bg-white/5">
-            <Lock className="w-6 h-6" strokeWidth={2} />
-          </span>
-          <h3 className={`text-sm font-bold ${txt}`}>Revisi Tidak Diperlukan</h3>
-          <p className={`mt-2 text-xs font-sans ${sub}`}>Akun Anda tidak sedang dalam status permintaan revisi.</p>
-          <button onClick={() => handleTabChange("dashboard")} className="mt-5 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-5 py-2.5 text-xs font-bold text-white cursor-pointer hover:shadow-lg transition-all duration-300">Kembali ke Dashboard</button>
+      {!isRevisi ? (
+        <div className={`rounded-2xl border p-8 sm:p-12 text-center shadow-sm ${surface} flex flex-col items-center justify-center`}>
+          <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner ${dk ? "bg-white/5 border border-white/10" : "bg-slate-100 border border-slate-200"}`}>
+            <Lock className="w-8 h-8 text-slate-400" />
+          </div>
+          <h3 className={`mt-5 text-base sm:text-lg font-black tracking-tight ${txt}`}>Revisi Tidak Diperlukan</h3>
+          <p className={`mt-2 text-xs sm:text-[13px] leading-relaxed max-w-md mx-auto ${sub}`}>
+            Akun Anda saat ini tidak sedang dalam status permintaan perbaikan berkas.
+          </p>
+          <button
+            type="button"
+            onClick={() => handleTabChange("dashboard")}
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0B1442] to-[#1E3A8A] px-6 py-2.5 text-xs font-bold text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 cursor-pointer"
+          >
+            <span>Kembali ke Dashboard</span>
+          </button>
         </div>
       ) : (
-        <div className="space-y-5">
-          {/* Banner peringatan — kuning/amber, ikon dipusatkan */}
-          <div className={`rounded-2xl border p-5 flex items-start gap-3 ${dk ? "bg-amber-400/10 border-amber-400/25" : "bg-amber-50 border-amber-200"}`}>
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
-              <AlertTriangle className="w-4 h-4 -translate-y-[0.5px]" strokeWidth={2.5} />
+        /* Card Utama Pembungkus Seluruh Kolom Konten */
+        <div className={`rounded-2xl sm:rounded-3xl border shadow-sm p-5 sm:p-6 pb-4 sm:pb-5 space-y-5 transition-all ${
+          dk ? "bg-[#161b22] border-white/10" : "bg-white border-slate-200/80"
+        }`}>
+          {/* Header Card: Icon kuning/orange, judul dan subjudul sedikit diperkecil, tanpa garis sekat */}
+          <div className="flex items-start sm:items-center gap-3 sm:gap-3.5 pb-0.5">
+            <span className="flex h-8.5 w-8.5 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20">
+              <ClipboardCheck className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={2.2} />
             </span>
-            <div>
-              <h3 className={`text-sm font-extrabold ${dk ? "text-amber-300" : "text-amber-800"}`}>Perhatian: Koreksi Diperlukan</h3>
-              <p className={`mt-1 text-xs leading-relaxed ${dk ? "text-amber-300/85" : "text-amber-700"}`}>
-                Setelah meninjau berkas Anda, administrator menemukan beberapa ketidaksesuaian pada dokumen yang diunggah. Silakan perbaiki dokumen yang ditandai sebelum melanjutkan ke tahap seleksi berikutnya.
+            <div className="min-w-0 flex-1">
+              <h3
+                className={`text-sm sm:text-[15px] font-black tracking-tight leading-tight ${
+                  dk ? "text-slate-100" : "text-[#0B1442]"
+                }`}
+              >
+                Formulir Perbaikan Berkas
+              </h3>
+              <p
+                className={`mt-0.5 text-[11px] sm:text-xs font-medium leading-relaxed ${
+                  dk ? "text-slate-400" : "text-slate-500"
+                }`}
+              >
+                Periksa catatan perbaikan dari administrator dan unggah kembali dokumen persyaratan yang ditandai sebelum batas waktu verifikasi berakhir.
               </p>
             </div>
           </div>
 
+          {/* Banner peringatan — tanpa icon, ukuran lebih compact & proporsional */}
+          <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-3.5 flex flex-col gap-2 sm:gap-2.5 ${dk ? "bg-amber-400/10 border-amber-400/25" : "bg-amber-50/80 border-amber-200/80"}`}>
+            <div className="flex items-center justify-between gap-2.5 flex-wrap">
+              <h3 className={`text-xs sm:text-sm font-extrabold ${dk ? "text-amber-300" : "text-amber-900"}`}>
+                Perhatian: Koreksi Diperlukan
+              </h3>
+              {totalCount > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[10px] sm:text-[11px] font-bold ${dk ? "text-amber-300/80" : "text-amber-800/80"}`}>
+                    Progres Dokumen:
+                  </span>
+                  <span className={`text-[11px] sm:text-xs font-black tabular-nums ${uploadedCount === totalCount ? "text-emerald-500" : "text-amber-600 dark:text-amber-400"}`}>
+                    {uploadedCount} / {totalCount} ({Math.round(progressPct)}%)
+                  </span>
+                </div>
+              )}
+            </div>
+            <p className={`text-[11px] sm:text-xs leading-normal sm:leading-relaxed ${dk ? "text-amber-300/85" : "text-amber-800"}`}>
+              Setelah meninjau berkas Anda, ditemukan beberapa ketidaksesuaian pada dokumen yang diunggah. Silakan perbaiki dokumen yang ditandai sebelum melanjutkan ke tahap seleksi berikutnya.
+            </p>
+
+            {/* Progress Bar di dalam banner dilengkapi informasi persentase */}
+            {totalCount > 0 && (
+              <div className="w-full pt-0.5 flex items-center gap-2.5">
+                <div className={`h-1.5 flex-1 rounded-full overflow-hidden ${dk ? "bg-amber-400/20" : "bg-amber-200/70"}`}>
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ease-out ${
+                      uploadedCount === totalCount
+                        ? "bg-emerald-500"
+                        : "bg-gradient-to-r from-amber-500 to-orange-500"
+                    }`}
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+                <span className={`text-[11px] sm:text-xs font-black tabular-nums shrink-0 ${
+                  uploadedCount === totalCount
+                    ? "text-emerald-500"
+                    : dk ? "text-amber-300" : "text-amber-700"
+                }`}>
+                  {Math.round(progressPct)}%
+                </span>
+              </div>
+            )}
+          </div>
+
           {needsManualSelection && (
-            <div className={`rounded-2xl border p-5 ${dk ? "bg-blue-400/10 border-blue-400/20" : "bg-blue-50 border-blue-200"}`}>
+            <div className={`rounded-2xl border p-4 sm:p-5 ${dk ? "bg-blue-400/10 border-blue-400/20" : "bg-blue-50/80 border-blue-200"}`}>
               <label className={`text-xs font-bold uppercase tracking-wide ${dk ? "text-blue-300" : "text-blue-800"}`}>
                 Pilih Dokumen yang Direvisi
               </label>
@@ -347,20 +384,23 @@ const TabRevisiBerkas = ({
             </div>
           )}
 
-          {docsToRender.map((doc, index) => (
-            <DocRevisiCard
-              key={doc.key}
-              dk={dk} surface={surface} txt={txt} sub={sub}
-              doc={doc}
-              file={filesByKey[doc.key] || null}
-              note={notesByKey[doc.key] || ""}
-              onFileChange={(f) => handleFileChange(doc.key, f)}
-              onRemoveFile={() => handleRemoveFile(doc.key)}
-              onNoteChange={(t) => handleNoteChange(doc.key, t)}
-              isOpen={isOpen(doc.key, index)}
-              onToggle={() => toggleOpen(doc.key, index)}
-            />
-          ))}
+          {/* List Dokumen Revisi (Tersusun rapi di dalam Card) */}
+          <div className="space-y-4">
+            {docsToRender.map((doc, index) => (
+              <DocRevisiCard
+                key={doc.key}
+                dk={dk} txt={txt} sub={sub}
+                doc={doc}
+                file={filesByKey[doc.key] || null}
+                note={notesByKey[doc.key] || ""}
+                onFileChange={(f) => handleFileChange(doc.key, f)}
+                onRemoveFile={() => handleRemoveFile(doc.key)}
+                onNoteChange={(t) => handleNoteChange(doc.key, t)}
+                isOpen={isOpen(doc.key, index)}
+                onToggle={() => toggleOpen(doc.key, index)}
+              />
+            ))}
+          </div>
 
           {errorRevisi && (
             <div className={`rounded-xl border p-4 text-xs font-semibold flex items-center gap-2 animate-[fadeslide_0.2s_ease-out] ${dk ? "bg-red-500/10 border-red-400/20 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}>
@@ -369,63 +409,51 @@ const TabRevisiBerkas = ({
             </div>
           )}
 
-          {/* Footer action card */}
+          {/* Section Bawah: Batch Info & Tombol Aksi Sejajar */}
+          {/* Section Bawah: Batch Info Pemberitahuan & Tombol Aksi Sejajar */}
           {docsToRender.length > 0 && (
-            <div className={`rounded-2xl border shadow-lg ${surface}`}>
-              <div className="p-6 space-y-5">
-                {/* Baris status ringkas */}
-                <div className="flex items-start gap-3.5">
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${dk ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-500"}`}>
-                    {uploadedCount === totalCount ? (
-                      <CheckCircle2 className="w-5 h-5" strokeWidth={1.8} />
-                    ) : (
-                      <Info className="w-5 h-5" strokeWidth={1.8} />
-                    )}
-                  </span>
-                  <div className="min-w-0">
-                    <p className={`text-sm font-extrabold ${txt}`}>
-                      {uploadedCount === totalCount ? "Siap untuk dikirim!" : "Sebelum mengirim, periksa kembali"}
-                    </p>
-                    <p className={`mt-1 text-xs leading-relaxed ${sub}`}>
-                      {uploadedCount === totalCount
-                        ? "Semua dokumen revisi sudah terunggah. Klik tombol di bawah untuk mengirim perbaikan ke admin."
-                        : "Pastikan semua dokumen yang membutuhkan revisi telah diunggah ulang sebelum mengirimkan perbaikan."}
-                    </p>
-                  </div>
-                </div>
+            <div className={`pt-3.5 sm:pt-4 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 ${dk ? "border-white/5" : "border-slate-100"}`}>
+              {/* Sisi Kiri: Batch Info Pemberitahuan */}
+              <div className="flex items-center">
+                <span className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  dk
+                    ? "bg-sky-500/10 text-sky-300 border border-sky-500/20"
+                    : "bg-sky-50 text-sky-800 border border-sky-100"
+                }`}>
+                  <Info className="w-3.5 h-3.5 shrink-0 text-sky-600 dark:text-sky-400" strokeWidth={2.2} />
+                  <span>Periksa kembali kelengkapan berkas Anda sebelum mengirimkan perbaikan</span>
+                </span>
+              </div>
 
-                {/* Divider */}
-                <div className={`h-px w-full ${dk ? "bg-white/10" : "bg-slate-100"}`} />
-
-                {/* Baris tombol aksi */}
-                <div className="flex flex-col sm:flex-row items-center justify-end gap-4">
-                  <button
-                    type="button"
-                    onClick={() => handleTabChange("dashboard")}
-                    className={`group w-full sm:flex-1 sm:min-w-[160px] flex items-center justify-center gap-2 rounded-full border-2 px-10 py-3.5 text-xs font-bold cursor-pointer transition-all duration-200 hover:-translate-y-0.5 active:scale-95 active:translate-y-0 ${dk ? "border-white/10 text-slate-400 hover:bg-white/5" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} />
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSubmitClick}
-                    disabled={loadingRevisi || uploadedCount !== totalCount}
-                    className="group w-full sm:flex-2 sm:min-w-[200px] flex items-center justify-center gap-2 rounded-full bg-amber-600 px-8 py-3.5 text-xs font-bold text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all duration-200 hover:bg-amber-700 hover:shadow-xl hover:-translate-y-0.5 active:scale-95 active:translate-y-0 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
-                  >
-                    {loadingRevisi ? (
-                      <>
-                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Mengirim...
-                      </>
-                    ) : (
-                      <>
-                        Kirim Perbaikan Berkas
-                        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} />
-                      </>
-                    )}
-                  </button>
-                </div>
+              {/* Sisi Kanan: Baris Tombol Aksi */}
+              <div className="flex items-center justify-end gap-3 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("dashboard")}
+                  className={`w-full sm:w-auto flex items-center justify-center rounded-xl border px-6 py-2.5 text-xs font-bold cursor-pointer transition-all duration-200 hover:-translate-y-0.5 active:scale-95 ${
+                    dk ? "border-white/10 text-slate-300 hover:bg-white/5" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitClick}
+                  disabled={loadingRevisi || uploadedCount !== totalCount}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 px-7 py-2.5 text-xs font-bold text-white shadow-md shadow-amber-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:hover:translate-y-0 shrink-0"
+                >
+                  {loadingRevisi ? (
+                    <>
+                      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Mengirim...
+                    </>
+                  ) : (
+                    <>
+                      Kirim Perbaikan Berkas
+                      <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} />
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           )}

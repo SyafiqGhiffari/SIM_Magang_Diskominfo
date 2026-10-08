@@ -59,14 +59,12 @@ func ConnectDatabase() {
 		&models.JamKerja{},
 		&models.HariLibur{},
 		&models.Sertifikat{},
-		&models.PengaturanSertifikat{},
 		&models.TemplateSertifikat{},
 		&models.Presensi{},
 		&models.PenutupanPresensi{},
 		&models.PengajuanIzin{},
 		&models.Notifikasi{},
 		&models.TemplateSurat{},
-		&models.PengaturanSuratPenerimaan{},
 		&models.SuratPenerimaan{},
 		&models.PengaturanPenilaian{},
 		&models.PenilaianMagang{},
@@ -81,6 +79,15 @@ func ConnectDatabase() {
 	if err != nil {
 		log.Fatal("Gagal melakukan migrasi database: ", err)
 	}
+
+	// Sinkronisasi otomatis foto profil peserta manajemen dari berkas pas foto pendaftaran jika belum terisi
+	_ = DB.Exec(`
+		UPDATE user_manajemens u
+		JOIN pendaftaran_magangs p ON p.akun_peserta_id = u.id
+		SET u.foto_profil = p.file_pas_foto
+		WHERE (u.foto_profil IS NULL OR u.foto_profil = '')
+		  AND (p.file_pas_foto IS NOT NULL AND p.file_pas_foto != '')
+	`).Error
 
 	fmt.Println("Berhasil koneksi dan migrasi database MySQL")
 }

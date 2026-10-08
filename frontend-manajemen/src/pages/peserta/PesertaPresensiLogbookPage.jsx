@@ -718,6 +718,7 @@ export const PesertaPresensiLogbookPage = () => {
   }, [fetchPresensi, reloadKey]);
 
   const isHariKerja = status?.hari_kerja !== false;
+  const isBelumMulaiMagang = Boolean(status?.belum_mulai_magang || status?.status === "belum_mulai");
   const infoLibur = useMemo(() => getDetailInfoLibur(status, liburList), [status, liburList]);
   const jamMasukBuka = status?.jam_kerja?.jam_masuk_buka || "06:00";
   const jamMasukMulai = status?.jam_kerja?.jam_masuk ? status.jam_kerja.jam_masuk.slice(0, 5) : (status?.jadwal?.jam_masuk || "07:30");
@@ -735,7 +736,7 @@ export const PesertaPresensiLogbookPage = () => {
       ),
     [currentTime, jamMasukBuka, jamMasukSelesai, status?.jam_masuk, status?.status, status?.menit_terlambat]
   );
-  const isSudahWaktunyaMasuk = !isHariKerja
+  const isSudahWaktunyaMasuk = !isHariKerja || isBelumMulaiMagang
     ? false
     : jadwalMasukInfo.type !== "belum_buka" || Boolean(status?.jam_masuk);
   const jamPulang = status?.jam_kerja?.jam_pulang ? status.jam_kerja.jam_pulang.slice(0, 5) : (status?.jadwal?.jam_pulang || "15:30");
@@ -1041,6 +1042,11 @@ export const PesertaPresensiLogbookPage = () => {
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-black bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 shrink-0 shadow-2xs">
                       Izin Resmi
                     </span>
+                  ) : isBelumMulaiMagang ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-black bg-blue-50 dark:bg-blue-950/60 text-[#004F9F] dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60 shrink-0 shadow-2xs">
+                      <Clock className="w-3.5 h-3.5 text-[#004F9F] dark:text-sky-400" />
+                      <span>Magang Belum Dimulai</span>
+                    </span>
                   ) : !isSudahWaktunyaMasuk ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-black bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0 shadow-2xs">
                       <Lock className="w-3 h-3 text-slate-400" />
@@ -1056,7 +1062,14 @@ export const PesertaPresensiLogbookPage = () => {
 
                 {/* Batch Jadwal / Batas Presensi Masuk */}
                 <div>
-                  {!isHariKerja ? (
+                  {isBelumMulaiMagang ? (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs shadow-2xs bg-blue-50/90 dark:bg-blue-950/30 text-blue-800 dark:text-blue-200 border-blue-200/70 dark:border-blue-900/40">
+                      <Info className="w-4 h-4 shrink-0 text-[#00A5EC]" />
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        Jadwal Pelaksanaan: <strong className={`font-black ${isDark ? "text-white" : "text-[#0B1442]"}`}>Mulai {status?.tanggal_mulai_magang || "-"}</strong>
+                      </span>
+                    </div>
+                  ) : !isHariKerja ? (
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs shadow-2xs bg-amber-50/90 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 border-amber-200/70 dark:border-amber-900/40">
                       <CalendarOff className="w-4 h-4 shrink-0 text-amber-500" />
                       <span className="font-semibold text-slate-700 dark:text-slate-300">
@@ -1375,6 +1388,15 @@ export const PesertaPresensiLogbookPage = () => {
                   >
                     <CheckCircle2 className="w-4 h-4 text-purple-500" />
                     <span>Tercatat {status?.status?.toUpperCase()} Resmi (Presensi Ditutup)</span>
+                  </button>
+                ) : isBelumMulaiMagang ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full py-3.5 px-5 rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border border-blue-200/80 dark:border-blue-900/40 cursor-not-allowed shadow-none"
+                  >
+                    <Clock className="w-4 h-4 text-blue-500" />
+                    <span>Periode Magang Belum Dimulai (Mulai {status?.tanggal_mulai_magang || "-"})</span>
                   </button>
                 ) : !isSudahWaktunyaMasuk ? (
                   <button
