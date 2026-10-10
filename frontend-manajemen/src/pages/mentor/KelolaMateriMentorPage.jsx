@@ -3,7 +3,7 @@ import MentorLayout from "../../layouts/MentorLayout";
 import { useManajemenTheme } from "../../context/useManajemenTheme";
 import {
   BookOpenText, RefreshCw, Tags, FolderOpen,
-  Search, Pencil, Trash2,
+  Search, Pencil, Trash2, Check,
   FileText, Link2, Users, X,
   FolderTree, Sparkles, FilePlusCorner, GraduationCap,
   Calendar, Presentation, Video, BookOpen, Globe, Info,
@@ -15,7 +15,9 @@ import {
   getMateriMentor,
   getPesertaBimbinganMateri,
   deleteMateriMentor,
-  createKategoriMateriMentor
+  createKategoriMateriMentor,
+  updateKategoriMateriMentor,
+  deleteKategoriMateriMentor
 } from "../../services/pembelajaranService";
 import { getFileUrl } from "../../utils/fileUrl";
 import { formatTanggalPresensi } from "../../constants/presensiStatus";
@@ -291,6 +293,13 @@ const KelolaMateriMentorPage = () => {
   const [simpanKategoriLoading, setSimpanKategoriLoading] = useState(false);
   const inputKategoriRef = useRef(null);
 
+  // Edit & Hapus Kategori State
+  const [editingKatId, setEditingKatId] = useState(null);
+  const [editKatNama, setEditKatNama] = useState("");
+  const [editKatLoading, setEditKatLoading] = useState(false);
+  const [deleteKatLoadingId, setDeleteKatLoadingId] = useState(null);
+  const editKatInputRef = useRef(null);
+
   useEffect(() => {
     if (tambahKategoriMode) {
       const timer = setTimeout(() => {
@@ -321,6 +330,80 @@ const KelolaMateriMentorPage = () => {
     }
   };
 
+  const handleStartEditKategori = (e, kat) => {
+    e.stopPropagation();
+    setEditingKatId(kat.id);
+    setEditKatNama(kat.nama);
+    setTimeout(() => editKatInputRef.current?.focus(), 150);
+  };
+
+  const handleBatalEditKategori = (e) => {
+    if (e) e.stopPropagation();
+    setEditingKatId(null);
+    setEditKatNama("");
+  };
+
+  const handleSimpanEditKategori = async (e, kat) => {
+    if (e) e.stopPropagation();
+    const namaTrimmed = editKatNama.trim();
+    if (!namaTrimmed) return;
+    if (namaTrimmed === kat.nama) {
+      setEditingKatId(null);
+      return;
+    }
+
+    setEditKatLoading(true);
+    try {
+      await updateKategoriMateriMentor(kat.id, { nama: namaTrimmed });
+      toastSuccess(`Kategori berhasil diubah menjadi "${namaTrimmed}"`);
+      if (selectedKategori === kat.nama) {
+        setSelectedKategori(namaTrimmed);
+      }
+      setEditingKatId(null);
+      muatData();
+    } catch (err) {
+      console.error("Gagal mengubah kategori:", err);
+      const msg = err.response?.data?.message || "Gagal mengubah nama kategori";
+      toastError(msg);
+    } finally {
+      setEditKatLoading(false);
+    }
+  };
+
+  const handleHapusKategori = async (e, kat) => {
+    e.stopPropagation();
+
+    if (kat.total > 0) {
+      toastError(`Kategori "${kat.nama}" masih digunakan oleh ${kat.total} modul materi. Silakan ubah atau hapus materi tersebut terlebih dahulu.`);
+      return;
+    }
+
+    const isConfirmed = await confirmDialog({
+      title: "Hapus Kategori?",
+      text: `Apakah Anda yakin ingin menghapus kategori "${kat.nama}"? Tindakan ini tidak dapat dibatalkan.`,
+      confirmButtonText: "Ya, Hapus",
+      cancelButtonText: "Batal",
+    });
+
+    if (!isConfirmed) return;
+
+    setDeleteKatLoadingId(kat.id);
+    try {
+      await deleteKategoriMateriMentor(kat.id);
+      toastSuccess(`Kategori "${kat.nama}" berhasil dihapus`);
+      if (selectedKategori === kat.nama) {
+        setSelectedKategori("semua");
+      }
+      muatData();
+    } catch (err) {
+      console.error("Gagal menghapus kategori:", err);
+      const msg = err.response?.data?.message || "Gagal menghapus kategori";
+      toastError(msg);
+    } finally {
+      setDeleteKatLoadingId(null);
+    }
+  };
+
   // Tutup modal kategori dengan tombol Escape
   useEffect(() => {
     if (!modalKategoriOpen) return;
@@ -329,6 +412,8 @@ const KelolaMateriMentorPage = () => {
         setModalKategoriOpen(false);
         setTambahKategoriMode(false);
         setSearchKategoriModal("");
+        setEditingKatId(null);
+        setEditKatNama("");
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -1288,9 +1373,69 @@ const KelolaMateriMentorPage = () => {
                   ) : (
                     filteredKategoriModal.map((kat) => {
                       const isSelected = selectedKategori === kat.nama;
+                      const isInlineEditing = editingKatId === kat.id;
+
+                      if (isInlineEditing) {
+                        return (
+                          <div
+                            key={kat.id || kat.nama}
+                            className={`p-2.5 rounded-2xl border transition-all duration-200 ${
+                              isDark
+                                ? "bg-blue-950/30 border-blue-500/40"
+                                : "bg-blue-50/80 border-blue-200"
+                            }`}
+                          >
+                            <form
+                              onSubmit={(e) => handleSimpanEditKategori(e, kat)}
+                              className="flex items-center gap-2"
+                            >
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-[#004F9F] dark:text-[#00A5EC] shrink-0">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </div>
+                              <input
+                                ref={editKatInputRef}
+                                type="text"
+                                value={editKatNama}
+                                onChange={(e) => setEditKatNama(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Escape") handleBatalEditKategori(e);
+                                }}
+                                placeholder="Nama kategori..."
+                                className={`flex-1 h-8 px-3 rounded-xl border text-xs outline-none transition-all ${
+                                  isDark
+                                    ? "bg-[#161b22] border-white/10 text-slate-100 placeholder-slate-500 focus:border-[#00A5EC] focus:ring-2 focus:ring-[#00A5EC]/20"
+                                    : "bg-white border-blue-200 text-slate-800 placeholder-slate-400 focus:border-[#004F9F] focus:ring-2 focus:ring-[#004F9F]/20"
+                                }`}
+                              />
+                              <button
+                                type="submit"
+                                disabled={editKatLoading || !editKatNama.trim()}
+                                className="inline-flex items-center justify-center h-8 px-2.5 rounded-xl text-xs font-bold bg-[#004F9F] hover:bg-[#101F5C] dark:bg-[#00A5EC] dark:hover:bg-[#0090ce] text-white dark:text-slate-950 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                                title="Simpan Perubahan"
+                              >
+                                {editKatLoading ? (
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleBatalEditKategori}
+                                disabled={editKatLoading}
+                                className="inline-flex items-center justify-center h-8 w-8 rounded-xl text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0"
+                                title="Batal"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </form>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div
-                          key={kat.nama}
+                          key={kat.id || kat.nama}
                           onClick={() => {
                             setSelectedKategori(kat.nama);
                             setModalKategoriOpen(false);
@@ -1306,7 +1451,7 @@ const KelolaMateriMentorPage = () => {
                               : "bg-slate-50/80 border-slate-200/80 hover:bg-blue-50/40 hover:border-[#004F9F]/40 hover:shadow-xs"
                           }`}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-3 min-w-0 pr-2">
                             {/* Icon Folder Statis Biru Kominfo Tanpa Perubahan Warna Saat Row Hover */}
                             <div
                               className={`flex h-9.5 w-9.5 items-center justify-center rounded-xl shrink-0 transition-transform duration-200 ${
@@ -1333,9 +1478,9 @@ const KelolaMateriMentorPage = () => {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <span
-                              className={`text-[11px] font-bold px-2.5 py-1 rounded-xl border transition-all ${
+                              className={`text-[11px] font-bold px-2.5 py-1 rounded-xl border transition-all mr-1 ${
                                 isSelected
                                   ? "bg-[#004F9F] text-white border-[#004F9F] dark:bg-[#00A5EC] dark:text-slate-950 dark:border-[#00A5EC]"
                                   : "bg-blue-50 text-[#004F9F] border-blue-100 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/40"
@@ -1343,8 +1488,42 @@ const KelolaMateriMentorPage = () => {
                             >
                               {kat.total} Modul
                             </span>
+
+                            {/* Tombol Edit */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleStartEditKategori(e, kat)}
+                              className="flex h-7.5 w-7.5 items-center justify-center rounded-lg text-slate-400 hover:text-[#004F9F] dark:hover:text-[#00A5EC] hover:bg-blue-500/10 transition-colors cursor-pointer"
+                              title="Edit nama kategori"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Tombol Hapus */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleHapusKategori(e, kat)}
+                              disabled={deleteKatLoadingId === kat.id}
+                              className={`flex h-7.5 w-7.5 items-center justify-center rounded-lg transition-colors cursor-pointer ${
+                                kat.total > 0
+                                  ? "text-slate-300 dark:text-slate-600 hover:text-slate-400 cursor-not-allowed opacity-60"
+                                  : "text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10"
+                              }`}
+                              title={
+                                kat.total > 0
+                                  ? `Tidak dapat dihapus (masih digunakan oleh ${kat.total} modul)`
+                                  : "Hapus kategori"
+                              }
+                            >
+                              {deleteKatLoadingId === kat.id ? (
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin text-rose-500" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+
                             <div
-                              className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+                              className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ml-0.5 ${
                                 isSelected
                                   ? "text-[#004F9F] dark:text-[#00A5EC]"
                                   : "text-slate-400 group-hover:text-[#004F9F] dark:group-hover:text-[#00A5EC]"

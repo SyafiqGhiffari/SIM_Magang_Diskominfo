@@ -14,6 +14,12 @@ export const getKategoriMateriMentor = () =>
 export const createKategoriMateriMentor = (data) =>
   api.post("/manajemen/mentor/materi/kategori", data);
 
+export const updateKategoriMateriMentor = (id, data) =>
+  api.put(`/manajemen/mentor/materi/kategori/${id}`, data);
+
+export const deleteKategoriMateriMentor = (id) =>
+  api.delete(`/manajemen/mentor/materi/kategori/${id}`);
+
 export const getPesertaBimbinganMateri = () =>
   api.get("/manajemen/mentor/materi/peserta-bimbingan");
 

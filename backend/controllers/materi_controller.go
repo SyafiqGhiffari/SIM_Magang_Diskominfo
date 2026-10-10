@@ -146,23 +146,42 @@ func GetMateriMentor(c *gin.Context) {
 		}
 	}
 
-	// Gabungkan dengan master kategori dari tabel kategori_materis
+	// Gabungkan dengan master kategori dari tabel kategori_materis khusus milik mentor
 	var masterKategori []models.KategoriMateri
-	_ = config.DB.Where("mentor_id = ? OR mentor_id IS NULL", mentorID).
+	_ = config.DB.Where("mentor_id = ?", mentorID).
 		Order("nama asc").
 		Find(&masterKategori).Error
 
-	for _, mk := range masterKategori {
-		if _, exists := setKategori[mk.Nama]; !exists {
-			setKategori[mk.Nama] = 0
+	existingMap := make(map[string]*models.KategoriMateri)
+	for i := range masterKategori {
+		existingMap[strings.ToLower(masterKategori[i].Nama)] = &masterKategori[i]
+	}
+
+	// Pastikan setiap kategori yang terpakai di materi mentor ini sudah terdaftar di master tabel
+	for kat := range setKategori {
+		katTrimmed := strings.TrimSpace(kat)
+		if katTrimmed == "" {
+			continue
+		}
+		if _, exists := existingMap[strings.ToLower(katTrimmed)]; !exists {
+			kBaru := models.KategoriMateri{
+				Nama:     katTrimmed,
+				MentorID: &mentorID,
+			}
+			if err := config.DB.Create(&kBaru).Error; err == nil {
+				masterKategori = append(masterKategori, kBaru)
+				existingMap[strings.ToLower(katTrimmed)] = &kBaru
+			}
 		}
 	}
 
 	var daftarKategori []gin.H
-	for kat, count := range setKategori {
+	for _, mk := range masterKategori {
 		daftarKategori = append(daftarKategori, gin.H{
-			"nama":  kat,
-			"total": count,
+			"id":        mk.ID,
+			"nama":      mk.Nama,
+			"deskripsi": mk.Deskripsi,
+			"total":     setKategori[mk.Nama],
 		})
 	}
 
@@ -181,7 +200,7 @@ func GetMateriMentor(c *gin.Context) {
 }
 
 // [ROLE: MENTOR]
-// GetKategoriMateri mengambil daftar kategori materi bimbingan beserta jumlah modul aktif per kategori.
+// GetKategoriMateri mengambil daftar kategori materi bimbingan khusus milik mentor beserta jumlah modul aktif per kategori.
 // Endpoint: GET /api/manajemen/mentor/materi/kategori
 func GetKategoriMateri(c *gin.Context) {
 	mentorID, ok := mentorIDDariToken(c)
@@ -189,9 +208,9 @@ func GetKategoriMateri(c *gin.Context) {
 		return
 	}
 
-	// 1. Ambil master kategori dari database
+	// 1. Ambil master kategori milik mentor dari database
 	var masterKategori []models.KategoriMateri
-	_ = config.DB.Where("mentor_id = ? OR mentor_id IS NULL", mentorID).
+	_ = config.DB.Where("mentor_id = ?", mentorID).
 		Order("nama asc").
 		Find(&masterKategori).Error
 
@@ -203,26 +222,38 @@ func GetKategoriMateri(c *gin.Context) {
 
 	counts := make(map[string]int)
 	for _, m := range materiList {
-		if m.Kategori != "" {
-			counts[m.Kategori]++
+		kat := strings.TrimSpace(m.Kategori)
+		if kat != "" {
+			counts[kat]++
 		}
 	}
 
-	setKategori := make(map[string]int)
-	for _, mk := range masterKategori {
-		setKategori[mk.Nama] = counts[mk.Nama]
+	// 3. Pastikan setiap kategori yang terpakai di materi mentor ini sudah terdaftar di master tabel
+	existingMap := make(map[string]*models.KategoriMateri)
+	for i := range masterKategori {
+		existingMap[strings.ToLower(masterKategori[i].Nama)] = &masterKategori[i]
 	}
-	for kat, count := range counts {
-		if _, exists := setKategori[kat]; !exists {
-			setKategori[kat] = count
+
+	for kat := range counts {
+		if _, exists := existingMap[strings.ToLower(kat)]; !exists {
+			kBaru := models.KategoriMateri{
+				Nama:     kat,
+				MentorID: &mentorID,
+			}
+			if err := config.DB.Create(&kBaru).Error; err == nil {
+				masterKategori = append(masterKategori, kBaru)
+				existingMap[strings.ToLower(kat)] = &kBaru
+			}
 		}
 	}
 
 	var daftar []gin.H
-	for nama, total := range setKategori {
+	for _, mk := range masterKategori {
 		daftar = append(daftar, gin.H{
-			"nama":  nama,
-			"total": total,
+			"id":        mk.ID,
+			"nama":      mk.Nama,
+			"deskripsi": mk.Deskripsi,
+			"total":     counts[mk.Nama],
 		})
 	}
 
@@ -258,9 +289,9 @@ func CreateKategoriMateri(c *gin.Context) {
 		return
 	}
 
-	// Cek apakah kategori sudah pernah dibuat
+	// Cek apakah kategori sudah pernah dibuat oleh mentor ini
 	var existing models.KategoriMateri
-	if err := config.DB.Where("(mentor_id = ? OR mentor_id IS NULL) AND LOWER(nama) = LOWER(?)", mentorID, strings.ToLower(namaTrimmed)).First(&existing).Error; err == nil {
+	if err := config.DB.Where("mentor_id = ? AND LOWER(nama) = LOWER(?)", mentorID, strings.ToLower(namaTrimmed)).First(&existing).Error; err == nil {
 		utils.SuccessResponse(c, http.StatusOK, "Kategori materi sudah tersedia", existing)
 		return
 	}
@@ -277,6 +308,116 @@ func CreateKategoriMateri(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusCreated, "Kategori materi berhasil disimpan ke database", kategoriBaru)
+}
+
+// [ROLE: MENTOR]
+// UpdateKategoriMateri mengubah nama kategori materi milik mentor dan memperbarui semua materi terkait.
+// Endpoint: PUT /api/manajemen/mentor/materi/kategori/:id
+func UpdateKategoriMateri(c *gin.Context) {
+	mentorID, ok := mentorIDDariToken(c)
+	if !ok {
+		return
+	}
+
+	idParam := c.Param("id")
+	katID, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "ID kategori tidak valid")
+		return
+	}
+
+	var kategori models.KategoriMateri
+	if err := config.DB.Where("id = ? AND mentor_id = ?", katID, mentorID).First(&kategori).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Kategori materi tidak ditemukan atau Anda tidak memiliki akses")
+		return
+	}
+
+	var req struct {
+		Nama      string `json:"nama" binding:"required"`
+		Deskripsi string `json:"deskripsi"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Nama kategori wajib diisi")
+		return
+	}
+
+	namaTrimmed := strings.TrimSpace(req.Nama)
+	if namaTrimmed == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Nama kategori tidak boleh kosong")
+		return
+	}
+
+	// Cek apakah nama baru sudah digunakan oleh kategori lain milik mentor ini
+	var duplicate models.KategoriMateri
+	if err := config.DB.Where("mentor_id = ? AND LOWER(nama) = LOWER(?) AND id <> ?", mentorID, strings.ToLower(namaTrimmed), katID).First(&duplicate).Error; err == nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Nama kategori tersebut sudah digunakan")
+		return
+	}
+
+	namaLama := kategori.Nama
+	kategori.Nama = namaTrimmed
+	if req.Deskripsi != "" {
+		kategori.Deskripsi = strings.TrimSpace(req.Deskripsi)
+	}
+
+	if err := config.DB.Save(&kategori).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal memperbarui kategori materi")
+		return
+	}
+
+	// Jika nama kategori berubah, sinkronkan ke modul-modul materi milik mentor ini
+	if !strings.EqualFold(namaLama, namaTrimmed) {
+		_ = config.DB.Model(&models.MateriPembelajaran{}).
+			Where("(mentor_id = ? OR dibuat_oleh_id = ?) AND kategori = ?", mentorID, mentorID, namaLama).
+			Update("kategori", namaTrimmed).Error
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Kategori materi berhasil diperbarui", kategori)
+}
+
+// [ROLE: MENTOR]
+// DeleteKategoriMateri menghapus kategori materi milik mentor (hanya jika modulnya kosong).
+// Endpoint: DELETE /api/manajemen/mentor/materi/kategori/:id
+func DeleteKategoriMateri(c *gin.Context) {
+	mentorID, ok := mentorIDDariToken(c)
+	if !ok {
+		return
+	}
+
+	idParam := c.Param("id")
+	katID, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "ID kategori tidak valid")
+		return
+	}
+
+	var kategori models.KategoriMateri
+	if err := config.DB.Where("id = ? AND mentor_id = ?", katID, mentorID).First(&kategori).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Kategori materi tidak ditemukan atau Anda tidak memiliki akses")
+		return
+	}
+
+	// Cek apakah kategori masih digunakan oleh modul materi aktif milik mentor ini
+	var totalMateri int64
+	config.DB.Model(&models.MateriPembelajaran{}).
+		Where("(mentor_id = ? OR dibuat_oleh_id = ?) AND kategori = ?", mentorID, mentorID, kategori.Nama).
+		Count(&totalMateri)
+
+	if totalMateri > 0 {
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf(
+			"Kategori \"%s\" tidak dapat dihapus karena masih digunakan oleh %d modul materi. Silakan ubah atau hapus modul materi tersebut terlebih dahulu.",
+			kategori.Nama, totalMateri,
+		))
+		return
+	}
+
+	if err := config.DB.Delete(&kategori).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal menghapus kategori materi")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, fmt.Sprintf("Kategori \"%s\" berhasil dihapus", kategori.Nama), nil)
 }
 
 // [ROLE: MENTOR]
@@ -436,7 +577,7 @@ func CreateMateriMentor(c *gin.Context) {
 	// Pastikan kategori tersimpan di master tabel kategori_materis
 	if kategori != "" {
 		var cek models.KategoriMateri
-		if err := config.DB.Where("(mentor_id = ? OR mentor_id IS NULL) AND LOWER(nama) = LOWER(?)", mentorID, strings.ToLower(kategori)).First(&cek).Error; err != nil {
+		if err := config.DB.Where("mentor_id = ? AND LOWER(nama) = LOWER(?)", mentorID, strings.ToLower(kategori)).First(&cek).Error; err != nil {
 			_ = config.DB.Create(&models.KategoriMateri{
 				Nama:     kategori,
 				MentorID: &mentorID,
@@ -585,7 +726,7 @@ func UpdateMateriMentor(c *gin.Context) {
 	// Pastikan kategori tersimpan di master tabel kategori_materis
 	if materi.Kategori != "" {
 		var cek models.KategoriMateri
-		if err := config.DB.Where("(mentor_id = ? OR mentor_id IS NULL) AND LOWER(nama) = LOWER(?)", mentorID, strings.ToLower(materi.Kategori)).First(&cek).Error; err != nil {
+		if err := config.DB.Where("mentor_id = ? AND LOWER(nama) = LOWER(?)", mentorID, strings.ToLower(materi.Kategori)).First(&cek).Error; err != nil {
 			_ = config.DB.Create(&models.KategoriMateri{
 				Nama:     materi.Kategori,
 				MentorID: &mentorID,

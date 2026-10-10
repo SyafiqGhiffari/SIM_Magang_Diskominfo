@@ -228,6 +228,8 @@ func setupMentorRoutes(rg *gin.RouterGroup) {
 		mentor.GET("/materi", controllers.GetMateriMentor)                                     // Daftar materi buatan mentor
 		mentor.GET("/materi/kategori", controllers.GetKategoriMateri)                          // Kategori materi bimbingan
 		mentor.POST("/materi/kategori", controllers.CreateKategoriMateri)                      // Tambah kategori materi baru
+		mentor.PUT("/materi/kategori/:id", controllers.UpdateKategoriMateri)                  // Ubah kategori materi
+		mentor.DELETE("/materi/kategori/:id", controllers.DeleteKategoriMateri)               // Hapus kategori materi
 		mentor.GET("/materi/peserta-bimbingan", controllers.GetPesertaBimbinganUntukMateri)    // Opsi target peserta materi
 		mentor.POST("/materi", controllers.CreateMateriMentor)                                 // Terbitkan materi pembelajaran baru
 		mentor.PUT("/materi/:id", controllers.UpdateMateriMentor)                              // Perbarui materi pembelajaran
