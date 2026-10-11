@@ -15,7 +15,6 @@ export const HEADERS = [
   "Durasi Kerja",
   "Status",
   "Keterlambatan",
-  "Lupa Presensi",
   "Mode Kehadiran",
   "Logbook",
 ];
@@ -99,7 +98,6 @@ export const barisData = (r, idx = 0) => {
     hitungDurasiKerja(r.jam_masuk, r.jam_pulang),
     statusInfo(r.status).label,
     formatKeterlambatan(r),
-    r.lupa_presensi ? "Ya" : "Tidak",
     formatModeKehadiran(r.mode_kehadiran),
     getLogbookText(r),
   ];
@@ -149,7 +147,6 @@ export const exportPresensiToExcel = (rows, fileName = "data-presensi") => {
     { wch: 16 }, // Durasi Kerja
     { wch: 14 }, // Status
     { wch: 16 }, // Keterlambatan
-    { wch: 14 }, // Lupa Presensi
     { wch: 16 }, // Mode Kehadiran
     { wch: 50 }, // Logbook
   ];
@@ -238,9 +235,8 @@ export const exportPresensiToPdf = (rows, ringkasan = null, fileName = "data-pre
       7: { cellWidth: 46, halign: "center" },  // Durasi Kerja
       8: { cellWidth: 42, halign: "center" },  // Status
       9: { cellWidth: 48, halign: "center" },  // Keterlambatan
-      10: { cellWidth: 36, halign: "center" }, // Lupa Presensi
-      11: { cellWidth: 48, halign: "center" }, // Mode
-      12: { cellWidth: "auto" },               // Logbook (otomatis sisa lebar kertas)
+      10: { cellWidth: 48, halign: "center" }, // Mode
+      11: { cellWidth: "auto" },               // Logbook (otomatis sisa lebar kertas)
     },
     margin: { left: 40, right: 40 },
   });

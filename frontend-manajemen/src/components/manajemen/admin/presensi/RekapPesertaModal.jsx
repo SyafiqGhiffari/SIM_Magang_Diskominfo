@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   X, CalendarRange, CalendarDays, Loader2, LogIn, LogOut, Clock,
-  Building2, GraduationCap, AlarmClockOff, Info, Sparkles, CalendarX2,
+  Building2, GraduationCap, Info, Sparkles, CalendarX2,
   CheckCircle2, TrendingUp, CircleSlash, HeartPulse, FileText,
 } from "lucide-react";
 import PresensiStatusBadge from "./PresensiStatusBadge";
@@ -369,13 +369,6 @@ const RekapPesertaModal = ({ peserta, bulan, onClose, isDark = false }) => {
                             isDark ? "bg-amber-500/15 text-amber-300" : "bg-amber-50 text-amber-600"
                           }`}>
                             <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> +{formatMenit(p.menit_terlambat)}
-                          </span>
-                        )}
-                        {p?.lupa_presensi && (
-                          <span className={`inline-flex items-center gap-0.5 sm:gap-1 rounded-md sm:rounded-lg px-1.5 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-bold ${
-                            isDark ? "bg-amber-500/20 text-amber-300" : "bg-amber-100 text-amber-700"
-                          }`}>
-                            <AlarmClockOff className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Lupa
                           </span>
                         )}
                         <PresensiStatusBadge status={status} />

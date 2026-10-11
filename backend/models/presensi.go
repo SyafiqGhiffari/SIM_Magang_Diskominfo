@@ -8,8 +8,7 @@ import "time"
 // Alur status:
 //   - absen masuk <= jam_masuk + toleransi          -> "hadir"
 //   - absen masuk >  jam_masuk + toleransi           -> "terlambat"
-//     (tetap bisa absen sampai pukul 23:59 hari itu; jika sudah melewati
-//      jam pulang, LupaPresensi = true)
+//     (tetap bisa absen sampai pukul 23:59 hari itu dan tercatat terlambat)
 //   - tidak absen sampai hari berganti               -> "alfa" (dibuat sistem)
 //   - izin/sakit hanya dibuat dari PengajuanIzin yang disetujui mentor
 type Presensi struct {
@@ -30,9 +29,6 @@ type Presensi struct {
 
 	Status         string `gorm:"type:enum('hadir','terlambat','izin','sakit','alfa');not null;index" json:"status"`
 	MenitTerlambat int    `gorm:"default:0" json:"menit_terlambat"`
-
-	// true = absen dilakukan setelah jam pulang (kasus peserta lupa presensi)
-	LupaPresensi bool `gorm:"default:false" json:"lupa_presensi"`
 
 	// Dikunci = hari sudah ditutup sistem, peserta tidak bisa mengisi/mengubah lagi
 	Dikunci     bool       `gorm:"default:false" json:"dikunci"`

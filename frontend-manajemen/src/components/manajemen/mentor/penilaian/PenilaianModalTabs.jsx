@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Sparkles,
@@ -197,8 +198,13 @@ const PenilaianFormBody = ({
     return "";
   });
 
+  const isAccFromData = Boolean(
+    detailData?.penilaian?.laporan_akhir_disetujui ||
+    detailData?.peserta?.laporan_akhir_disetujui ||
+    (detailData?.peserta?.status_laporan_akhir || selectedPeserta?.status_laporan_akhir || "").toLowerCase() === "disetujui"
+  );
   const [laporanDisetujui, setLaporanDisetujui] = useState(
-    () => detailData?.penilaian?.laporan_akhir_disetujui ?? true
+    () => detailData?.penilaian?.laporan_akhir_disetujui ?? isAccFromData ?? true
   );
 
   // Helper kalkulasi nilai
@@ -430,8 +436,7 @@ const PenilaianFormBody = ({
 
   return (
     <div
-      key={currentStep}
-      className={`relative w-full max-w-5xl my-auto rounded-3xl shadow-2xl flex flex-col h-[88vh] max-h-[92vh] min-h-[600px] overflow-hidden animate-[modalFadeUp_0.25s_ease-out] border-0 transition-all ${
+      className={`relative w-full max-w-5xl rounded-3xl shadow-2xl flex flex-col h-[90vh] max-h-[90vh] overflow-hidden animate-[modalFadeUp_0.25s_ease-out] border-0 transition-all ${
         isDark
           ? "bg-[#141a24] text-slate-100 shadow-black/60"
           : "bg-white text-slate-900 shadow-slate-900/25"
@@ -851,7 +856,7 @@ const PenilaianFormBody = ({
                 </div>
 
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-3 pt-2.5 border-t border-slate-100 dark:border-white/5 leading-relaxed">
-                  Dihitung dari persentase kehadiran tepat waktu peserta selama masa aktif magang di Diskominfo.
+                  Dihitung otomatis: Hadir tepat waktu (100 poin), Terlambat (75 poin), Izin/Sakit (50 poin), dan Alfa (0 poin).
                 </p>
               </div>
 
@@ -1400,11 +1405,22 @@ export const PenilaianModalTabs = ({
   saving,
   isDark,
 }) => {
+  // Lock scroll background saat modal terbuka
+  useEffect(() => {
+    if (isOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen || !detailData) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-xs overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 md:p-6 bg-slate-900/70 dark:bg-black/85 backdrop-blur-sm overflow-hidden"
       onClick={() => {
         if (!saving) onClose();
       }}
@@ -1418,7 +1434,8 @@ export const PenilaianModalTabs = ({
         saving={saving}
         isDark={isDark}
       />
-    </div>
+    </div>,
+    document.body
   );
 };
 

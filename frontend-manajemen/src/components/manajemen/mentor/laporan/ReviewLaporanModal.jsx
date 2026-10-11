@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -81,13 +82,26 @@ export const ReviewLaporanModal = ({
   const navigate = useNavigate();
 
   const handleBukaPenilaian = () => {
-    const targetId = peserta?.akun_peserta_id || peserta?.pendaftaran_id || peserta?.id;
+    const targetId = peserta?.akun_peserta_id || peserta?.pendaftaran_id ||5
+     peserta?.id;
+    const targetStatus =
+      peserta?.status_penilaian === "final"
+        ? "final"
+        : peserta?.status_penilaian === "draf"
+        ? "draf"
+        : "belum_dinilai";
     if (onClose) onClose();
-    navigate(`/mentor/penilaian?peserta_id=${targetId}&search=${encodeURIComponent(peserta?.nama_lengkap || "")}`, {
-      state: { selectedPesertaId: targetId, autoOpen: true },
-    });
+    navigate(
+      `/mentor/penilaian?peserta_id=${targetId}&search=${encodeURIComponent(peserta?.nama_lengkap || "")}&filter=${targetStatus}`,
+      {
+        state: { selectedPesertaId: targetId, autoOpen: true, initialFilter: targetStatus },
+      }
+    );
   };
 
+  const isAlreadyApproved = peserta?.status_laporan === "disetujui";
+  const isFinalGrade = peserta?.status_penilaian === "final";
+  const [modeRevisi, setModeRevisi] = useState(false);
   const [statusAksi, setStatusAksi] = useState("disetujui"); // "disetujui" | "revisi"
   const [catatan, setCatatan] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -120,6 +134,7 @@ export const ReviewLaporanModal = ({
       const timer = setTimeout(() => {
         setStatusAksi(peserta.status_laporan === "revisi" ? "revisi" : "disetujui");
         setCatatan(""); // Catatan mentor dimulai dari kosong (bukan catatan kiriman peserta)
+        setModeRevisi(false);
         setZoom(typeof window !== "undefined" && window.innerWidth < 640 ? 55 : 100);
       }, 0);
       return () => clearTimeout(timer);
@@ -136,6 +151,17 @@ export const ReviewLaporanModal = ({
       return () => document.removeEventListener("keydown", handleKeyDown);
     }
   }, [isOpen, onClose, submitting]);
+
+  // Lock scroll background saat modal terbuka
+  useEffect(() => {
+    if (isOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isOpen]);
 
   // Muat dokumen PDF
   useEffect(() => {
@@ -258,20 +284,31 @@ export const ReviewLaporanModal = ({
       return;
     }
 
+    if (isAlreadyApproved && isFinalGrade && statusAksi === "revisi") {
+      toastError("Verifikasi laporan tidak dapat diubah karena nilai akhir peserta telah diterbitkan resmi.");
+      return;
+    }
+
     const konfirmasiTeks =
       statusAksi === "disetujui"
         ? `Apakah Anda yakin ingin MENYETUJUI laporan akhir milik "${peserta.nama_lengkap}"? Komponen kelengkapan laporan pada lembar penilaian akan otomatis disinkronkan menjadi 100 poin.`
+        : isAlreadyApproved
+        ? `Apakah Anda yakin ingin MEMBATALKAN PERSETUJUAN dan meminta revisi laporan akhir kepada "${peserta.nama_lengkap}"? Penilaian 4 pilar peserta akan terkunci kembali hingga peserta mengunggah perbaikan.`
         : `Apakah Anda yakin ingin MEMINTA REVISI laporan akhir kepada "${peserta.nama_lengkap}"? Peserta akan menerima notifikasi dan catatan arahan perbaikan yang Anda berikan.`;
 
     const result = await confirmDialog({
       title:
         statusAksi === "disetujui"
           ? "Setujui Laporan Akhir?"
+          : isAlreadyApproved
+          ? "Batalkan Persetujuan & Minta Revisi?"
           : "Kirim Permintaan Revisi?",
       text: konfirmasiTeks,
       confirmText:
         statusAksi === "disetujui"
           ? "Ya, Setujui Laporan"
+          : isAlreadyApproved
+          ? "Ya, Batalkan & Minta Revisi"
           : "Ya, Kirim Revisi",
       cancelText: "Batal",
       icon: statusAksi === "disetujui" ? "question" : "warning",
@@ -303,9 +340,11 @@ export const ReviewLaporanModal = ({
     }
   };
 
-  return (
+  if (!isOpen || !peserta) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-[modalFadeUp_0.25s_ease-out]"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-sm animate-[modalFadeUp_0.25s_ease-out]"
       onClick={() => !submitting && onClose()}
     >
       {/* Dialog Container (2 Kolom: Kiri Viewer Naskah, Kanan Detail & Evaluasi) */}
@@ -771,195 +810,269 @@ export const ReviewLaporanModal = ({
             {/* FORM KEPUTUSAN VERIFIKASI MENTOR (DESAIN MENARIK & LOGIS) */}
             {/* ========================================================================= */}
             <form onSubmit={handleSubmit} id="form-verifikasi-laporan" className="space-y-3.5 pt-1">
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-400">
-                    <FileQuestionMark className="w-3.5 h-3.5 text-[#004F9F] dark:text-[#00A5EC]" />
-                    Keputusan Verifikasi Mentor
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium">Pilih salah satu status</span>
-                </div>
-
-                {/* 2 Opsi Card Keputusan */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Card 1: Setujui Laporan */}
-                  <button
-                    type="button"
-                    onClick={() => setStatusAksi("disetujui")}
-                    className={`p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative overflow-hidden flex flex-col justify-between ${
-                      statusAksi === "disetujui"
-                        ? "border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-500/25 shadow-xs"
-                        : "border-slate-200 dark:border-white/10 bg-white dark:bg-[#161b22] text-slate-700 dark:text-slate-300 hover:border-slate-300 hover:bg-slate-50/70 dark:hover:bg-slate-800/60"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`flex h-7 w-7 items-center justify-center rounded-xl shrink-0 ${
-                              statusAksi === "disetujui"
-                                ? "bg-emerald-100 text-emerald-700 border border-emerald-300/80 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800/60 shadow-2xs"
-                                : "bg-slate-100 text-slate-500 border border-slate-200/80 dark:bg-slate-800 dark:text-slate-400 dark:border-white/10"
-                            }`}
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                          </div>
-                          <span className="font-black text-xs sm:text-[13px]">Setujui Laporan</span>
+              {isAlreadyApproved ? (
+                // ── A. TAMPILAN KETIKA LAPORAN SUDAH DISETUJUI ──
+                isFinalGrade ? (
+                  // Kasus 1: Nilai Rapor Sudah Final (Terkunci Permanen)
+                  <div className="rounded-2xl border border-emerald-300/80 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/25 p-4 sm:p-5 shadow-2xs space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300 shrink-0 mt-0.5">
+                        <Award className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            Disahkan &amp; Nilai Final
+                          </span>
                         </div>
-                        {/* Radio Dot Indicator */}
-                        <div
-                          className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            statusAksi === "disetujui"
-                              ? "border-emerald-500 bg-white dark:bg-emerald-950"
-                              : "border-slate-300 dark:border-white/20"
-                          }`}
-                        >
-                          {statusAksi === "disetujui" && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          )}
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 leading-snug">
+                          Naskah Laporan Akhir Sah &amp; Rapor Nilai Diterbitkan
+                        </h4>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                          Evaluasi nilai akhir 4 pilar kompetensi magang untuk peserta ini telah difinalisasi secara resmi. Status naskah laporan terkunci permanen sebagai arsip transkrip nilai kelulusan.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : modeRevisi ? (
+                  // Kasus 2: Mentor Memilih Minta Revisi Susulan
+                  <div className="rounded-2xl border border-rose-300/80 dark:border-rose-800/60 bg-rose-50/60 dark:bg-rose-950/25 p-4 sm:p-5 shadow-2xs space-y-3.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 shrink-0">
+                          <AlertCircle className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs sm:text-[13px] font-black text-rose-900 dark:text-rose-200">
+                            Permintaan Revisi Naskah
+                          </h4>
+                          <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">
+                            Membatalkan persetujuan naskah sebelumnya
+                          </span>
                         </div>
                       </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 pl-9 leading-relaxed">
-                        Laporan sah &amp; memenuhi kriteria. Nilai kelengkapan naskah otomatis 100 poin.
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModeRevisi(false);
+                          setStatusAksi("disetujui");
+                          setCatatan("");
+                        }}
+                        className="text-[11px] font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline cursor-pointer"
+                      >
+                        Batal (Tetap Disetujui)
+                      </button>
                     </div>
-                  </button>
 
-                  {/* Card 2: Minta Perbaikan / Revisi */}
-                  <button
-                    type="button"
-                    onClick={() => setStatusAksi("revisi")}
-                    className={`p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative overflow-hidden flex flex-col justify-between ${
-                      statusAksi === "revisi"
-                        ? "border-rose-500 bg-rose-50/80 dark:bg-rose-950/40 text-rose-950 dark:text-rose-100 ring-2 ring-rose-500/25 shadow-xs"
-                        : "border-slate-200 dark:border-white/10 bg-white dark:bg-[#161b22] text-slate-700 dark:text-slate-300 hover:border-slate-300 hover:bg-slate-50/70 dark:hover:bg-slate-800/60"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`flex h-7 w-7 items-center justify-center rounded-xl shrink-0 ${
-                              statusAksi === "revisi"
-                                ? "bg-rose-100 text-rose-700 border border-rose-300/80 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800/60 shadow-2xs"
-                                : "bg-slate-100 text-slate-500 border border-slate-200/80 dark:bg-slate-800 dark:text-slate-400 dark:border-white/10"
-                            }`}
-                          >
-                            <AlertCircle className="w-4 h-4" />
-                          </div>
-                          <span className="font-black text-xs sm:text-[13px]">Minta Perbaikan</span>
-                        </div>
-                        {/* Radio Dot Indicator */}
-                        <div
-                          className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            statusAksi === "revisi"
-                              ? "border-rose-500 bg-white dark:bg-rose-950"
-                              : "border-slate-300 dark:border-white/20"
-                          }`}
-                        >
-                          {statusAksi === "revisi" && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 pl-9 leading-relaxed">
-                        Kirim arahan koreksi. Formulir pengunggahan dibuka kembali untuk peserta.
-                      </p>
+                    <div className="p-2.5 rounded-xl bg-rose-100/60 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-[11px] text-rose-700 dark:text-rose-300 leading-relaxed">
+                      Peringatan: Mengubah status menjadi revisi akan membatalkan persetujuan naskah (ACC) dan mengunci lembar penilaian 4 pilar sampai peserta mengunggah perbaikan baru.
                     </div>
-                  </button>
-                </div>
-              </div>
 
-              {/* Input Catatan / Catatan Revisi */}
-              <div
-                className={`rounded-2xl border p-3.5 sm:p-4 shadow-2xs space-y-2 ${
-                  isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200 bg-white"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    {statusAksi === "revisi" ? (
-                      <>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
                         Catatan Perbaikan / Arahan Revisi <span className="text-rose-500">* (Wajib diisi)</span>
-                      </>
-                    ) : (
-                      "Catatan Apresiasi / Evaluasi Mentor (Opsional)"
-                    )}
-                  </label>
-                </div>
-
-                <textarea
-                  rows={3}
-                  required={statusAksi === "revisi"}
-                  value={catatan}
-                  onChange={(e) => setCatatan(e.target.value)}
-                  disabled={submitting}
-                  placeholder={
-                    statusAksi === "revisi"
-                      ? "Contoh: Format lembar pengesahan belum ditandatangani dan bab hasil pengujian masih kurang lengkap..."
-                      : "Contoh: Laporan akhir disusun dengan sangat baik dan implementasi proyek selesai sesuai target..."
-                  }
-                  className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-medium outline-hidden transition-all duration-200 resize-none ${
-                    statusAksi === "revisi"
-                      ? isDark
-                        ? "border-rose-800/60 bg-rose-950/20 text-slate-200 placeholder-slate-500 focus:border-rose-500 focus:ring-3 focus:ring-rose-500/15"
-                        : "border-rose-300 bg-rose-50/30 text-slate-700 placeholder-slate-400 focus:border-rose-500 focus:bg-white focus:ring-3 focus:ring-rose-500/15"
-                      : isDark
-                        ? "border-white/10 bg-white/5 text-slate-200 placeholder-slate-500 focus:border-[#00A5EC] focus:bg-[#161b22] focus:ring-3 focus:ring-[#00A5EC]/15"
-                        : "border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-400 focus:border-[#004F9F] focus:bg-white focus:ring-3 focus:ring-[#00A5EC]/15"
-                  }`}
-                />
-                <p className="text-[10px] text-slate-400">
-                  Catatan ini akan dikirimkan langsung ke notifikasi dan halaman laporan akhir peserta.
-                </p>
-              </div>
-
-              {/* Shortcut Penilaian Akhir jika status laporan disetujui */}
-              {peserta.status_laporan === "disetujui" && (
-                <div className="rounded-2xl border border-emerald-200/90 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/25 p-3.5 sm:p-4 shadow-2xs space-y-3">
-                  {/* Bagian Atas: Ikon + Teks (Lebar Penuh) */}
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-300/80 dark:bg-emerald-900/40 dark:text-emerald-300 shrink-0 mt-0.5">
-                      <Award className="w-4 h-4" />
+                      </label>
+                      <textarea
+                        rows={3}
+                        required
+                        value={catatan}
+                        onChange={(e) => setCatatan(e.target.value)}
+                        disabled={submitting}
+                        placeholder="Tuliskan catatan perbaikan atau bab naskah yang harus direvisi oleh peserta..."
+                        className="w-full rounded-xl border border-rose-300 bg-white dark:bg-[#161b22] dark:border-rose-800/60 px-3.5 py-2.5 text-xs font-medium text-slate-800 dark:text-slate-200 outline-hidden focus:ring-3 focus:ring-rose-500/20 resize-none"
+                      />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      {/* Tag Status / Pill */}
-                      <div className="flex items-center flex-wrap gap-1.5 mb-1">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300/80 dark:bg-emerald-900/60 dark:text-emerald-300">
-                          <Sparkles className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                          {peserta.status_penilaian === "sudah_dinilai" ? "Nilai Terisi" : "Tahap Evaluasi"}
-                        </span>
+                  </div>
+                ) : (
+                  // Kasus 3: Default ketika sudah disetujui (Belum Final)
+                  // Tombol "Setujui" dan form catatan dihilangkan!
+                  <div className="rounded-2xl border border-emerald-200/90 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/25 p-4 sm:p-5 shadow-2xs space-y-3.5">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300 shrink-0 mt-0.5">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                       </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            Telah Disetujui (ACC)
+                          </span>
+                        </div>
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 leading-snug">
+                          Naskah Laporan Akhir Telah Disahkan Mentor
+                        </h4>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                          Komponen laporan akhir pada lembar penilaian otomatis terpenuhi 100 poin. Peserta memenuhi syarat untuk penilaian 4 pilar kompetensi magang.
+                        </p>
+                      </div>
+                    </div>
 
-                      {/* Judul & Deskripsi */}
-                      <h4 className="text-xs sm:text-[13px] font-black text-slate-800 dark:text-slate-100 leading-snug">
-                        {peserta.status_penilaian === "sudah_dinilai"
-                          ? "Laporan sudah sah. Ingin meninjau atau memperbarui lembar nilai peserta?"
-                          : "Laporan sudah sah. Siap mengisi evaluasi nilai akhir peserta?"}
-                      </h4>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-                        {peserta.status_penilaian === "sudah_dinilai"
-                          ? "Formulir 4 pilar kompetensi telah dinilai. Klik tombol di bawah untuk meninjau atau memperbarui skor."
-                          : "Lanjutkan pengisian evaluasi 4 pilar kompetensi magang untuk memproses nilai akhir."}
-                      </p>
+                    {/* Action bar jika mentor butuh revisi susulan */}
+                    <div className="pt-2.5 border-t border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Ingin membatalkan pengesahan &amp; meminta perbaikan?
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModeRevisi(true);
+                          setStatusAksi("revisi");
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-rose-200 dark:border-rose-800/60 bg-white dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/40 hover:border-rose-300 transition-all cursor-pointer shadow-2xs"
+                      >
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>Minta Perbaikan Naskah</span>
+                      </button>
+                    </div>
+                  </div>
+                )
+              ) : (
+                // ── B. TAMPILAN NORMAL (BELUM DISETUJUI / MENUNGGU REVIEW / REVISI) ──
+                <>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-400">
+                        <FileQuestionMark className="w-3.5 h-3.5 text-[#004F9F] dark:text-[#00A5EC]" />
+                        Keputusan Verifikasi Mentor
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">Pilih salah satu status</span>
+                    </div>
+
+                    {/* 2 Opsi Card Keputusan */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Card 1: Setujui Laporan */}
+                      <button
+                        type="button"
+                        onClick={() => setStatusAksi("disetujui")}
+                        className={`p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                          statusAksi === "disetujui"
+                            ? "border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-500/25 shadow-xs"
+                            : "border-slate-200 dark:border-white/10 bg-white dark:bg-[#161b22] text-slate-700 dark:text-slate-300 hover:border-slate-300 hover:bg-slate-50/70 dark:hover:bg-slate-800/60"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`flex h-7 w-7 items-center justify-center rounded-xl shrink-0 ${
+                                  statusAksi === "disetujui"
+                                    ? "bg-emerald-100 text-emerald-700 border border-emerald-300/80 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800/60 shadow-2xs"
+                                    : "bg-slate-100 text-slate-500 border border-slate-200/80 dark:bg-slate-800 dark:text-slate-400 dark:border-white/10"
+                                }`}
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </div>
+                              <span className="font-black text-xs sm:text-[13px]">Setujui Laporan</span>
+                            </div>
+                            {/* Radio Dot Indicator */}
+                            <div
+                              className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                statusAksi === "disetujui"
+                                  ? "border-emerald-500 bg-white dark:bg-emerald-950"
+                                  : "border-slate-300 dark:border-white/20"
+                              }`}
+                            >
+                              {statusAksi === "disetujui" && (
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 pl-9 leading-relaxed">
+                            Laporan sah &amp; memenuhi kriteria. Nilai kelengkapan naskah otomatis 100 poin.
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Card 2: Minta Perbaikan / Revisi */}
+                      <button
+                        type="button"
+                        onClick={() => setStatusAksi("revisi")}
+                        className={`p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                          statusAksi === "revisi"
+                            ? "border-rose-500 bg-rose-50/80 dark:bg-rose-950/40 text-rose-950 dark:text-rose-100 ring-2 ring-rose-500/25 shadow-xs"
+                            : "border-slate-200 dark:border-white/10 bg-white dark:bg-[#161b22] text-slate-700 dark:text-slate-300 hover:border-slate-300 hover:bg-slate-50/70 dark:hover:bg-slate-800/60"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`flex h-7 w-7 items-center justify-center rounded-xl shrink-0 ${
+                                  statusAksi === "revisi"
+                                    ? "bg-rose-100 text-rose-700 border border-rose-300/80 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800/60 shadow-2xs"
+                                    : "bg-slate-100 text-slate-500 border border-slate-200/80 dark:bg-slate-800 dark:text-slate-400 dark:border-white/10"
+                                }`}
+                              >
+                                <AlertCircle className="w-4 h-4" />
+                              </div>
+                              <span className="font-black text-xs sm:text-[13px]">Minta Perbaikan</span>
+                            </div>
+                            {/* Radio Dot Indicator */}
+                            <div
+                              className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                statusAksi === "revisi"
+                                  ? "border-rose-500 bg-white dark:bg-rose-950"
+                                  : "border-slate-300 dark:border-white/20"
+                              }`}
+                            >
+                              {statusAksi === "revisi" && (
+                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 pl-9 leading-relaxed">
+                            Kirim arahan koreksi. Formulir pengunggahan dibuka kembali untuk peserta.
+                          </p>
+                        </div>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Bagian Bawah: Tombol Aksi di Bawah Tulisan (Pojok Kanan) */}
-                  <div className="pt-0.5 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleBukaPenilaian}
-                      className="group inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs text-white bg-emerald-600 shadow-2xs hover:-translate-y-0.5 hover:shadow-md active:scale-95 transition-all duration-200 cursor-pointer"
-                      title={`Buka form penilaian 4 pilar untuk ${peserta.nama_lengkap}`}
-                    >
-                      <span>
-                        {peserta.status_penilaian === "sudah_dinilai" ? "Edit Lembar Nilai" : "Buka Lembar Nilai"}
-                      </span>
-                      <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
-                    </button>
+                  {/* Input Catatan / Catatan Revisi */}
+                  <div
+                    className={`rounded-2xl border p-3.5 sm:p-4 shadow-2xs space-y-2 ${
+                      isDark ? "border-white/10 bg-[#161b22]" : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                        {statusAksi === "revisi" ? (
+                          <>
+                            Catatan Perbaikan / Arahan Revisi <span className="text-rose-500">* (Wajib diisi)</span>
+                          </>
+                        ) : (
+                          "Catatan Apresiasi / Evaluasi Mentor (Opsional)"
+                        )}
+                      </label>
+                    </div>
+
+                    <textarea
+                      rows={3}
+                      required={statusAksi === "revisi"}
+                      value={catatan}
+                      onChange={(e) => setCatatan(e.target.value)}
+                      disabled={submitting}
+                      placeholder={
+                        statusAksi === "revisi"
+                          ? "Contoh: Format lembar pengesahan belum ditandatangani dan bab hasil pengujian masih kurang lengkap..."
+                          : "Contoh: Laporan akhir disusun dengan sangat baik dan implementasi proyek selesai sesuai target..."
+                      }
+                      className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-medium outline-hidden transition-all duration-200 resize-none ${
+                        statusAksi === "revisi"
+                          ? isDark
+                            ? "border-rose-800/60 bg-rose-950/20 text-slate-200 placeholder-slate-500 focus:border-rose-500 focus:ring-3 focus:ring-rose-500/15"
+                            : "border-rose-300 bg-rose-50/30 text-slate-700 placeholder-slate-400 focus:border-rose-500 focus:bg-white focus:ring-3 focus:ring-rose-500/15"
+                          : isDark
+                            ? "border-white/10 bg-white/5 text-slate-200 placeholder-slate-500 focus:border-[#00A5EC] focus:bg-[#161b22] focus:ring-3 focus:ring-[#00A5EC]/15"
+                            : "border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-400 focus:border-[#004F9F] focus:bg-white focus:ring-3 focus:ring-[#00A5EC]/15"
+                      }`}
+                    />
+                    <p className="text-[10px] text-slate-400">
+                      Catatan ini akan dikirimkan langsung ke notifikasi dan halaman laporan akhir peserta.
+                    </p>
                   </div>
-                </div>
+                </>
               )}
             </form>
           </div>
@@ -972,40 +1085,58 @@ export const ReviewLaporanModal = ({
           >
             <button
               type="button"
-              onClick={onClose}
+              onClick={modeRevisi ? () => { setModeRevisi(false); setStatusAksi("disetujui"); setCatatan(""); } : onClose}
               disabled={submitting}
               className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
             >
-              Batal
+              {isAlreadyApproved && !modeRevisi ? "Tutup" : "Batal"}
             </button>
 
-            <button
-              type="submit"
-              form="form-verifikasi-laporan"
-              disabled={submitting || !fileUrl}
-              className={`group/btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-xs transition-transform active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                statusAksi === "disetujui"
-                  ? "bg-emerald-600 hover:bg-emerald-600"
-                  : "bg-rose-600 hover:bg-rose-600"
-              }`}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Memproses...</span>
-                </>
-              ) : statusAksi === "disetujui" ? (
-                <>
-                  <FileCheckCorner className="w-4 h-4 transition-transform duration-200 group-hover/btn:scale-115 group-hover/btn:rotate-6" />
-                  <span>Setujui Laporan Akhir</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 transition-transform duration-200 group-hover/btn:scale-115 group-hover/btn:-translate-y-0.5 group-hover/btn:translate-x-0.5" />
-                  <span>Kirim Permintaan Revisi</span>
-                </>
-              )}
-            </button>
+            {isAlreadyApproved && !modeRevisi ? (
+              // Ketika sudah disetujui & bukan mode revisi: Langsung pintas ke form penilaian
+              <button
+                type="button"
+                onClick={handleBukaPenilaian}
+                className="group/btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-transform active:scale-95 cursor-pointer"
+              >
+                <Award className="w-4 h-4 transition-transform duration-200 group-hover/btn:scale-110" />
+                <span>
+                  {peserta.status_penilaian === "sudah_dinilai" || isFinalGrade
+                    ? "Lihat Lembar Nilai"
+                    : "Lanjut Beri Penilaian"}
+                </span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover/btn:translate-x-1" />
+              </button>
+            ) : (
+              // Ketika belum disetujui ATAU sedang dalam mode minta revisi:
+              <button
+                type="submit"
+                form="form-verifikasi-laporan"
+                disabled={submitting || !fileUrl || (statusAksi === "revisi" && !catatan.trim())}
+                className={`group/btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-xs transition-transform active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                  statusAksi === "disetujui"
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-rose-600 hover:bg-rose-700"
+                }`}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Memproses...</span>
+                  </>
+                ) : statusAksi === "disetujui" ? (
+                  <>
+                    <FileCheckCorner className="w-4 h-4 transition-transform duration-200 group-hover/btn:scale-115 group-hover/btn:rotate-6" />
+                    <span>Setujui Laporan Akhir</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 transition-transform duration-200 group-hover/btn:scale-115 group-hover/btn:-translate-y-0.5 group-hover/btn:translate-x-0.5" />
+                    <span>Kirim Permintaan Revisi</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1135,7 +1266,8 @@ export const ReviewLaporanModal = ({
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 

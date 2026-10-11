@@ -6,7 +6,6 @@ import {
   LogIn,
   LogOut,
   Clock,
-  AlarmClockOff,
   Lock,
   GraduationCap,
   Building2,
@@ -293,18 +292,6 @@ const RiwayatPresensiBimbinganModal = ({
                           }`}
                         >
                           <Clock className="w-2.5 h-2.5" /> +{formatMenit(item.menit_terlambat)}
-                        </span>
-                      )}
-
-                      {item.lupa_presensi && (
-                        <span
-                          className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[8.5px] sm:text-[10px] font-bold shrink-0 ${
-                            isDark
-                              ? "bg-amber-500/20 text-amber-300"
-                              : "bg-amber-100 text-amber-700"
-                          }`}
-                        >
-                          <AlarmClockOff className="w-2.5 h-2.5" /> Lupa
                         </span>
                       )}
 

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams, useLocation } from "react-router-dom";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import MentorLayout from "../../layouts/MentorLayout";
 import { useManajemenTheme } from "../../context/useManajemenTheme";
 import {
@@ -17,7 +17,8 @@ import {
   FileCheckCorner,
   Search,
   X,
-  Loader2
+  Loader2,
+  Lock
 } from "lucide-react";
 import { CustomSelectDropdown } from "../../components/manajemen/mentor/peserta/CustomSelectDropdown";
 import {
@@ -113,13 +114,29 @@ const PenilaianMentorPage = () => {
   const { isDark } = useManajemenTheme();
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const searchParamVal = searchParams.get("search") || "";
+  const filterParamVal = searchParams.get("filter") || location.state?.initialFilter || "semua";
+
+  const [search, setSearch] = useState(searchParamVal);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("semua"); // "semua" | "belum_dinilai" | "draf" | "final"
+  const [activeFilter, setActiveFilter] = useState(filterParamVal); // "semua" | "belum_dinilai" | "draf" | "final"
   const [filterJenjang, setFilterJenjang] = useState("semua"); // "semua" | "mahasiswa" | "siswa"
+
+  // Ref penanda autoOpen agar tidak memicu pembukaan berulang
+  const autoOpenedRef = useRef(false);
+
+  // Sinkronisasi search dan filter dari parameter URL / navigasi saat render
+  const [prevParamsKey, setPrevParamsKey] = useState(() => `${searchParamVal}__${filterParamVal}`);
+  const currentParamsKey = `${searchParamVal}__${filterParamVal}`;
+  if (prevParamsKey !== currentParamsKey) {
+    setPrevParamsKey(currentParamsKey);
+    setSearch(searchParamVal);
+    setActiveFilter(filterParamVal);
+  }
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -137,6 +154,52 @@ const PenilaianMentorPage = () => {
       return;
     }
 
+    // Validasi Opsi 2: Laporan akhir wajib sudah diunggah dan disetujui (ACC) mentor sebelum form penilaian dapat dibuka
+    const hasLaporanFile = Boolean(peserta.file_laporan_akhir && String(peserta.file_laporan_akhir).trim() !== "");
+    const isLaporanAcc = hasLaporanFile && Boolean(
+      peserta.laporan_akhir_disetujui || (peserta.status_laporan_akhir || "").toLowerCase() === "disetujui"
+    );
+    const isFinal = peserta.status_penilaian === "final";
+    const isDraf = peserta.status_penilaian === "draf";
+
+    if (!isLaporanAcc && !isFinal && !isDraf) {
+      const statusLaporan = (peserta.status_laporan_akhir || "").toLowerCase();
+      if (!hasLaporanFile) {
+        confirmDialog({
+          title: "Penilaian Belum Dapat Dibuka",
+          text: `Peserta ${peserta.nama || ""} belum mengunggah naskah laporan akhir. Sesuai aturan, penilaian 4 pilar baru dapat diberikan setelah peserta mengunggah laporan akhir dan mendapatkan persetujuan (ACC) dari Anda.`,
+          confirmText: "Mengerti",
+          cancelText: null,
+          icon: "info",
+        });
+      } else if (statusLaporan === "revisi" || statusLaporan === "perlu_revisi") {
+        confirmDialog({
+          title: "Laporan Akhir Masih Revisi",
+          text: `Naskah laporan akhir ${peserta.nama || ""} masih berstatus 'Perlu Revisi'. Anda baru dapat mengisi penilaian 4 pilar setelah peserta mengunggah naskah perbaikan dan Anda menyetujuinya (ACC).`,
+          confirmText: "Lihat Laporan Akhir",
+          cancelText: "Tutup",
+          icon: "warning",
+        }).then((res) => {
+          if (res?.isConfirmed) {
+            navigate("/mentor/laporan-akhir");
+          }
+        });
+      } else {
+        confirmDialog({
+          title: "Laporan Akhir Belum Di-ACC",
+          text: `Peserta ${peserta.nama || ""} telah mengunggah laporan akhir, namun belum Anda setujui (ACC). Silakan periksa dan setujui laporan akhir peserta terlebih dahulu sebelum memberikan penilaian 4 pilar.`,
+          confirmText: "Buka Halaman Laporan Akhir",
+          cancelText: "Tutup",
+          icon: "warning",
+        }).then((res) => {
+          if (res?.isConfirmed) {
+            navigate("/mentor/laporan-akhir");
+          }
+        });
+      }
+      return;
+    }
+
     setSelectedPeserta(peserta);
     setOpeningId(pesertaId);
 
@@ -145,12 +208,13 @@ const PenilaianMentorPage = () => {
       const data = res.data?.data || {};
       setDetailData(data);
       setModalOpen(true);
-    } catch {
-      toastError("Gagal memuat rincian instrumen penilaian peserta");
+    } catch (err) {
+      const errMsg = err.response?.data?.message || "Gagal memuat rincian instrumen penilaian peserta";
+      toastError(errMsg);
     } finally {
       setOpeningId(null);
     }
-  }, []);
+  }, [navigate]);
 
   // Fetch Daftar Peserta Bimbingan Penilaian
   const fetchData = useCallback(async () => {
@@ -161,8 +225,10 @@ const PenilaianMentorPage = () => {
       setList(items);
 
       // Otomatis buka form penilaian jika diarahkan dari halaman verifikasi laporan akhir
-      const targetId = location.state?.selectedPesertaId || searchParams.get("peserta_id");
-      if (targetId) {
+      const targetId = location.state?.selectedPesertaId || location.state?.pesertaId || searchParams.get("peserta_id");
+      const shouldAutoOpen = location.state?.autoOpen ?? Boolean(searchParams.get("peserta_id"));
+
+      if (targetId && shouldAutoOpen && !autoOpenedRef.current) {
         const found = items.find(
           (p) =>
             String(p.peserta_id) === String(targetId) ||
@@ -170,7 +236,15 @@ const PenilaianMentorPage = () => {
             String(p.akun_peserta_id) === String(targetId)
         );
         if (found) {
-          handleOpenForm(found);
+          autoOpenedRef.current = true;
+          if (found.status_penilaian) {
+            setActiveFilter(found.status_penilaian);
+          }
+          // Beri jeda 450ms agar skeleton loading dan animasi transisi halaman shell selesai terlebih dahulu,
+          // sehingga modal terbuka dengan sangat mulus dan tidak tampak berantakan atau eror
+          setTimeout(() => {
+            handleOpenForm(found);
+          }, 450);
         }
       }
     } catch {
@@ -253,19 +327,32 @@ const PenilaianMentorPage = () => {
     }
   };
 
-  // Kalkulasi Statistik Metrik (Tersinkronisasi dengan filter jenjang)
+  // Kalkulasi Statistik Metrik (Tersinkronisasi dengan filter jenjang dan pencarian)
   const stats = useMemo(() => {
-    const baseList =
-      filterJenjang === "semua"
-        ? list
-        : list.filter((r) => (r.kategori_pendaftar || "").toLowerCase() === filterJenjang);
+    const q = search.toLowerCase().trim();
+    const baseList = list.filter((r) => {
+      if (filterJenjang !== "semua") {
+        const itemJenjang = (r.kategori_pendaftar || "").toLowerCase();
+        if (itemJenjang !== filterJenjang) return false;
+      }
+      if (q) {
+        const matchSearch =
+          (r.nama || "").toLowerCase().includes(q) ||
+          (r.institusi || "").toLowerCase().includes(q) ||
+          (r.jurusan || "").toLowerCase().includes(q) ||
+          (r.nim || "").toLowerCase().includes(q) ||
+          (r.bidang || "").toLowerCase().includes(q);
+        if (!matchSearch) return false;
+      }
+      return true;
+    });
 
     const total = baseList.length;
     const final = baseList.filter((r) => r.status_penilaian === "final").length;
     const draf = baseList.filter((r) => r.status_penilaian === "draf").length;
     const belumDinilai = baseList.filter((r) => !r.status_penilaian || r.status_penilaian === "belum_dinilai").length;
     return { total, final, draf, belumDinilai };
-  }, [list, filterJenjang]);
+  }, [list, filterJenjang, search]);
 
   // Filter & Search
   const filteredList = useMemo(() => {
@@ -742,23 +829,41 @@ const PenilaianMentorPage = () => {
                         {/* Kolom 6: Aksi (dengan animasi hover pada ikon) */}
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenForm(row)}
-                              disabled={Boolean(openingId)}
-                              className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                                isFinal
-                                  ? "border border-slate-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 hover:shadow-xs"
-                                  : "bg-gradient-to-r from-[#0B1442] to-[#004F9F] text-white hover:shadow-md hover:-translate-y-0.5 active:scale-95"
-                              } ${openingId === (row.peserta_id || row.id) ? "opacity-75 cursor-wait" : ""}`}
-                            >
-                              {openingId === (row.peserta_id || row.id) ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <Edit3 className="w-3.5 h-3.5 transition-transform duration-300 ease-out group-hover:scale-125 group-hover:-rotate-12" />
-                              )}
-                              <span>{isFinal ? "Edit Nilai" : isDraf ? "Lanjut Nilai" : "Beri Nilai"}</span>
-                            </button>
+                            {!isLaporanAcc && !isFinal && !isDraf ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenForm(row)}
+                                title={
+                                  !hasLaporanFile
+                                    ? "Penilaian terkunci: Peserta belum mengunggah laporan akhir"
+                                    : isLaporanRevisi
+                                    ? "Penilaian terkunci: Laporan akhir masih memerlukan revisi"
+                                    : "Penilaian terkunci: Laporan akhir belum disetujui (ACC) oleh mentor"
+                                }
+                                className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 border border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 cursor-pointer shadow-2xs"
+                              >
+                                <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 transition-transform duration-300 ease-out group-hover:scale-110" />
+                                <span>Terkunci</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenForm(row)}
+                                disabled={Boolean(openingId)}
+                                className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                                  isFinal
+                                    ? "border border-slate-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 hover:shadow-xs"
+                                    : "bg-gradient-to-r from-[#0B1442] to-[#004F9F] text-white hover:shadow-md hover:-translate-y-0.5 active:scale-95"
+                                } ${openingId === (row.peserta_id || row.id) ? "opacity-75 cursor-wait" : ""}`}
+                              >
+                                {openingId === (row.peserta_id || row.id) ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Edit3 className="w-3.5 h-3.5 transition-transform duration-300 ease-out group-hover:scale-125 group-hover:-rotate-12" />
+                                )}
+                                <span>{isFinal ? "Edit Nilai" : isDraf ? "Lanjut Nilai" : "Beri Nilai"}</span>
+                              </button>
+                            )}
 
                             {isFinal && (
                               <button

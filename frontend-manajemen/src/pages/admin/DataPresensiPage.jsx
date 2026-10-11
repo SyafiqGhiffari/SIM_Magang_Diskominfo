@@ -17,7 +17,7 @@ import { getBidangColor } from "../../utils/bidangColor";
 import { toastError, toastSuccess } from "../../utils/swal";
 import {
   ClipboardList, Search, Inbox, Filter as FilterIcon, CheckCircle2, Clock, FileText, UserX,
-  Building2, GraduationCap, LogIn, LogOut, AlarmClockOff, Lock, CalendarCheck, CalendarOff, Loader2,
+  Building2, GraduationCap, LogIn, LogOut, Lock, CalendarCheck, CalendarOff, Loader2,
   CalendarDays, Layers, Rows3, ChevronDown, ChevronUp, Sun, Users, Info, Eye,
 } from "lucide-react";
 
@@ -27,7 +27,6 @@ const emptyFilters = {
   bidang: [],
   tanggal_dari: "",
   tanggal_sampai: "",
-  lupa_presensi: false,
 };
 
 const getInitials = (name) => {
@@ -62,8 +61,7 @@ const hitungFilterAktifDesktop = (f) =>
   f.kategori.length +
   f.bidang.length +
   (f.tanggal_dari ? 1 : 0) +
-  (f.tanggal_sampai ? 1 : 0) +
-  (f.lupa_presensi ? 1 : 0);
+  (f.tanggal_sampai ? 1 : 0);
 
 const hitungFilterAktifMobile = (f, sort) =>
   hitungFilterAktifDesktop(f) + (sort ? 1 : 0);
@@ -187,7 +185,6 @@ const DataPresensiPage = () => {
     if (f.bidang.length) params.bidang = f.bidang.join(",");
     if (f.tanggal_dari) params.tanggal_dari = f.tanggal_dari;
     if (f.tanggal_sampai) params.tanggal_sampai = f.tanggal_sampai;
-    if (f.lupa_presensi) params.lupa_presensi = 1;
     return params;
   }, [appliedFilters, page, perPage, sortBy, debouncedSearch, mode]);
 
@@ -293,8 +290,8 @@ const DataPresensiPage = () => {
       label: "Terlambat",
       desktopLabel: "Terlambat",
       value: stat?.terlambat ?? 0,
-      caption: `${stat?.lupa_presensi ?? 0} lupa presensi`,
-      mobileCaption: `${stat?.lupa_presensi ?? 0} lupa presensi`,
+      caption: "Melebihi batas jam masuk",
+      mobileCaption: "Lewat batas jam masuk",
       lightGradient: "from-amber-300 to-white",
       gradient: "from-amber-500 to-amber-700",
       iconBg: isDark ? "bg-amber-950/60 text-amber-400" : "bg-amber-50 text-amber-600",
@@ -867,13 +864,6 @@ const DataPresensiPage = () => {
                                       <Clock className="w-2.5 h-2.5" /> +{formatMenit(r.menit_terlambat)}
                                     </span>
                                   )}
-                                  {r.lupa_presensi && (
-                                    <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9.5px] font-bold ${
-                                      isDark ? "bg-amber-500/20 text-amber-300" : "bg-amber-100 text-amber-700"
-                                    }`}>
-                                      <AlarmClockOff className="w-2.5 h-2.5" /> Lupa presensi
-                                    </span>
-                                  )}
                                 </div>
                               </td>
 
@@ -1024,19 +1014,12 @@ const DataPresensiPage = () => {
                                       </div>
                                     </div>
 
-                                    {/* Terlambat / Lupa Presensi if any */}
-                                    {(r.menit_terlambat > 0 || r.lupa_presensi) && (
+                                    {/* Terlambat if any */}
+                                    {r.menit_terlambat > 0 && (
                                       <div className="flex items-center justify-end gap-1.5">
-                                        {r.menit_terlambat > 0 && (
-                                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-600 dark:text-amber-400">
-                                            <Clock className="w-2.5 h-2.5" /> +{formatMenit(r.menit_terlambat)}
-                                          </span>
-                                        )}
-                                        {r.lupa_presensi && (
-                                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 dark:bg-amber-500/20 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-700 dark:text-amber-300">
-                                            <AlarmClockOff className="w-2.5 h-2.5" /> Lupa presensi
-                                          </span>
-                                        )}
+                                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-600 dark:text-amber-400">
+                                          <Clock className="w-2.5 h-2.5" /> +{formatMenit(r.menit_terlambat)}
+                                        </span>
                                       </div>
                                     )}
 

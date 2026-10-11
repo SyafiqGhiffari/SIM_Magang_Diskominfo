@@ -69,9 +69,18 @@ const LaporanAkhirMentorPage = () => {
 
   const handleBukaPenilaian = (item) => {
     const targetId = item.akun_peserta_id || item.id;
-    navigate(`/mentor/penilaian?peserta_id=${targetId}&search=${encodeURIComponent(item.nama_lengkap || "")}`, {
-      state: { selectedPesertaId: targetId, autoOpen: true },
-    });
+    const targetStatus =
+      item.status_penilaian === "final"
+        ? "final"
+        : item.status_penilaian === "draf"
+        ? "draf"
+        : "belum_dinilai";
+    navigate(
+      `/mentor/penilaian?peserta_id=${targetId}&search=${encodeURIComponent(item.nama_lengkap || "")}&filter=${targetStatus}`,
+      {
+        state: { selectedPesertaId: targetId, autoOpen: true, initialFilter: targetStatus },
+      }
+    );
   };
 
   // State Data
@@ -1029,7 +1038,7 @@ const LaporanAkhirMentorPage = () => {
                               title={`Buka form penilaian 4 pilar untuk ${item.nama_lengkap}`}
                             >
                               <Award className="w-3.5 h-3.5 transition-transform duration-200 group-hover/penilaian:scale-110 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                              <span>{item.status_penilaian === "sudah_dinilai" ? "Edit Penilaian" : "Beri Penilaian"}</span>
+                              <span>{item.status_penilaian === "final" ? "Lihat Nilai" : item.status_penilaian === "sudah_dinilai" ? "Edit Penilaian" : "Beri Penilaian"}</span>
                             </button>
                           )}
 
@@ -1044,14 +1053,26 @@ const LaporanAkhirMentorPage = () => {
                                 ? "border border-rose-300 dark:border-rose-700/60 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 hover:bg-rose-100"
                                 : "border border-amber-300 dark:border-amber-700/60 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:border-amber-400 hover:text-amber-800"
                             }`}
-                            title="Tinjau dan verifikasi laporan akhir peserta"
+                            title={
+                              item.status_laporan === "disetujui"
+                                ? item.status_penilaian === "final"
+                                  ? "Lihat naskah laporan akhir (Nilai resmi telah terbit)"
+                                  : "Tinjau naskah atau ubah verifikasi laporan akhir"
+                                : "Tinjau dan verifikasi laporan akhir peserta"
+                            }
                           >
                             {item.status_laporan === "disetujui" ? (
                               <MailCheck className="w-3.5 h-3.5 transition-transform duration-300 group-hover/rev:scale-110 shrink-0" />
                             ) : (
                               <FileCheck2 className="w-3.5 h-3.5 transition-transform duration-200 group-hover/rev:scale-110 shrink-0" />
                             )}
-                            <span>{item.status_laporan === "disetujui" ? "Ubah Verifikasi" : "Tinjau & Verifikasi"}</span>
+                            <span>
+                              {item.status_laporan === "disetujui"
+                                ? item.status_penilaian === "final"
+                                  ? "Lihat Naskah"
+                                  : "Ubah Verifikasi"
+                                : "Tinjau & Verifikasi"}
+                            </span>
                           </button>
                         </>
                       ) : (

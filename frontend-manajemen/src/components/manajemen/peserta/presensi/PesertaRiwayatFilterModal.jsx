@@ -194,14 +194,6 @@ const PresensiSayaFilterModal = ({
                   />
                 );
               })}
-              {/* Opsi khusus: Lupa presensi */}
-              <CheckboxItem
-                label="Lupa presensi"
-                checked={Boolean(draft.lupa_presensi)}
-                onToggle={() => setDraft((p) => ({ ...p, lupa_presensi: !p.lupa_presensi }))}
-                dot="bg-amber-500"
-                isDark={isDark}
-              />
             </div>
           </div>
 

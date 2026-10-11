@@ -151,7 +151,6 @@ func keMenit(jam string) int {
 type HasilAbsenMasuk struct {
 	Status         string // "hadir" atau "terlambat"
 	MenitTerlambat int
-	LupaPresensi   bool // absen setelah jam pulang
 	Keterangan     string
 }
 
@@ -166,7 +165,6 @@ func (k *KalenderKerja) HitungStatusMasuk(tanggal, jamMasuk string) HasilAbsenMa
 
 	masuk := keMenit(jamMasuk)
 	jadwalMasuk := keMenit(info.JamKerja.JamMasuk)
-	jadwalPulang := keMenit(info.JamKerja.JamPulang)
 	if masuk < 0 || jadwalMasuk < 0 {
 		return HasilAbsenMasuk{Status: "hadir"}
 	}
@@ -176,13 +174,8 @@ func (k *KalenderKerja) HitungStatusMasuk(tanggal, jamMasuk string) HasilAbsenMa
 		return HasilAbsenMasuk{Status: "hadir"}
 	}
 
-	hasil := HasilAbsenMasuk{
+	return HasilAbsenMasuk{
 		Status:         "terlambat",
 		MenitTerlambat: masuk - jadwalMasuk,
 	}
-	if jadwalPulang > 0 && masuk > jadwalPulang {
-		hasil.LupaPresensi = true
-		hasil.Keterangan = "Presensi dilakukan setelah jam pulang (lupa presensi)"
-	}
-	return hasil
 }

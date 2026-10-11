@@ -64,7 +64,6 @@ const emptyFilters = {
   status: [],
   tanggal_dari: "",
   tanggal_sampai: "",
-  lupa_presensi: false,
 };
 
 const hitungDurasiKerja = (jamMasuk, jamPulang) => {
@@ -84,8 +83,7 @@ const hitungDurasiKerja = (jamMasuk, jamPulang) => {
 const hitungFilterAktifDesktop = (f = {}) =>
   (f?.status?.length || 0) +
   (f?.tanggal_dari ? 1 : 0) +
-  (f?.tanggal_sampai ? 1 : 0) +
-  (f?.lupa_presensi ? 1 : 0);
+  (f?.tanggal_sampai ? 1 : 0);
 
 const hitungFilterAktifMobile = (f = {}, sort) =>
   hitungFilterAktifDesktop(f) + (sort && sort !== "tanggal_baru" ? 1 : 0);
@@ -419,11 +417,6 @@ export const PesertaRiwayatPage = () => {
     }
     if (appliedFilters?.tanggal_sampai) {
       list = list.filter((r) => String(r.tanggal || "").slice(0, 10) <= appliedFilters.tanggal_sampai);
-    }
-
-    // Lupa Presensi
-    if (appliedFilters?.lupa_presensi) {
-      list = list.filter((r) => Boolean(r.lupa_presensi));
     }
 
     // Search query

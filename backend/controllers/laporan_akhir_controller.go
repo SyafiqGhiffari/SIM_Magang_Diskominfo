@@ -265,6 +265,18 @@ func VerifikasiLaporanAkhirMentor(c *gin.Context) {
 		return
 	}
 
+	// Validasi Ketat: Jika rapor nilai 4 pilar peserta sudah diterbitkan resmi (status 'final'),
+	// persetujuan laporan akhir terkunci permanen dan tidak dapat ditarik kembali menjadi revisi.
+	if pendaftaran.AkunPesertaID != nil && statusReq == "revisi" {
+		var pen models.PenilaianMagang
+		if errPen := config.DB.Where("peserta_id = ?", *pendaftaran.AkunPesertaID).First(&pen).Error; errPen == nil {
+			if pen.StatusPenilaian == "final" {
+				utils.ErrorResponse(c, http.StatusBadRequest, "Verifikasi laporan tidak dapat diubah menjadi revisi karena rapor nilai akhir peserta telah diterbitkan resmi.")
+				return
+			}
+		}
+	}
+
 	// 1. Simpan status verifikasi laporan dan catatan mentor di pendaftaran_magangs
 	pendaftaran.StatusLaporanAkhir = statusReq
 	pendaftaran.CatatanMentorLaporan = catatanReq

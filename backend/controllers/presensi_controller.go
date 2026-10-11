@@ -301,7 +301,6 @@ type PresensiRow struct {
 	JamPulang      *string `json:"jam_pulang"`
 	Status         string  `json:"status"`
 	MenitTerlambat int     `json:"menit_terlambat"`
-	LupaPresensi   bool    `json:"lupa_presensi"`
 	Dikunci        bool    `json:"dikunci"`
 	Keterangan     string  `json:"keterangan"`
 	FotoMasuk      string  `json:"foto_masuk"`
@@ -317,7 +316,7 @@ type PresensiRow struct {
 
 const selectPresensiRow = `
 	pr.id, pr.peserta_id, pr.tanggal, pr.jam_masuk, pr.jam_pulang,
-	pr.status, pr.menit_terlambat, pr.lupa_presensi, pr.dikunci,
+	pr.status, pr.menit_terlambat, pr.dikunci,
 	pr.keterangan, pr.foto_masuk, pr.foto_pulang, pr.mode_kehadiran,
 	pr.latitude, pr.longitude, pr.jarak_meter, pr.sumber,
 	u.nama AS nama,
@@ -578,9 +577,6 @@ func GetStatistikPresensi(c *gin.Context) {
 		total += b.Jumlah
 	}
 
-	var lupa int64
-	buatQuery().Where("pr.lupa_presensi = 1").Count(&lupa)
-
 	hariIni := utils.TanggalHariIni()
 	kal, errKal := utils.MuatKalenderKerja(config.DB)
 	hariKerja := false
@@ -617,13 +613,12 @@ func GetStatistikPresensi(c *gin.Context) {
 			"sudah_presensi": int(sudahHariIni),
 			"belum_presensi": belumHariIni,
 		},
-		"total":         total,
-		"hadir":         hasil["hadir"],
-		"terlambat":     hasil["terlambat"],
-		"izin":          hasil["izin"],
-		"sakit":         hasil["sakit"],
-		"alfa":          hasil["alfa"],
-		"lupa_presensi": lupa,
+		"total":     total,
+		"hadir":     hasil["hadir"],
+		"terlambat": hasil["terlambat"],
+		"izin":      hasil["izin"],
+		"sakit":     hasil["sakit"],
+		"alfa":      hasil["alfa"],
 	})
 }
 
@@ -803,9 +798,6 @@ func GetStatistikPresensiMentor(c *gin.Context) {
 		total += b.Jumlah
 	}
 
-	var lupa int64
-	buatQuery().Where("pr.lupa_presensi = 1").Count(&lupa)
-
 	pesertaSemua, _ := utils.AmbilPesertaPresensi(config.DB)
 	var pesertaBimbingan []utils.PesertaPresensi
 	for _, p := range pesertaSemua {
@@ -864,7 +856,6 @@ func GetStatistikPresensiMentor(c *gin.Context) {
 		"izin":          hasil["izin"],
 		"sakit":         hasil["sakit"],
 		"alfa":          hasil["alfa"],
-		"lupa_presensi": lupa,
 		"total_peserta": len(pesertaBimbingan),
 		"izin_menunggu": izinMenunggu,
 	})
@@ -939,18 +930,15 @@ func UpdatePresensiMentor(c *gin.Context) {
 			if kal, err := utils.MuatKalenderKerja(config.DB); err == nil {
 				hasil := kal.HitungStatusMasuk(normalTanggal(presensi.Tanggal), *presensi.JamMasuk)
 				presensi.MenitTerlambat = hasil.MenitTerlambat
-				presensi.LupaPresensi = hasil.LupaPresensi
 				if input.Status == nil {
 					presensi.Status = hasil.Status
 				}
 			}
 		} else {
 			presensi.MenitTerlambat = 0
-			presensi.LupaPresensi = false
 		}
 	} else {
 		presensi.MenitTerlambat = 0
-		presensi.LupaPresensi = false
 	}
 
 	presensi.Sumber = "mentor"
@@ -1143,7 +1131,6 @@ func ProsesPengajuanIzinMentor(c *gin.Context) {
 				presensi.Status = izin.Jenis
 				presensi.Keterangan = ket
 				presensi.MenitTerlambat = 0
-				presensi.LupaPresensi = false
 				presensi.Sumber = "sistem"
 				presensi.DicatatOlehID = &mentorID
 				presensi.PengajuanIzinID = &izin.ID
@@ -1528,7 +1515,6 @@ func PresensiMasuk(c *gin.Context) {
 	presensi.JamMasuk = &jam
 	presensi.Status = hasil.Status
 	presensi.MenitTerlambat = hasil.MenitTerlambat
-	presensi.LupaPresensi = hasil.LupaPresensi
 	presensi.Keterangan = keterangan
 	presensi.Sumber = "peserta"
 	presensi.DicatatOlehID = &pesertaID

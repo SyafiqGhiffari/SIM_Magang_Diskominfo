@@ -114,13 +114,36 @@ func HitungIndeksDanPredikat(nilai float64) (indeks string, predikat string) {
 
 // HitungSkorAdministratifOtomatis menghitung nilai kehadiran, logbook, tugas secara otomatis
 func HitungSkorAdministratifOtomatis(db *gorm.DB, pesertaID uint, laporanAkhirDisetujui bool) (skorAbsensi, skorLogbook, skorTugas, skorLaporan, rataRata float64) {
-	// 1. Kehadiran Presensi
-	var totalPresensi, hadirPresensi int64
-	db.Model(&models.Presensi{}).Where("peserta_id = ?", pesertaID).Count(&totalPresensi)
-	db.Model(&models.Presensi{}).Where("peserta_id = ? AND status IN ('hadir', 'terlambat')", pesertaID).Count(&hadirPresensi)
+	// 1. Kehadiran Presensi (Hadir: 100, Terlambat: 75, Izin/Sakit: 50, Alfa: 0)
+	type PresensiRekapStatus struct {
+		Status string
+		Jumlah int64
+	}
+	var rekapPresensi []PresensiRekapStatus
+	db.Model(&models.Presensi{}).
+		Select("status, COUNT(id) as jumlah").
+		Where("peserta_id = ?", pesertaID).
+		Group("status").
+		Scan(&rekapPresensi)
+
+	var totalPresensi int64
+	var totalPoinPresensi float64
+	for _, r := range rekapPresensi {
+		totalPresensi += r.Jumlah
+		switch r.Status {
+		case "hadir":
+			totalPoinPresensi += float64(r.Jumlah) * 100.0
+		case "terlambat":
+			totalPoinPresensi += float64(r.Jumlah) * 75.0
+		case "izin", "sakit":
+			totalPoinPresensi += float64(r.Jumlah) * 50.0
+		case "alfa":
+			totalPoinPresensi += float64(r.Jumlah) * 0.0
+		}
+	}
 
 	if totalPresensi > 0 {
-		skorAbsensi = math.Round((float64(hadirPresensi) / float64(totalPresensi) * 100.0) * 100) / 100
+		skorAbsensi = math.Round((totalPoinPresensi / float64(totalPresensi)) * 100) / 100
 	} else {
 		skorAbsensi = 0.0
 	}
@@ -390,6 +413,7 @@ func GetPesertaBimbinganPenilaian(c *gin.Context) {
 		TanggalPenilaian      *time.Time `json:"tanggal_penilaian"`
 		TotalPresensi         int        `json:"total_presensi"`
 		HadirPresensi         int        `json:"hadir_presensi"`
+		TotalPoinPresensi     float64    `json:"total_poin_presensi"`
 		PersenPresensi        float64    `json:"persen_presensi"`
 		TotalLogbook          int        `json:"total_logbook"`
 		TerisiLogbook         int        `json:"terisi_logbook"`
@@ -427,6 +451,7 @@ func GetPesertaBimbinganPenilaian(c *gin.Context) {
 			pn.tanggal_penilaian AS tanggal_penilaian,
 			COALESCE(pr_stat.total_presensi, 0) AS total_presensi,
 			COALESCE(pr_stat.hadir_presensi, 0) AS hadir_presensi,
+			COALESCE(pr_stat.total_poin_presensi, 0) AS total_poin_presensi,
 			COALESCE(pr_stat.terisi_logbook, 0) AS terisi_logbook
 		FROM user_manajemens u
 		JOIN pendaftaran_magangs p ON p.akun_peserta_id = u.id AND p.mentor_id = ?
@@ -436,6 +461,12 @@ func GetPesertaBimbinganPenilaian(c *gin.Context) {
 				peserta_id,
 				COUNT(id) AS total_presensi,
 				COUNT(CASE WHEN status IN ('hadir', 'terlambat') THEN 1 END) AS hadir_presensi,
+				COALESCE(SUM(CASE 
+					WHEN status = 'hadir' THEN 100.0 
+					WHEN status = 'terlambat' THEN 75.0 
+					WHEN status IN ('izin', 'sakit') THEN 50.0 
+					ELSE 0.0 
+				END), 0) AS total_poin_presensi,
 				COUNT(CASE WHEN status IN ('hadir', 'terlambat') AND keterangan IS NOT NULL AND TRIM(keterangan) != '' AND keterangan != 'Tidak melakukan presensi' THEN 1 END) AS terisi_logbook
 			FROM presensis
 			GROUP BY peserta_id
@@ -457,7 +488,7 @@ func GetPesertaBimbinganPenilaian(c *gin.Context) {
 		}
 
 		if hasil[i].TotalPresensi > 0 {
-			hasil[i].PersenPresensi = math.Round((float64(hasil[i].HadirPresensi)/float64(hasil[i].TotalPresensi)*100.0)*10) / 10
+			hasil[i].PersenPresensi = math.Round((hasil[i].TotalPoinPresensi/float64(hasil[i].TotalPresensi))*10) / 10
 			hasil[i].TotalLogbook = hasil[i].TotalPresensi
 			hasil[i].AccLogbook = hasil[i].TerisiLogbook
 			hasil[i].PersenLogbook = math.Round((float64(hasil[i].TerisiLogbook)/float64(hasil[i].TotalLogbook)*100.0)*10) / 10
@@ -491,14 +522,33 @@ func GetDetailPenilaianPeserta(c *gin.Context) {
 	var penilaian models.PenilaianMagang
 	config.DB.Where("peserta_id = ?", peserta.ID).First(&penilaian)
 
+	hasLaporanFile := strings.TrimSpace(pendaftaran.FileLaporanAkhir) != ""
+	isLaporanAcc := hasLaporanFile && (penilaian.LaporanAkhirDisetujui || strings.ToLower(pendaftaran.StatusLaporanAkhir) == "disetujui")
+
+	roleVal, _ := c.Get("role")
+	roleStr, _ := roleVal.(string)
+
+	// Validasi Opsi 2: Mentor hanya dapat membuka form penilaian jika laporan akhir sudah disetujui (ACC) oleh mentor
+	if roleStr == "mentor" && (penilaian.ID == 0 || penilaian.StatusPenilaian == "belum_dinilai") && !isLaporanAcc {
+		if !hasLaporanFile {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Form penilaian belum dapat dibuka. Peserta belum mengunggah naskah laporan akhir.")
+		} else if strings.ToLower(pendaftaran.StatusLaporanAkhir) == "revisi" || strings.ToLower(pendaftaran.StatusLaporanAkhir) == "perlu_revisi" {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Form penilaian belum dapat dibuka. Naskah laporan akhir peserta masih berstatus revisi.")
+		} else {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Form penilaian belum dapat dibuka. Laporan akhir peserta belum disetujui (ACC) oleh mentor.")
+		}
+		return
+	}
+
 	// Pastikan catatan_mentor pada penilaian rapor tidak tercemar oleh catatan koreksi dokumen laporan akhir
 	if penilaian.StatusPenilaian == "belum_dinilai" && (penilaian.CatatanMentor == pendaftaran.CatatanMentorLaporan || strings.Contains(strings.ToLower(penilaian.CatatanMentor), "bab") || strings.Contains(strings.ToLower(penilaian.CatatanMentor), "revisi") || penilaian.CatatanMentor == "perbaiki kembali bab 4") {
 		penilaian.CatatanMentor = ""
 		config.DB.Model(&penilaian).Update("catatan_mentor", "")
 	}
 
-	// Hitung otomatis skor administratif terbaru
-	skorAbsensi, skorLogbook, skorTugas, skorLaporan, rataAdmin := HitungSkorAdministratifOtomatis(config.DB, peserta.ID, penilaian.LaporanAkhirDisetujui)
+	// Hitung otomatis skor administratif terbaru (jika sudah ACC laporan, beri skor 100 untuk komponen laporan)
+	skorLaporanBool := penilaian.LaporanAkhirDisetujui || isLaporanAcc
+	skorAbsensi, skorLogbook, skorTugas, skorLaporan, rataAdmin := HitungSkorAdministratifOtomatis(config.DB, peserta.ID, skorLaporanBool)
 
 	nim := pendaftaran.NpmNim
 	if nim == "" {
@@ -525,18 +575,21 @@ func GetDetailPenilaianPeserta(c *gin.Context) {
 
 	utils.SuccessResponse(c, http.StatusOK, "Detail penilaian berhasil dimuat", gin.H{
 		"peserta": gin.H{
-			"id":              peserta.ID,
-			"nama":            peserta.Nama,
-			"email":           peserta.Email,
-			"foto_profil":     foto,
-			"file_pas_foto":   pendaftaran.FilePasFoto,
-			"bidang":          pendaftaran.PosisiBidang,
-			"institusi":       institusi,
-			"jurusan":         jurusan,
-			"nim":             nim,
-			"tanggal_mulai":   pendaftaran.TanggalMulai,
-			"tanggal_selesai": pendaftaran.TanggalSelesai,
-			"status_magang":   peserta.StatusMagang,
+			"id":                      peserta.ID,
+			"nama":                    peserta.Nama,
+			"email":                   peserta.Email,
+			"foto_profil":             foto,
+			"file_pas_foto":           pendaftaran.FilePasFoto,
+			"bidang":                  pendaftaran.PosisiBidang,
+			"institusi":               institusi,
+			"jurusan":                 jurusan,
+			"nim":                     nim,
+			"tanggal_mulai":           pendaftaran.TanggalMulai,
+			"tanggal_selesai":         pendaftaran.TanggalSelesai,
+			"status_magang":           peserta.StatusMagang,
+			"status_laporan_akhir":    pendaftaran.StatusLaporanAkhir,
+			"file_laporan_akhir":      pendaftaran.FileLaporanAkhir,
+			"laporan_akhir_disetujui": isLaporanAcc,
 		},
 		"mentor": gin.H{
 			"id":      mentor.ID,
@@ -590,6 +643,33 @@ func SimpanPenilaianPeserta(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Format data tidak valid: "+err.Error())
 		return
 	}
+
+	var pendaftaran models.PendaftaranMagang
+	if err := config.DB.Where("akun_peserta_id = ?", peserta.ID).First(&pendaftaran).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Data pendaftaran peserta tidak ditemukan")
+		return
+	}
+
+	// Validasi Opsi 2: Peserta wajib sudah mengunggah laporan akhir dan disetujui (ACC) mentor
+	hasLaporanFile := strings.TrimSpace(pendaftaran.FileLaporanAkhir) != ""
+	var cekPenilaian models.PenilaianMagang
+	hasPenilaian := (config.DB.Where("peserta_id = ?", peserta.ID).First(&cekPenilaian).Error == nil)
+
+	isLaporanAcc := hasLaporanFile && (strings.ToLower(pendaftaran.StatusLaporanAkhir) == "disetujui" || (hasPenilaian && cekPenilaian.LaporanAkhirDisetujui))
+
+	if !isLaporanAcc {
+		if !hasLaporanFile {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Penilaian belum dapat disimpan. Peserta belum mengunggah naskah laporan akhir.")
+		} else if strings.ToLower(pendaftaran.StatusLaporanAkhir) == "revisi" || strings.ToLower(pendaftaran.StatusLaporanAkhir) == "perlu_revisi" {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Penilaian belum dapat disimpan. Naskah laporan akhir peserta masih berstatus revisi.")
+		} else {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Penilaian belum dapat disimpan. Laporan akhir peserta belum disetujui (ACC) oleh mentor.")
+		}
+		return
+	}
+
+	// Pastikan status laporan akhir disetujui bernilai true karena prasyarat telah terpenuhi
+	input.LaporanAkhirDisetujui = true
 
 	setting, _ := GetOrCreatePengaturanPenilaian(config.DB)
 

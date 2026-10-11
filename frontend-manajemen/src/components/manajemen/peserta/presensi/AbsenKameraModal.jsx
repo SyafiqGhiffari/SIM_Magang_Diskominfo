@@ -3,7 +3,6 @@ import {
   X,
   Camera,
   RefreshCw,
-  Upload,
   Loader2,
   LogIn,
   LogOut,
@@ -389,7 +388,6 @@ const AbsenKameraModal = ({
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
-  const inputRef = useRef(null);
 
   const isMasuk = jenis === "masuk";
   const JenisIcon = isMasuk ? LogIn : LogOut;
@@ -662,26 +660,6 @@ const AbsenKameraModal = ({
       "image/jpeg",
       0.95
     );
-  };
-
-  const pilihDariGaleri = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toastError("Format foto harus JPG, JPEG, atau PNG.");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toastError("Ukuran foto maksimal 10MB.");
-      return;
-    }
-
-    const snapTime = getLiveWibTime();
-    setWaktuAmbilFoto(snapTime);
-    setFileFoto(file);
-    setPreview(URL.createObjectURL(file));
-    matikanKamera();
-    setKameraSiap(false);
   };
 
   const ulangiFoto = () => {
@@ -970,42 +948,20 @@ const AbsenKameraModal = ({
 
                       {/* In-Frame Action Controls saat Foto Terambil */}
                       <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/85 via-black/40 to-transparent pt-6 pb-2 sm:pb-2.5 px-3.5 sm:px-4">
-                        {/* Dock Kontrol Bawah Terpadu: Kiri Unggah, Tengah Ulangi Swafoto */}
-                        <div className="grid grid-cols-3 items-center w-full">
-                          {/* Pojok Kiri: Ganti Foto dari Galeri */}
-                          <div className="flex items-center justify-start">
-                            <button
-                              type="button"
-                              onClick={() => inputRef.current?.click()}
-                              disabled={saving}
-                              title="Ganti File dari Galeri"
-                              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white/15 hover:bg-white/25 active:scale-95 text-white backdrop-blur-md border border-white/30 transition-colors duration-150 cursor-pointer shadow-md disabled:opacity-50"
-                              aria-label="Ganti File dari Galeri"
-                            >
-                              <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                            </button>
-                          </div>
-
-                          {/* Tengah: Ulangi Swafoto */}
-                          <div className="flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={ulangiFoto}
-                              disabled={saving}
-                              title="Ulangi Swafoto"
-                              className="relative flex h-12 w-12 sm:h-13 sm:w-13 items-center justify-center rounded-full border-2 border-white bg-white/20 hover:bg-white/35 p-1 backdrop-blur-md transition-colors duration-150 active:scale-95 cursor-pointer shadow-lg shadow-black/40 disabled:opacity-50"
-                              aria-label="Ulangi Swafoto"
-                            >
-                              <span className="flex h-full w-full items-center justify-center rounded-full bg-white text-slate-900 shadow-inner">
-                                <RefreshCw className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-slate-900" />
-                              </span>
-                            </button>
-                          </div>
-
-                          {/* Pojok Kanan: Spacer Presisi */}
-                          <div className="flex items-center justify-end">
-                            <div className="w-10 sm:w-11" />
-                          </div>
+                        {/* Kontrol Bawah: Tombol Ulangi Swafoto di Tengah */}
+                        <div className="flex items-center justify-center w-full">
+                          <button
+                            type="button"
+                            onClick={ulangiFoto}
+                            disabled={saving}
+                            title="Ulangi Pengambilan Swafoto"
+                            className="relative flex h-12 w-12 sm:h-13 sm:w-13 items-center justify-center rounded-full border-2 border-white bg-white/20 hover:bg-white/35 p-1 backdrop-blur-md transition-colors duration-150 active:scale-95 cursor-pointer shadow-lg shadow-black/40 disabled:opacity-50"
+                            aria-label="Ulangi Swafoto"
+                          >
+                            <span className="flex h-full w-full items-center justify-center rounded-full bg-white text-slate-900 shadow-inner">
+                              <RefreshCw className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-slate-900" />
+                            </span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1025,29 +981,20 @@ const AbsenKameraModal = ({
                       {/* In-Frame Action Dock di Bawah Viewfinder (Menyatu dengan Border & Frame Kamera) */}
                       <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/85 via-black/40 to-transparent pt-6 pb-2 sm:pb-2.5 px-3.5 sm:px-4">
                         <div className="grid grid-cols-3 items-center w-full">
-                          {/* Pojok Kiri: Tombol Unggah Foto dari Galeri */}
+                          {/* Sisi Kiri: Spacer Presisi agar Tombol Shutter di Tengah */}
                           <div className="flex items-center justify-start">
-                            <button
-                              type="button"
-                              onClick={() => inputRef.current?.click()}
-                              disabled={saving}
-                              title="Unggah Foto dari Galeri"
-                              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white/15 hover:bg-white/25 active:scale-95 text-white backdrop-blur-md border border-white/30 transition-colors duration-150 cursor-pointer shadow-md disabled:opacity-50"
-                              aria-label="Unggah Foto dari Galeri"
-                            >
-                              <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                            </button>
+                            <div className="w-10 sm:w-11" />
                           </div>
 
-                          {/* Tengah: Tombol Shutter Ambil Foto Presensi */}
+                          {/* Tengah: Tombol Shutter Ambil Foto Presensi Langsung */}
                           <div className="flex items-center justify-center">
                             <button
                               type="button"
                               onClick={ambilFoto}
                               disabled={!kameraSiap || saving}
-                              title="Ambil Swafoto"
+                              title="Ambil Swafoto Sekarang"
                               className="relative flex h-12 w-12 sm:h-13 sm:w-13 items-center justify-center rounded-full border-2 border-white bg-white/20 hover:bg-white/35 p-1 backdrop-blur-md transition-colors duration-150 active:scale-95 cursor-pointer shadow-lg shadow-black/40 disabled:opacity-50"
-                              aria-label="Ambil Swafoto"
+                              aria-label="Ambil Swafoto Sekarang"
                             >
                               <span className="flex h-full w-full items-center justify-center rounded-full bg-white text-slate-900 shadow-inner">
                                 <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-slate-900" />
@@ -1055,7 +1002,7 @@ const AbsenKameraModal = ({
                             </button>
                           </div>
 
-                          {/* Pojok Kanan: Tombol Putar Kamera (Hanya Tampil di Smartphone/Tablet Mobile Multi-Kamera) */}
+                          {/* Sisi Kanan: Tombol Putar Kamera Depan/Belakang (Untuk Smartphone / Tablet) */}
                           <div className="flex items-center justify-end">
                             {canSwitchCamera ? (
                               <button
@@ -1099,13 +1046,6 @@ const AbsenKameraModal = ({
                     </>
                   )}
                   <canvas ref={canvasRef} className="hidden" />
-                  <input
-                    ref={inputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={pilihDariGaleri}
-                    className="hidden"
-                  />
                 </div>
               </div>
 

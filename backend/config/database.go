@@ -80,6 +80,11 @@ func ConnectDatabase() {
 		log.Fatal("Gagal melakukan migrasi database: ", err)
 	}
 
+	// Hapus kolom lupa_presensi dari tabel presensis jika masih ada di database
+	if DB.Migrator().HasColumn("presensis", "lupa_presensi") {
+		_ = DB.Migrator().DropColumn("presensis", "lupa_presensi")
+	}
+
 	// Sinkronisasi otomatis foto profil peserta manajemen dari berkas pas foto pendaftaran jika belum terisi
 	_ = DB.Exec(`
 		UPDATE user_manajemens u

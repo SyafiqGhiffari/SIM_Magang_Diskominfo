@@ -9,7 +9,6 @@ import {
   GraduationCap,
   CalendarDays,
   UserCog,
-  AlarmClockOff,
   Lock,
   Image as ImageIcon,
   Info,
@@ -592,11 +591,6 @@ const DetailPresensiBimbinganModal = ({
                         <Timer className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> +{formatMenit(terlambat)}
                       </span>
                     )}
-                    {activeData.lupa_presensi && (
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-white/10 px-2 py-0.5 text-[8px] sm:text-[9.5px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
-                        <AlarmClockOff className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Lupa presensi
-                      </span>
-                    )}
                     {activeData.dikunci && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-white/10 px-2 py-0.5 text-[8px] sm:text-[9.5px] font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
                         <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Terkunci
@@ -884,15 +878,14 @@ const DetailPresensiBimbinganModal = ({
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                           Sudah Presensi Pulang
                         </span>
-                      ) : activeData.lupa_presensi ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/40">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                          Lupa Presensi Pulang
-                        </span>
                       ) : activeData.jam_masuk ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/40">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                          Belum Presensi Pulang
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-bold ${
+                          activeData.dikunci
+                            ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/40"
+                            : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/40"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${activeData.dikunci ? "bg-rose-500" : "bg-amber-500 animate-pulse"}`} />
+                          {activeData.dikunci ? "Tidak Presensi Pulang" : "Belum Presensi Pulang"}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10">
